@@ -44,36 +44,6 @@ const IPCA_E = {
   "2025-01":0.41,"2025-02":1.23,"2025-03":0.44,
 };
 
-// ── Número por extenso ─────────────────────────────────────────
-function valorExtenso(valor) {
-  const n = Math.round(valor * 100);
-  const reais = Math.floor(n / 100);
-  const centavos = n % 100;
-  const u = ["","um","dois","três","quatro","cinco","seis","sete","oito","nove","dez","onze","doze","treze","quatorze","quinze","dezesseis","dezessete","dezoito","dezenove"];
-  const d = ["","","vinte","trinta","quarenta","cinquenta","sessenta","setenta","oitenta","noventa"];
-  const c = ["","cem","duzentos","trezentos","quatrocentos","quinhentos","seiscentos","setecentos","oitocentos","novecentos"];
-  function grupo(n) {
-    if (n === 0) return "";
-    if (n === 100) return "cem";
-    const cent = Math.floor(n/100), dez = Math.floor((n%100)/10), uni = n%10;
-    const partes = [];
-    if (cent > 0) partes.push(c[cent]);
-    if ((dez*10+uni) < 20 && (dez*10+uni) > 0) partes.push(u[dez*10+uni]);
-    else { if (dez > 0) partes.push(d[dez]); if (uni > 0) partes.push(u[uni]); }
-    return partes.join(" e ");
-  }
-  if (reais === 0 && centavos === 0) return "zero reais";
-  const partes = [];
-  if (reais > 0) {
-    const mil = Math.floor(reais/1000), resto = reais%1000;
-    if (mil > 0) partes.push(`${grupo(mil)} mil`);
-    if (resto > 0) partes.push(grupo(resto));
-    partes[partes.length-1] += reais === 1 ? " real" : " reais";
-  }
-  if (centavos > 0) partes.push(`${grupo(centavos)} ${centavos === 1 ? "centavo" : "centavos"}`);
-  return partes.join(" e ");
-}
-
 // ── Cálculo de correção ────────────────────────────────────────
 function corrigir(saldo, mes, ano) {
   const hoje = new Date();
@@ -102,7 +72,6 @@ const DEFENSORES = {
   "Dra. Andrea Melo de Carvalho": "1ª Defensoria de Família",
   "Dra. Dayana Sampaio Mendes Magalhães": "2ª Defensoria Pública Regional de Altos",
   "Dra. Priscila Gimenes do Nascimento Godói": "2ª Defensoria Regional de União",
-  "Bruxa Laslasca": "1ª DPEINF",
 };
 const SENHA_CORRETA = "JB2027";
 
