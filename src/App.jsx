@@ -143,7 +143,7 @@ const Header = ({ perfil, onPerfil }) => (
       </div>
     </div>
     <button onClick={onPerfil} style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.4)", borderRadius: 6, color: "#fff", padding: "7px 14px", cursor: "pointer", fontSize: 13, touchAction: "manipulation" }}>
-      {perfil.nome ? `👤 ${perfil.nome.split(" ")[0]}` : "⚙ Configurar Perfil"}
+      {perfil.nome ? `👤 ${perfil.nome}` : "⚙ Configurar Perfil"}
     </button>
   </div>
 );
