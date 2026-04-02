@@ -41,6 +41,7 @@ const IPCA_E = {
 };
 
 function corrigir(valor, mes, ano) {
+  // valor pode ser negativo (crédito)
   const hoje = new Date();
   const aAtual = hoje.getFullYear(), mAtual = hoje.getMonth()+1;
   let fator = 1, m = mes, a = ano;
@@ -53,7 +54,7 @@ function corrigir(valor, mes, ano) {
   const meses = Math.max(0, (hoje.getFullYear()-venc.getFullYear())*12 + (hoje.getMonth()-venc.getMonth()));
   const corrigido = valor * fator;
   const juros = corrigido * meses * 0.01;
-  return { original: valor, fator, corrigido, juros, total: corrigido+juros, mesesAtraso: meses };
+  return { fator, corrigido, juros, total: corrigido+juros, mesesAtraso: meses };
 }
 
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -218,14 +219,39 @@ export default function App() {
     setLoading(true); setResultado(null);
     setTimeout(()=>{
       const detalhes = parcelas
-        .filter(p=>p.valor&&Number(p.valor)>0)
-        .sort((a,b)=>a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes)
-        .map(p=>{ const orig=Number(p.valor)-(Number(p.pago)||0); if(orig<=0)return null; return {...corrigir(orig,p.mes,p.ano),mes:p.mes,ano:p.ano,label:fmtMes(p.mes,p.ano)}; })
-        .filter(Boolean);
+        .filter(p => p.valor && Number(p.valor) > 0)
+        .sort((a,b) => a.ano!==b.ano ? a.ano-b.ano : a.mes-b.mes)
+        .map(p => {
+          const nominal = Number(p.valor);
+          const pago = Number(p.pago) || 0;
+          const saldo = nominal - pago; // pode ser negativo (crédito)
+          const calc = corrigir(saldo, p.mes, p.ano);
+          const isCredito = saldo < 0;
+          return {
+            ...calc,
+            mes: p.mes, ano: p.ano, label: fmtMes(p.mes, p.ano),
+            nominal, pago, saldo,
+            isCredito,
+          };
+        });
       if(!detalhes.length){setLoading(false);return;}
-      const prisao=detalhes.slice(-3), penhora=detalhes.slice(0,-3);
-      const soma=arr=>arr.reduce((s,x)=>s+x.total,0);
-      const res={processo,alimentado,alimentante,comarca,diaVencimento,tipoAlimento,percentualSM,valorFixoAlimento,detalhes,prisao,penhora,totalPrisao:soma(prisao),totalPenhora:soma(penhora),total:soma(detalhes),data:new Date().toLocaleDateString("pt-BR"),defensor:perfil.nome||"",lotacao:perfil.lotacao||""};
+
+      // Separar débitos e créditos
+      const debitos = detalhes.filter(p => !p.isCredito);
+      const creditos = detalhes.filter(p => p.isCredito);
+
+      // Bloco prisão = últimas 3 parcelas COM saldo devedor
+      const prisao = debitos.slice(-3);
+      const penhora = debitos.slice(0,-3);
+      const soma = arr => arr.reduce((s,x) => s + x.total, 0);
+      const totalCreditos = creditos.reduce((s,x) => s + Math.abs(x.total), 0);
+      const totalBruto = soma(debitos);
+      const totalLiquido = Math.max(0, totalBruto - totalCreditos);
+      const res={processo,alimentado,alimentante,comarca,diaVencimento,tipoAlimento,percentualSM,valorFixoAlimento,
+        detalhes, debitos, creditos, prisao, penhora,
+        totalPrisao:soma(prisao), totalPenhora:soma(penhora),
+        totalBruto, totalCreditos, total:totalLiquido,
+        data:new Date().toLocaleDateString("pt-BR"),defensor:perfil.nome||"",lotacao:perfil.lotacao||""};
       setResultado(res);
       const hist=[{id:Date.now(),...res},...historico].slice(0,50);
       setHistorico(hist); localStorage.setItem("dpe_historico",JSON.stringify(hist));
@@ -456,7 +482,27 @@ export default function App() {
               </div>
               {resultado.processo && <p style={{ margin:"0 0 4px", fontSize:13, color:"#666" }}>Processo: <strong>{resultado.processo}</strong></p>}
               {resultado.alimentado && <p style={{ margin:"0 0 16px", fontSize:13, color:"#666" }}>Alimentado(a): <strong>{resultado.alimentado}</strong></p>}
-              {resultado.prisao.length>0 && (
+              {resultado.creditos?.length>0 && (
+                <div style={{ background:"#e8f5ee", border:"1px solid #1a6b3a", borderRadius:8, padding:16, marginBottom:12 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                    <div style={{ fontWeight:700, color:"#1a6b3a" }}>✅ Créditos (pagamentos excedentes)</div>
+                    <span style={{ background:"#1a6b3a", color:"#fff", borderRadius:20, padding:"3px 12px", fontSize:12, fontWeight:700 }}>({fmt(resultado.totalCreditos)})</span>
+                  </div>
+                  <div style={{ fontSize:12, color:"#555" }}>Serão deduzidos do total geral</div>
+                  {resultado.creditos.map((p,i)=>(
+                    <div key={i} style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginTop:6 }}>
+                      <span>{p.label} — pago R$ {p.pago.toLocaleString("pt-BR",{minimumFractionDigits:2})} / devido R$ {p.nominal.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span>
+                      <span style={{ fontWeight:600, color:"#1a6b3a" }}>({fmt(Math.abs(p.total))})</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {resultado.totalCreditos>0 && (
+                <div style={{ background:"#f5f5f5", borderRadius:8, padding:"10px 18px", display:"flex", justifyContent:"space-between", marginBottom:8 }}>
+                  <span style={{ color:"#666", fontSize:13 }}>Total bruto</span>
+                  <span style={{ fontSize:13 }}>{fmt(resultado.totalBruto)}</span>
+                </div>
+              )}
                 <div style={{ background:"#e8f5ee", border:"1px solid #1a6b3a", borderRadius:8, padding:16, marginBottom:12 }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                     <div style={{ fontWeight:700, color:"#1a6b3a" }}>BLOCO I — Prisão Civil</div>
