@@ -193,6 +193,10 @@ export default function App() {
     return n;
   };
 
+  const limparParcelas = () => {
+    if (window.confirm("Apagar todas as parcelas?")) setParcelas([]);
+  };
+
   const addIntervalo = () => {
     const novas = [];
     let m = intervalo.mesIni, a = intervalo.anoIni;
@@ -300,10 +304,13 @@ export default function App() {
     // ── Cabeçalho ──
     doc.setFillColor(26, 107, 58); doc.rect(0, 0, W, 28, "F");
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.text("MEMORIAL DE CÁLCULO", W / 2, 9, { align: "center" });
-    doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.text("Débito Alimentar — Execução de Alimentos (art. 528 CPC)", W / 2, 15, { align: "center" });
-    doc.setFontSize(8); doc.text("APIDEP — Associação Piauiense das Defensoras e Defensores Públicos", W / 2, 21, { align: "center" });
-    y = 33;
+    doc.setFontSize(14); doc.setFont("helvetica", "bold");
+    doc.text("MEMORIAL DE CÁLCULO", W / 2, 10, { align: "center" });
+    doc.setFontSize(9); doc.setFont("helvetica", "normal");
+    doc.text("Débito Alimentar — Execução de Alimentos (art. 528 CPC)", W / 2, 16, { align: "center" });
+    doc.setFontSize(7.5);
+    doc.text("APIDEP — Associação Piauiense das Defensoras e Defensores Públicos", W / 2, 22, { align: "center" });
+    y = 36;
 
     // ── Dados do processo ──
     doc.setFillColor(232, 245, 238); doc.rect(mg, y, W - mg * 2, 28, "F");
@@ -581,11 +588,9 @@ export default function App() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <h3 style={{ margin: 0, color: C.verde, fontSize: 15 }}>💰 Parcelas em Atraso</h3>
                 <div style={{ display: "flex", gap: 8 }}>
-                  {parcelas.length > 1 && (
-                    <Btn small outline cor={C.vermelho} onClick={() => { if (confirm("Apagar todas as parcelas?")) setParcelas([novaParcela()]); }}>🗑 Limpar tudo</Btn>
-                  )}
                   <Btn small onClick={() => setShowIntervalo(s => !s)} cor={C.azul}>📅 Intervalo</Btn>
                   <Btn small onClick={addParcela} cor={C.verdeClaro}>+ Avulsa</Btn>
+                  {parcelas.length > 0 && <Btn small onClick={limparParcelas} cor={C.vermelho} outline>🗑 Limpar tudo</Btn>}
                 </div>
               </div>
 
