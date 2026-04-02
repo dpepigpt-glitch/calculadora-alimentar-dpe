@@ -197,15 +197,18 @@ export default function App() {
     const novas = [];
     let m = intervalo.mesIni, a = intervalo.anoIni;
     while (a < intervalo.anoFim || (a === intervalo.anoFim && m <= intervalo.mesFim)) {
-      const valor = intervalo.tipo === "sm"
-        ? (getSM(m, a) * Number(intervalo.fracao)).toFixed(2)
-        : intervalo.valor;
+      // Calcula valor nominal baseado no tipo definido nos Dados do Processo
+      let valor;
+      if (tipoAlimento === "sm") {
+        valor = (getSM(m, a) * Number(percentualSM) / 100).toFixed(2);
+      } else {
+        valor = valorFixoAlimento;
+      }
       novas.push({ id: Date.now() + novas.length, mes: m, ano: a, valor, pago: intervalo.pago });
       m++; if (m > 12) { m = 1; a++; }
     }
     setParcelas(p => [...p, ...novas]);
-    // Mantém painel aberto, reseta só valores
-    setIntervalo(i => ({ ...i, valor: "", fracao: "", pago: "" }));
+    setIntervalo(i => ({ ...i, pago: "" }));
   };
 
   // ── Upload IA ──────────────────────────────────────────────
@@ -248,11 +251,14 @@ export default function App() {
         .filter(p => p.valor && Number(p.valor) > 0)
         .sort((a, b) => a.ano !== b.ano ? a.ano - b.ano : a.mes - b.mes)
         .map(p => {
-          const nominal = Number(p.valor);
+          const smVig = p.smVig || getSM(p.mes, p.ano);
+          // Valor nominal: usa o campo valor da parcela (já calculado corretamente pelo intervalo ou manual)
+          const nominal = Number(p.valor) || 0;
+          // Valor pago: lê SEMPRE do estado atual da parcela (captura edições manuais)
           const pago = Number(p.pago) || 0;
           const saldo = nominal - pago;
           const calc = corrigir(saldo, p.mes, p.ano);
-          return { ...calc, mes: p.mes, ano: p.ano, label: fmtMes(p.mes, p.ano), nominal, pago, saldo, isCredito: saldo < 0 };
+          return { ...calc, mes: p.mes, ano: p.ano, label: fmtMes(p.mes, p.ano), nominal, pago, saldo, smVig, isCredito: saldo < 0 };
         });
 
       if (!detalhes.length) { setLoading(false); return; }
@@ -583,13 +589,11 @@ export default function App() {
               {/* Painel de intervalo */}
               {showIntervalo && (
                 <div style={{ background: "#e8f0f820", border: `1px solid ${C.azul}`, borderRadius: 8, padding: 16, marginBottom: 16 }}>
-                  <div style={{ fontWeight: 700, color: C.azul, marginBottom: 12 }}>📅 Adicionar intervalo de parcelas</div>
-                  <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
-                    {[["fixo", "💰 Valor fixo"], ["sm", "📊 % Salário Mínimo"]].map(([val, label]) => (
-                      <button key={val} onClick={() => setIntervalo(i => ({ ...i, tipo: val }))} style={{ padding: "6px 14px", borderRadius: 6, border: `2px solid ${intervalo.tipo === val ? C.azul : C.borda}`, background: intervalo.tipo === val ? C.azul : C.branco, color: intervalo.tipo === val ? "#fff" : C.cinza, fontWeight: 600, fontSize: 12, cursor: "pointer", touchAction: "manipulation" }}>{label}</button>
-                    ))}
+                  <div style={{ fontWeight: 700, color: C.azul, marginBottom: 8 }}>📅 Adicionar intervalo de parcelas</div>
+                  <div style={{ fontSize: 12, color: "#555", marginBottom: 12, background: "#e8f0f8", padding: "8px 12px", borderRadius: 6 }}>
+                    O valor de cada parcela será calculado automaticamente com base em: <strong>{tipoAlimento === "sm" ? `${percentualSM || "?"}% do salário mínimo vigente em cada mês` : `R$ ${valorFixoAlimento || "?"} (valor fixo)`}</strong>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, alignItems: "end" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, alignItems: "end" }}>
                     <div>
                       <label style={{ fontSize: 11, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Mês inicial</label>
                       <select value={intervalo.mesIni} onChange={e => setIntervalo(i => ({ ...i, mesIni: Number(e.target.value) }))} style={inpStyle}>
@@ -610,20 +614,9 @@ export default function App() {
                       <label style={{ fontSize: 11, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Ano final</label>
                       <input type="number" value={intervalo.anoFim} onChange={e => setIntervalo(i => ({ ...i, anoFim: Number(e.target.value) }))} style={inpStyle} />
                     </div>
-                    {intervalo.tipo === "fixo"
-                      ? <div>
-                        <label style={{ fontSize: 11, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Valor (R$)</label>
-                        <input type="number" value={intervalo.valor} onChange={e => setIntervalo(i => ({ ...i, valor: e.target.value }))} placeholder="0,00" style={inpStyle} />
-                      </div>
-                      : <div>
-                        <label style={{ fontSize: 11, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Fração do SM</label>
-                        <input type="number" value={intervalo.fracao} onChange={e => setIntervalo(i => ({ ...i, fracao: e.target.value }))} placeholder="ex: 1.5" step="0.25" style={inpStyle} />
-                        {intervalo.fracao && <div style={{ fontSize: 10, color: C.azul, marginTop: 2 }}>= {fmt(getSM(intervalo.mesIni, intervalo.anoIni) * Number(intervalo.fracao))}</div>}
-                      </div>
-                    }
                     <div>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Já pago (R$)</label>
-                      <input type="number" value={intervalo.pago} onChange={e => setIntervalo(i => ({ ...i, pago: e.target.value }))} placeholder="0,00" style={inpStyle} />
+                      <label style={{ fontSize: 11, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Já pago em todos (R$)</label>
+                      <input type="number" value={intervalo.pago} onChange={e => setIntervalo(i => ({ ...i, pago: e.target.value }))} placeholder="0,00 ou deixe vazio" style={inpStyle} />
                     </div>
                   </div>
                   <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
