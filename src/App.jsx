@@ -22,6 +22,34 @@ const fmtMes = (mes, ano) => {
   return `${nomes[mes - 1]}/${ano}`;
 };
 
+// Salário mínimo histórico por mês/ano
+const SALARIO_MINIMO = {
+  "2020-01":1045,"2020-02":1045,"2020-03":1045,"2020-04":1045,"2020-05":1045,
+  "2020-06":1045,"2020-07":1045,"2020-08":1045,"2020-09":1045,"2020-10":1045,
+  "2020-11":1045,"2020-12":1045,
+  "2021-01":1100,"2021-02":1100,"2021-03":1100,"2021-04":1100,"2021-05":1100,
+  "2021-06":1100,"2021-07":1100,"2021-08":1100,"2021-09":1100,"2021-10":1100,
+  "2021-11":1100,"2021-12":1100,
+  "2022-01":1212,"2022-02":1212,"2022-03":1212,"2022-04":1212,"2022-05":1212,
+  "2022-06":1212,"2022-07":1212,"2022-08":1212,"2022-09":1212,"2022-10":1212,
+  "2022-11":1212,"2022-12":1212,
+  "2023-01":1320,"2023-02":1320,"2023-03":1320,"2023-04":1320,"2023-05":1320,
+  "2023-06":1320,"2023-07":1320,"2023-08":1320,"2023-09":1320,"2023-10":1320,
+  "2023-11":1320,"2023-12":1320,
+  "2024-01":1412,"2024-02":1412,"2024-03":1412,"2024-04":1412,"2024-05":1412,
+  "2024-06":1412,"2024-07":1412,"2024-08":1412,"2024-09":1412,"2024-10":1412,
+  "2024-11":1412,"2024-12":1412,
+  "2025-01":1518,"2025-02":1518,"2025-03":1518,"2025-04":1518,"2025-05":1518,
+  "2025-06":1518,"2025-07":1518,"2025-08":1518,"2025-09":1518,"2025-10":1518,
+  "2025-11":1518,"2025-12":1518,
+  "2026-01":1518,"2026-02":1518,"2026-03":1518,"2026-04":1518,
+};
+
+function getSalarioMinimo(mes, ano) {
+  const chave = `${ano}-${String(mes).padStart(2,"0")}`;
+  return SALARIO_MINIMO[chave] || 1518; // fallback para o mais recente
+}
+
 // IPCA-E acumulado mensal simplificado (base real — valores aproximados para demonstração)
 // Em produção, deve-se buscar via API do BCB
 const IPCA_E = {
@@ -220,9 +248,31 @@ export default function App() {
     localStorage.setItem("dpe_perfil", JSON.stringify(p));
   };
 
+  const [showIntervalo, setShowIntervalo] = useState(false);
+  const [intervalo, setIntervalo] = useState({ mesIni: 1, anoIni: 2024, mesFim: 12, anoFim: 2024, tipo: "fixo", valor: "", fracao: "", pago: "" });
+
   const addParcela = () => setParcelas(p => [...p, novaParcela()]);
   const removeParcela = (id) => setParcelas(p => p.filter(x => x.id !== id));
   const editParcela = (id, campo, val) => setParcelas(p => p.map(x => x.id === id ? { ...x, [campo]: val } : x));
+
+  const addIntervalo = () => {
+    const novas = [];
+    let m = intervalo.mesIni, a = intervalo.anoIni;
+    const mFim = intervalo.mesFim, aFim = intervalo.anoFim;
+    while (a < aFim || (a === aFim && m <= mFim)) {
+      let valor;
+      if (intervalo.tipo === "sm") {
+        valor = (getSalarioMinimo(m, a) * Number(intervalo.fracao)).toFixed(2);
+      } else {
+        valor = intervalo.valor;
+      }
+      novas.push({ id: Date.now() + novas.length, mes: m, ano: a, valor, pago: intervalo.pago });
+      m++; if (m > 12) { m = 1; a++; }
+    }
+    setParcelas(p => [...p, ...novas]);
+    setShowIntervalo(false);
+    setIntervalo({ mesIni: 1, anoIni: 2024, mesFim: 12, anoFim: 2024, tipo: "fixo", valor: "", fracao: "", pago: "" });
+  };
 
   // ── Leitura IA de sentença ──────────────────────────────────
   const handleUpload = async (e) => {
