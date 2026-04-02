@@ -287,7 +287,16 @@ doc.text(resultado.defensor,W/2,y,{align:“center”});y+=5;
 doc.setFont(“helvetica”,“normal”); doc.setTextColor(100,100,100);
 doc.text(“Defensor(a) Público(a)”,W/2,y,{align:“center”});
 }
-doc.save(`Debitos_Alimentares_${resultado.processo||"calculo"}_${resultado.data.replace(/\//g,"-")}.pdf`);
+const filename = `Debitos_Alimentares_${resultado.processo||"calculo"}_${resultado.data.replace(/\//g,"-")}.pdf`;
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+if (isIOS) {
+// iOS: abre em nova aba para o usuário salvar manualmente
+const blob = doc.output(“blob”);
+const url = URL.createObjectURL(blob);
+window.open(url, “_blank”);
+} else {
+doc.save(filename);
+}
 };
 
 const sl = (f) => ({ fontSize:12, fontWeight:600, color:”#4a4a4a”, display:“block”, marginBottom:4 });
