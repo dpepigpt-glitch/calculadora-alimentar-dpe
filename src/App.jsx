@@ -581,6 +581,9 @@ export default function App() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <h3 style={{ margin: 0, color: C.verde, fontSize: 15 }}>💰 Parcelas em Atraso</h3>
                 <div style={{ display: "flex", gap: 8 }}>
+                  {parcelas.length > 1 && (
+                    <Btn small outline cor={C.vermelho} onClick={() => { if (confirm("Apagar todas as parcelas?")) setParcelas([novaParcela()]); }}>🗑 Limpar tudo</Btn>
+                  )}
                   <Btn small onClick={() => setShowIntervalo(s => !s)} cor={C.azul}>📅 Intervalo</Btn>
                   <Btn small onClick={addParcela} cor={C.verdeClaro}>+ Avulsa</Btn>
                 </div>
