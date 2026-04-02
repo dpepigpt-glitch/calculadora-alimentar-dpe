@@ -251,7 +251,7 @@ export default function App() {
     localStorage.setItem("dpe_perfil", JSON.stringify(p));
   };
 
-  const [showIntervalo, setShowIntervalo] = useState(false);
+  const [showIntervalo, setShowIntervalo] = useState(false); // controle painel intervalo
   const [intervalo, setIntervalo] = useState({ mesIni: 1, anoIni: 2024, mesFim: 12, anoFim: 2024, tipo: "fixo", valor: "", fracao: "", pago: "" });
 
   const addParcela = () => setParcelas(p => [...p, novaParcela()]);
