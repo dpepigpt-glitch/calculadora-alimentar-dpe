@@ -290,10 +290,9 @@ doc.text(“Defensor(a) Público(a)”,W/2,y,{align:“center”});
 const filename = `Debitos_Alimentares_${resultado.processo||"calculo"}_${resultado.data.replace(/\//g,"-")}.pdf`;
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 if (isIOS) {
-// iOS: abre em nova aba para o usuário salvar manualmente
-const blob = doc.output(“blob”);
-const url = URL.createObjectURL(blob);
-window.open(url, “_blank”);
+const dataUri = doc.output(“datauristring”);
+const win = window.open();
+win.document.write(`<iframe src="${dataUri}" style="width:100%;height:100vh;border:none;"></iframe>`);
 } else {
 doc.save(filename);
 }
