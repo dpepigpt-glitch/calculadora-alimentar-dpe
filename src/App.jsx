@@ -1,40 +1,4 @@
-// ── Geração de PDF ─────────────────────────────────────────
-  const gerarPDF = async () => {
-    if (!resultado) return;
-    const jsPDFLib = window.jspdf?.jsPDF || window.jsPDF;
-    if (!jsPDFLib) { alert("PDF não carregou. Recarregue a página."); return; }
-
-    const doc = new jsPDFLib({ orientation: "landscape", unit: "mm", format: "a4" });
-    const W = 297, mg = 12; let y = 0;
-
-    // ── Cabeçalho com logo ──
-    doc.setFillColor(26, 107, 58); doc.rect(0, 0, W, 28, "F");
-    // Tenta carregar logo
-    try {
-      const logoImg = await new Promise((res, rej) => {
-        const img = new Image(); img.crossOrigin = "anonymous";
-        img.onload = () => res(img); img.onerror = rej;
-        img.src = "/logo-apidep.png";
-      });
-      const canvas = document.createElement("canvas");
-      canvas.width = logoImg.naturalWidth; canvas.height = logoImg.naturalHeight;
-      canvas.getContext("2d").drawImage(logoImg, 0, 0);
-      const logoData = canvas.toDataURL("image/png");
-      // Logo à esquerda no cabeçalho
-      const logoH = 22, logoW = logoH * (logoImg.naturalWidth / logoImg.naturalHeight);
-      doc.addImage(logoData, "PNG", mg, 3, logoW, logoH);
-    } catch (e) { /* sem logo, continua */ }
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.text("MEMORIAL DE CÁLCULO", W / 2, 9, { align: "center" });
-    doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.text("Débito Alimentar — Execução de Alimentos (art. 528 CPC)", W / 2, 15, { align: "center" });
-    doc.setFontSize(8); doc.text("APIDEP — Associação Piauiense das Defensoras e Defensores Públicos", W / 2, 21, { align: "center" });
-    y = 33;
-
-    // ── Dados do processo ──
-    doc.setFillColor(232, 245, 238); doc.rect(mg, y, W - mg * 2, 28, "F");
-    doc.setDrawColor(26, 107, 58); doc.setLineWidth(0.3); doc.rect(mg, y, W - mg * 2, 28);
-    doc.setFillColor(26, 107, 58); doc.rect(mg, y// v2.0
+// v2.0
 import { useState, useRef } from "react";
 
 // ── Cores ──────────────────────────────────────────────────────
@@ -656,7 +620,7 @@ export default function App() {
                     </div>
                   </div>
                   <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
-                    <Btn small onClick={addIntervalo} disabled={intervalo.tipo === "fixo" ? !intervalo.valor : !intervalo.fracao} cor={C.azul}>✅ Adicionar intervalo</Btn>
+                    <Btn small onClick={addIntervalo} cor={C.azul}>✅ Adicionar intervalo</Btn>
                     <Btn small outline cor={C.cinza} onClick={() => setShowIntervalo(false)}>Fechar</Btn>
                     {(intervalo.valor || intervalo.fracao) && (
                       <span style={{ fontSize: 12, color: C.azul }}>→ {contarParcelas()} parcela(s)</span>
@@ -721,8 +685,14 @@ export default function App() {
                     <div style={{ fontSize: 12, color: "#555", marginBottom: 6 }}>Art. 528, §3° CPC</div>
                     {resultado.prisao.map((p, i) => (
                       <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 4 }}>
-                        <span>{p.label} {p.pago > 0 && <span style={{ color: C.verde, fontSize: 11 }}>(pago: {fmt(p.pago)})</span>}</span>
-                        <span style={{ fontWeight: 600 }}>{fmt(p.total)}</span>
+                        <span>
+                          {p.label}
+                          {p.pago > 0 && <span style={{ color: C.verde, fontSize: 11 }}> (pago: {fmt(p.pago)})</span>}
+                          {p.isCredito && <span style={{ color: C.verde, fontSize: 11, fontWeight: 700 }}> ✅ CRÉDITO</span>}
+                        </span>
+                        <span style={{ fontWeight: 600, color: p.isCredito ? C.verde : "inherit" }}>
+                          {p.isCredito ? `(CR) ${fmt(Math.abs(p.total))}` : fmt(p.total)}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -737,25 +707,14 @@ export default function App() {
                     </div>
                     {resultado.penhora.map((p, i) => (
                       <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 4 }}>
-                        <span>{p.label} {p.pago > 0 && <span style={{ color: C.verde, fontSize: 11 }}>(pago: {fmt(p.pago)})</span>}</span>
-                        <span style={{ fontWeight: 600 }}>{fmt(p.total)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Créditos */}
-                {resultado.creditos?.length > 0 && (
-                  <div style={{ background: C.verdePale, border: `1px solid ${C.verde}`, borderRadius: 8, padding: 16, marginBottom: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <div style={{ fontWeight: 700, color: C.verde }}>✅ Créditos (pagamentos excedentes)</div>
-                      <span style={{ background: C.verde, color: "#fff", borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700 }}>({fmt(resultado.totalCreditos)})</span>
-                    </div>
-                    <div style={{ fontSize: 12, color: "#555", marginBottom: 6 }}>Deduzidos automaticamente do total</div>
-                    {resultado.creditos.map((p, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 4 }}>
-                        <span>{p.label} — pago {fmt(p.pago)} / devido {fmt(p.nominal)}</span>
-                        <span style={{ fontWeight: 600, color: C.verde }}>({fmt(Math.abs(p.total))})</span>
+                        <span>
+                          {p.label}
+                          {p.pago > 0 && <span style={{ color: C.verde, fontSize: 11 }}> (pago: {fmt(p.pago)})</span>}
+                          {p.isCredito && <span style={{ color: C.verde, fontSize: 11, fontWeight: 700 }}> ✅ CRÉDITO</span>}
+                        </span>
+                        <span style={{ fontWeight: 600, color: p.isCredito ? C.verde : "inherit" }}>
+                          {p.isCredito ? `(CR) ${fmt(Math.abs(p.total))}` : fmt(p.total)}
+                        </span>
                       </div>
                     ))}
                   </div>
