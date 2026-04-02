@@ -229,12 +229,13 @@ export default function App() {
   };
 
   const gerarPDF = async () => {
-    if(!resultado)return;
+    if(!resultado){ alert("Sem resultado"); return; }
     const jsPDFLib = window.jspdf?.jsPDF || window.jsPDF;
     if (!jsPDFLib) { 
-      alert("Biblioteca PDF não carregada. Recarregue a página e tente novamente."); 
+      alert("jsPDF não carregou. Verifique o index.html."); 
       return; 
     }
+    alert("jsPDF carregado! Gerando PDF...");
     const doc = new jsPDFLib({orientation:"portrait",unit:"mm",format:"a4"});
     const W=210, mg=20; let y=0;
     doc.setFillColor(26,107,58); doc.rect(0,0,W,38,"F");
