@@ -1,4 +1,40 @@
-// v2.0
+// ── Geração de PDF ─────────────────────────────────────────
+  const gerarPDF = async () => {
+    if (!resultado) return;
+    const jsPDFLib = window.jspdf?.jsPDF || window.jsPDF;
+    if (!jsPDFLib) { alert("PDF não carregou. Recarregue a página."); return; }
+
+    const doc = new jsPDFLib({ orientation: "landscape", unit: "mm", format: "a4" });
+    const W = 297, mg = 12; let y = 0;
+
+    // ── Cabeçalho com logo ──
+    doc.setFillColor(26, 107, 58); doc.rect(0, 0, W, 28, "F");
+    // Tenta carregar logo
+    try {
+      const logoImg = await new Promise((res, rej) => {
+        const img = new Image(); img.crossOrigin = "anonymous";
+        img.onload = () => res(img); img.onerror = rej;
+        img.src = "/logo-apidep.png";
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = logoImg.naturalWidth; canvas.height = logoImg.naturalHeight;
+      canvas.getContext("2d").drawImage(logoImg, 0, 0);
+      const logoData = canvas.toDataURL("image/png");
+      // Logo à esquerda no cabeçalho
+      const logoH = 22, logoW = logoH * (logoImg.naturalWidth / logoImg.naturalHeight);
+      doc.addImage(logoData, "PNG", mg, 3, logoW, logoH);
+    } catch (e) { /* sem logo, continua */ }
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.text("MEMORIAL DE CÁLCULO", W / 2, 9, { align: "center" });
+    doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.text("Débito Alimentar — Execução de Alimentos (art. 528 CPC)", W / 2, 15, { align: "center" });
+    doc.setFontSize(8); doc.text("APIDEP — Associação Piauiense das Defensoras e Defensores Públicos", W / 2, 21, { align: "center" });
+    y = 33;
+
+    // ── Dados do processo ──
+    doc.setFillColor(232, 245, 238); doc.rect(mg, y, W - mg * 2, 28, "F");
+    doc.setDrawColor(26, 107, 58); doc.setLineWidth(0.3); doc.rect(mg, y, W - mg * 2, 28);
+    doc.setFillColor(26, 107, 58); doc.rect(mg, y// v2.0
 import { useState, useRef } from "react";
 
 // ── Cores ──────────────────────────────────────────────────────
