@@ -66,7 +66,81 @@ function corrigir(saldo, mes, ano) {
 // ── Constantes ─────────────────────────────────────────────────
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
-// ── Componentes base ───────────────────────────────────────────
+// ── Controle de Acesso ─────────────────────────────────────────
+const DEFENSORES = {
+  "Dr. Robert Rios Júnior": "2ª Defensoria Itinerante",
+  "Dra. Andrea Melo de Carvalho": "1ª Defensoria de Família",
+  "Dra. Dayana Sampaio Mendes Magalhães": "2ª Defensoria Pública Regional de Altos",
+  "Dra. Priscila Gimenes do Nascimento Godói": "2ª Defensoria Regional de União",
+};
+const SENHA_CORRETA = "JB2027";
+
+function usuarioEstaLogado(nome, senha) {
+  return DEFENSORES[nome] && senha === SENHA_CORRETA;
+}
+
+// ── Tela de Login ──────────────────────────────────────────────
+const TelaLogin = ({ onLogin }) => {
+  const [nome, setNome] = useState("");
+  const [senha, setSenha] = useState("");
+  const [erro, setErro] = useState("");
+
+  const tentar = () => {
+    if (!usuarioEstaLogado(nome, senha)) {
+      setErro("Esse aplicativo está disponibilizado em fase experimental apenas para Defensores Legais, se você não tem senha, você não deve ser legal.");
+      return;
+    }
+    onLogin({ nome, lotacao: DEFENSORES[nome] });
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#f0f2f0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ background: "#fff", borderRadius: 12, padding: 40, width: 400, boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <img src="/logo-apidep.png" alt="APIDEP" style={{ height: 60, objectFit: "contain", marginBottom: 12 }} onError={e => e.target.style.display = "none"} />
+          <div style={{ fontWeight: 800, fontSize: 16, color: "#1a6b3a" }}>Calculadora de Débitos Alimentares</div>
+          <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>APIDEP — Acesso restrito</div>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 13, color: "#4a4a4a" }}>Nome do Defensor</label>
+          <select value={nome} onChange={e => setNome(e.target.value)}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid #d0d0d0", fontSize: 14, boxSizing: "border-box" }}>
+            <option value="">— Selecione —</option>
+            {Object.keys(DEFENSORES).map((d, i) => <option key={i} value={d}>{d}</option>)}
+          </select>
+          {nome && (
+            <div style={{ fontSize: 12, color: "#1a6b3a", marginTop: 4, paddingLeft: 4 }}>
+              📍 {DEFENSORES[nome]}
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 13, color: "#4a4a4a" }}>Senha de Acesso</label>
+          <input type="password" value={senha} onChange={e => setSenha(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && tentar()}
+            placeholder="Digite a senha"
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid #d0d0d0", fontSize: 14, boxSizing: "border-box" }} />
+        </div>
+
+        {erro && (
+          <div style={{ background: "#fdecea", border: "1px solid #e57373", borderRadius: 6, padding: "10px 12px", fontSize: 12, color: "#c0392b", marginBottom: 16, lineHeight: 1.5 }}>
+            🚫 {erro}
+          </div>
+        )}
+
+        <button onClick={tentar} style={{ width: "100%", background: "#1a6b3a", color: "#fff", border: "none", borderRadius: 6, padding: "12px", fontSize: 15, fontWeight: 700, cursor: "pointer", touchAction: "manipulation" }}>
+          Entrar
+        </button>
+
+        <div style={{ textAlign: "center", fontSize: 11, color: "#aaa", marginTop: 16 }}>
+          Acesso exclusivo para membros da APIDEP
+        </div>
+      </div>
+    </div>
+  );
+};
 const Btn = ({ children, onClick, cor = C.verde, outline = false, small = false, disabled = false }) => (
   <button onClick={onClick} disabled={disabled} style={{
     background: outline ? "transparent" : cor,
@@ -99,17 +173,32 @@ const Card = ({ children, style = {} }) => (
 // ── Modal Perfil ───────────────────────────────────────────────
 const ModalPerfil = ({ perfil, onSave, onClose }) => {
   const [nome, setNome] = useState(perfil.nome || "");
-  const [lotacao, setLotacao] = useState(perfil.lotacao || "");
   const [apiKey, setApiKey] = useState(perfil.apiKey || "");
   const [showKey, setShowKey] = useState(false);
+  const lotacao = DEFENSORES[nome] || perfil.lotacao || "";
+
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ background: C.branco, borderRadius: 12, padding: 32, width: 460, boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
         <h2 style={{ margin: "0 0 20px", color: C.verde }}>⚙ Configurar Perfil</h2>
-        <Input label="Nome completo" value={nome} onChange={setNome} placeholder="Dr(a). Fulano de Tal" />
-        <Input label="Lotação / Defensoria" value={lotacao} onChange={setLotacao} placeholder="2ª Defensoria Itinerante — Jaicós/PI" />
+
         <div style={{ marginBottom: 14 }}>
-          <label style={{ display: "block", fontWeight: 600, marginBottom: 4, color: C.cinza, fontSize: 13 }}>Chave de API (Anthropic)</label>
+          <label style={{ display: "block", fontWeight: 600, marginBottom: 4, color: C.cinza, fontSize: 13 }}>Nome do Defensor</label>
+          <select value={nome} onChange={e => setNome(e.target.value)}
+            style={{ width: "100%", padding: "9px 12px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 14, boxSizing: "border-box" }}>
+            <option value="">— Selecione —</option>
+            {Object.keys(DEFENSORES).map((d, i) => <option key={i} value={d}>{d}</option>)}
+          </select>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: "block", fontWeight: 600, marginBottom: 4, color: C.cinza, fontSize: 13 }}>Defensoria (preenchida automaticamente)</label>
+          <input value={lotacao} disabled
+            style={{ width: "100%", padding: "9px 12px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 14, boxSizing: "border-box", background: C.cinzaClaro, color: C.cinza }} />
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: "block", fontWeight: 600, marginBottom: 4, color: C.cinza, fontSize: 13 }}>Chave de API (Anthropic) — opcional</label>
           <div style={{ position: "relative" }}>
             <input type={showKey ? "text" : "password"} value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="sk-ant-..."
               style={{ width: "100%", padding: "9px 40px 9px 12px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 13, boxSizing: "border-box" }} />
@@ -123,6 +212,7 @@ const ModalPerfil = ({ perfil, onSave, onClose }) => {
             <a href="https://console.anthropic.com/keys" target="_blank" rel="noreferrer" style={{ color: C.verde }}>console.anthropic.com/keys</a>
           </div>
         </div>
+
         <div style={{ display: "flex", gap: 10 }}>
           <Btn onClick={() => { onSave({ nome, lotacao, apiKey }); onClose(); }}>Salvar</Btn>
           <Btn onClick={onClose} outline cor={C.cinza}>Cancelar</Btn>
@@ -133,7 +223,7 @@ const ModalPerfil = ({ perfil, onSave, onClose }) => {
 };
 
 // ── Header ─────────────────────────────────────────────────────
-const Header = ({ perfil, onPerfil }) => (
+const Header = ({ perfil, onPerfil, onLogout }) => (
   <div style={{ background: C.verde, color: "#fff", padding: "12px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
     <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
       <img src="/logo-apidep.png" alt="APIDEP" style={{ height: 56, objectFit: "contain" }} onError={e => e.target.style.display = "none"} />
@@ -142,9 +232,14 @@ const Header = ({ perfil, onPerfil }) => (
         <div style={{ fontSize: 12, opacity: .8 }}>APIDEP — Associação Piauiense das Defensoras e Defensores Públicos</div>
       </div>
     </div>
-    <button onClick={onPerfil} style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.4)", borderRadius: 6, color: "#fff", padding: "7px 14px", cursor: "pointer", fontSize: 13, touchAction: "manipulation" }}>
-      {perfil.nome ? `👤 ${perfil.nome}` : "⚙ Configurar Perfil"}
-    </button>
+    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <button onClick={onPerfil} style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.4)", borderRadius: 6, color: "#fff", padding: "7px 14px", cursor: "pointer", fontSize: 13, touchAction: "manipulation" }}>
+        👤 {perfil.nome}
+      </button>
+      <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 6, color: "#fff", padding: "7px 12px", cursor: "pointer", fontSize: 12, touchAction: "manipulation" }}>
+        Sair
+      </button>
+    </div>
   </div>
 );
 
@@ -155,6 +250,27 @@ function novaParcela() {
 
 // ── App Principal ──────────────────────────────────────────────
 export default function App() {
+  const [logado, setLogado] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem("dpe_logado") || "null"); } catch { return null; }
+  });
+
+  const fazerLogin = (usuario) => {
+    sessionStorage.setItem("dpe_logado", JSON.stringify(usuario));
+    setLogado(usuario);
+  };
+
+  const fazerLogout = () => {
+    sessionStorage.removeItem("dpe_logado");
+    setLogado(null);
+  };
+
+  if (!logado) return <TelaLogin onLogin={fazerLogin} />;
+
+  return <AppInterno usuario={logado} onLogout={fazerLogout} />;
+}
+
+// ── App Interno (após login) ───────────────────────────────────
+function AppInterno({ usuario, onLogout }) {
   const [perfil, setPerfil] = useState(() => { try { return JSON.parse(localStorage.getItem("dpe_perfil") || "{}"); } catch { return {}; } });
   const [showPerfil, setShowPerfil] = useState(false);
   const [tab, setTab] = useState("calc");
@@ -495,7 +611,7 @@ export default function App() {
   // ── Render ─────────────────────────────────────────────────
   return (
     <div style={{ fontFamily: "'Segoe UI', Arial, sans-serif", minHeight: "100vh", background: "#f0f2f0" }}>
-      <Header perfil={perfil} onPerfil={() => setShowPerfil(true)} />
+      <Header perfil={perfil} onPerfil={() => setShowPerfil(true)} onLogout={onLogout} />
       {showPerfil && <ModalPerfil perfil={perfil} onSave={salvarPerfil} onClose={() => setShowPerfil(false)} />}
 
       {/* Tabs */}
