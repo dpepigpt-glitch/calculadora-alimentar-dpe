@@ -97,7 +97,7 @@ const TelaLogin = ({ onLogin }) => {
     <div style={{ minHeight: "100vh", background: "#f0f2f0", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ background: "#fff", borderRadius: 12, padding: 40, width: 400, boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <img src="/logo-apidep.png" alt="APIDEP" style={{ height: 60, objectFit: "contain", marginBottom: 12 }} onError={e => e.target.style.display = "none"} />
+          <img src="/logo-apidep.png" alt="APIDEP" crossOrigin="anonymous" style={{ height: 60, objectFit: "contain", marginBottom: 12 }} onError={e => e.target.style.display = "none"} />
           <div style={{ fontWeight: 800, fontSize: 16, color: "#1a6b3a" }}>Calculadora de Débitos Alimentares</div>
           <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>APIDEP — Acesso restrito</div>
         </div>
@@ -226,7 +226,7 @@ const ModalPerfil = ({ perfil, onSave, onClose }) => {
 const Header = ({ perfil, onPerfil, onLogout }) => (
   <div style={{ background: C.verde, color: "#fff", padding: "12px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
     <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-      <img src="/logo-apidep.png" alt="APIDEP" style={{ height: 56, objectFit: "contain" }} onError={e => e.target.style.display = "none"} />
+      <img src="/logo-apidep.png" alt="APIDEP" crossOrigin="anonymous" style={{ height: 56, objectFit: "contain" }} onError={e => e.target.style.display = "none"} />
       <div>
         <div style={{ fontWeight: 800, fontSize: 16 }}>Calculadora de Débitos Alimentares</div>
         <div style={{ fontSize: 12, opacity: .8 }}>APIDEP — Associação Piauiense das Defensoras e Defensores Públicos</div>
