@@ -146,6 +146,11 @@ export default function App() {
   const [processo, setProcesso] = useState("");
   const [alimentado, setAlimentado] = useState("");
   const [alimentante, setAlimentante] = useState("");
+  const [comarca, setComarca] = useState("");
+  const [diaVencimento, setDiaVencimento] = useState("5");
+  const [tipoAlimento, setTipoAlimento] = useState("sm"); // "sm" ou "fixo"
+  const [percentualSM, setPercentualSM] = useState("");
+  const [valorFixoAlimento, setValorFixoAlimento] = useState("");
   const [parcelas, setParcelas] = useState([novaParcela()]);
   const [resultado, setResultado] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -220,7 +225,7 @@ export default function App() {
       if(!detalhes.length){setLoading(false);return;}
       const prisao=detalhes.slice(-3), penhora=detalhes.slice(0,-3);
       const soma=arr=>arr.reduce((s,x)=>s+x.total,0);
-      const res={processo,alimentado,alimentante,detalhes,prisao,penhora,totalPrisao:soma(prisao),totalPenhora:soma(penhora),total:soma(detalhes),data:new Date().toLocaleDateString("pt-BR"),defensor:perfil.nome||"",lotacao:perfil.lotacao||""};
+      const res={processo,alimentado,alimentante,comarca,diaVencimento,tipoAlimento,percentualSM,valorFixoAlimento,detalhes,prisao,penhora,totalPrisao:soma(prisao),totalPenhora:soma(penhora),total:soma(detalhes),data:new Date().toLocaleDateString("pt-BR"),defensor:perfil.nome||"",lotacao:perfil.lotacao||""};
       setResultado(res);
       const hist=[{id:Date.now(),...res},...historico].slice(0,50);
       setHistorico(hist); localStorage.setItem("dpe_historico",JSON.stringify(hist));
@@ -357,9 +362,33 @@ export default function App() {
             <h3 style={{ margin:"0 0 16px", color:"#1a6b3a", fontSize:15 }}>📁 Dados do Processo</h3>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px" }}>
               <Input label="Número do Processo" value={processo} onChange={setProcesso} placeholder="0000000-00.0000.8.18.0000"/>
-              <div/>
-              <Input label="Nome do Alimentado(a)" value={alimentado} onChange={setAlimentado} placeholder="Nome completo"/>
-              <Input label="Nome do Alimentante" value={alimentante} onChange={setAlimentante} placeholder="Nome completo"/>
+              <Input label="Vara/Comarca" value={comarca} onChange={setComarca} placeholder="1ª Vara — Itaueira/PI"/>
+              <Input label="Nome do Alimentado(a) / Exequente" value={alimentado} onChange={setAlimentado} placeholder="Nome completo"/>
+              <Input label="Nome do Alimentante / Executado" value={alimentante} onChange={setAlimentante} placeholder="Nome completo"/>
+            </div>
+
+            {/* Alimentos fixados */}
+            <div style={{ marginBottom:14 }}>
+              <label style={{ display:"block", fontWeight:600, marginBottom:8, color:"#4a4a4a", fontSize:13 }}>Alimentos fixados em</label>
+              <div style={{ display:"flex", gap:10, marginBottom:10 }}>
+                {[["sm","% do Salário Mínimo"],["fixo","Valor fixo (R$)"]].map(([val,label])=>(
+                  <button key={val} onClick={()=>setTipoAlimento(val)} style={{ padding:"7px 16px", borderRadius:6, border:`2px solid ${tipoAlimento===val?"#1a6b3a":"#d0d0d0"}`, background:tipoAlimento===val?"#1a6b3a":"#fff", color:tipoAlimento===val?"#fff":"#4a4a4a", fontWeight:600, fontSize:13, cursor:"pointer", touchAction:"manipulation" }}>{label}</button>
+                ))}
+              </div>
+              {tipoAlimento==="sm"
+                ? <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    <input type="number" value={percentualSM} onChange={e=>setPercentualSM(e.target.value)} placeholder="ex: 20" style={{ width:100, padding:"9px 12px", borderRadius:6, border:"1px solid #d0d0d0", fontSize:14, boxSizing:"border-box" }}/>
+                    <span style={{ fontSize:14, color:"#4a4a4a" }}>% do salário mínimo federal</span>
+                  </div>
+                : <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    <span style={{ fontSize:14, color:"#4a4a4a" }}>R$</span>
+                    <input type="number" value={valorFixoAlimento} onChange={e=>setValorFixoAlimento(e.target.value)} placeholder="0,00" style={{ width:150, padding:"9px 12px", borderRadius:6, border:"1px solid #d0d0d0", fontSize:14, boxSizing:"border-box" }}/>
+                  </div>
+              }
+            </div>
+
+            <div style={{ maxWidth:200 }}>
+              <Input label="Dia de vencimento" value={diaVencimento} onChange={setDiaVencimento} placeholder="5" type="number"/>
             </div>
           </Card>
 
