@@ -146,14 +146,17 @@ const Badge = ({ children, cor }) => (
 
 // ── Header ─────────────────────────────────────────────────────
 const Header = ({ perfil, onPerfil }) => (
-  <div style={{ background: C.verde, color: C.branco, padding: "16px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+  <div style={{ background: C.verde, color: C.branco, padding: "12px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
     <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-      <div style={{ width: 44, height: 44, background: C.branco, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ color: C.verde, fontWeight: 900, fontSize: 18 }}>⚖</span>
-      </div>
+      <img
+        src="/logo-apidep.png"
+        alt="APIDEP"
+        style={{ height: 48, objectFit: "contain", background: C.branco, borderRadius: 6, padding: "3px 6px" }}
+        onError={e => { e.target.style.display = "none"; }}
+      />
       <div>
         <div style={{ fontWeight: 800, fontSize: 16 }}>Calculadora de Débitos Alimentares</div>
-        <div style={{ fontSize: 12, opacity: .8 }}>Defensoria Pública do Estado do Piauí</div>
+        <div style={{ fontSize: 12, opacity: .8 }}>APIDEP — Associação Piauiense das Defensoras e Defensores Públicos</div>
       </div>
     </div>
     <button onClick={onPerfil} style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.4)", borderRadius: 6, color: C.branco, padding: "7px 14px", cursor: "pointer", fontSize: 13 }}>
@@ -409,10 +412,12 @@ Responda SOMENTE em JSON puro, sem markdown, sem explicações, no formato exato
     doc.rect(0, 0, W, 38, "F");
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(14); doc.setFont("helvetica", "bold");
-    doc.text("DEFENSORIA PÚBLICA DO ESTADO DO PIAUÍ", W / 2, 13, { align: "center" });
-    doc.setFontSize(11); doc.setFont("helvetica", "normal");
-    doc.text("Cálculo de Débitos Alimentares", W / 2, 21, { align: "center" });
-    if (resultado.lotacao) doc.text(resultado.lotacao, W / 2, 29, { align: "center" });
+    doc.text("APIDEP", W / 2, 11, { align: "center" });
+    doc.setFontSize(9); doc.setFont("helvetica", "normal");
+    doc.text("Associação Piauiense das Defensoras e Defensores Públicos", W / 2, 18, { align: "center" });
+    doc.setFontSize(11); doc.setFont("helvetica", "bold");
+    doc.text("Cálculo de Débitos Alimentares", W / 2, 27, { align: "center" });
+    if (resultado.lotacao) { doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.text(resultado.lotacao, W / 2, 34, { align: "center" }); }
     y = 48;
 
     // Dados do processo
