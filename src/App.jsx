@@ -151,7 +151,7 @@ const Header = ({ perfil, onPerfil }) => (
       <img
         src="/logo-apidep.png"
         alt="APIDEP"
-        style={{ height: 48, objectFit: "contain", background: C.branco, borderRadius: 6, padding: "3px 6px" }}
+        style={{ height: 56, objectFit: "contain" }}
         onError={e => { e.target.style.display = "none"; }}
       />
       <div>
