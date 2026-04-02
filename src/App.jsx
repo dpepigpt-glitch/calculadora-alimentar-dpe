@@ -620,11 +620,17 @@ export default function App() {
                     </div>
                   </div>
                   <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
-                    <Btn small onClick={addIntervalo} cor={C.azul}>✅ Adicionar intervalo</Btn>
-                    <Btn small outline cor={C.cinza} onClick={() => setShowIntervalo(false)}>Fechar</Btn>
-                    {(intervalo.valor || intervalo.fracao) && (
-                      <span style={{ fontSize: 12, color: C.azul }}>→ {contarParcelas()} parcela(s)</span>
-                    )}
+                    <button
+                      onClick={addIntervalo}
+                      style={{ padding: "6px 14px", borderRadius: 6, border: `2px solid ${C.azul}`, background: C.azul, color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", touchAction: "manipulation" }}>
+                      ✅ Adicionar intervalo
+                    </button>
+                    <button
+                      onClick={() => setShowIntervalo(false)}
+                      style={{ padding: "6px 14px", borderRadius: 6, border: `2px solid ${C.cinza}`, background: "transparent", color: C.cinza, fontWeight: 600, fontSize: 13, cursor: "pointer", touchAction: "manipulation" }}>
+                      Fechar
+                    </button>
+                    <span style={{ fontSize: 12, color: C.azul }}>→ {contarParcelas()} parcela(s)</span>
                   </div>
                   <div style={{ marginTop: 6, fontSize: 11, color: "#888" }}>
                     💡 Clique em "Adicionar intervalo" quantas vezes quiser para acumular vários intervalos.
