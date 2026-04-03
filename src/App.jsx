@@ -619,6 +619,9 @@ function AppInterno({ usuario, onLogout }) {
     if (y > 185) { doc.addPage(); y = 15; }
     doc.setFont("helvetica", "normal"); doc.setFontSize(9);
     doc.text(resultado.data, W / 2, y, { align: "center" });
+
+
+    
     doc.setDrawColor(80, 80, 80); doc.setLineWidth(0.3); doc.line(W / 2 - 45, y, W / 2 + 45, y); y += 5;
     doc.setFont("helvetica", "bold"); doc.setFontSize(9.5);
     doc.text(resultado.defensor || "", W / 2, y, { align: "center" }); y += 5;
