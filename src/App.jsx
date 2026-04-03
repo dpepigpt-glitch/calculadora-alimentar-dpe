@@ -70,6 +70,7 @@ const DEFENSORES = {
   "Dr. Robert Rios Júnior": "2ª Defensoria Itinerante",
   "Dra. Andrea Melo de Carvalho": "1ª Defensoria de Família",
   "Dra. Dayana Sampaio Mendes Magalhães": "2ª Defensoria Pública Regional de Altos",
+  "Dr. Eric Leonardo Pires de Melo": "7ª Defensoria de Família",
   "Dra. Priscila Gimenes do Nascimento Godói": "2ª Defensoria Regional de União",
   "Dra. Julyanne Cristine Douglas Leone": "Assessora - 2ª Defensoria Itinerante",
 };
