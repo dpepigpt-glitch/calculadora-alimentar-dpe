@@ -619,7 +619,7 @@ function AppInterno({ usuario, onLogout }) {
     if (y > 185) { doc.addPage(); y = 15; }
     const cidade = resultado.lotacao?.split("—")[1]?.trim() || resultado.comarca || "Teresina - PI";
     doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-    doc.text(`${cidade}, ${resultado.data}.`, W / 2, y, { align: "center" }); y += 12;
+    Teresina, ${resultado.data}.`, W / 2, y, { align: "center" }); y += 12;
     doc.setDrawColor(80, 80, 80); doc.setLineWidth(0.3); doc.line(W / 2 - 45, y, W / 2 + 45, y); y += 5;
     doc.setFont("helvetica", "bold"); doc.setFontSize(9.5);
     doc.text(resultado.defensor || "", W / 2, y, { align: "center" }); y += 5;
