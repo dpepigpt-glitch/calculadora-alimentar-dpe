@@ -187,7 +187,7 @@ const ModalPerfil = ({ perfil, onSave, onClose }) => {
               style={{ width: "100%", padding: "9px 40px 9px 12px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 13, boxSizing: "border-box" }} />
             <button onClick={() => setShowKey(s => !s)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16 }}>{showKey ? "🙈" : "👁"}</button>
           </div>
-          <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Para leitura automática de sentença. <a href="https://console.anthropic.com/keys" target="_blank" rel="noreferrer" style={{ color: C.verde }}>console.anthropic.com/keys</a></div>
+          <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Para leitura automática de sentença. <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" style={{ color: C.verde }}>console.anthropic.com/settings/keys</a></div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <Btn onClick={() => { onSave({ nome, lotacao, apiKey }); onClose(); }}>Salvar</Btn>
@@ -222,7 +222,7 @@ function novaParcela() {
 export default function App() {
   const [logado, setLogado] = useState(null);
   const fazerLogin = (u) => setLogado(u);
-  const fazerLogout = () => setLogado(null);
+  const fazerLogout = () => { setLogado(null); window.location.reload(); };
   const entrarVisitante = () => setLogado({ nome: "", lotacao: "", autenticado: false });
   if (!logado) return <TelaLogin onLogin={fazerLogin} onVisitante={entrarVisitante} />;
   return <AppInterno usuario={logado} onLogout={fazerLogout} />;
