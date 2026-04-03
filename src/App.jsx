@@ -167,22 +167,49 @@ const ModalPerfil = ({ perfil, onSave, onClose }) => {
   const [nome, setNome] = useState(perfil.nome || "");
   const [apiKey, setApiKey] = useState(perfil.apiKey || "");
   const [showKey, setShowKey] = useState(false);
-  const lotacao = DEFENSORES[nome] || perfil.lotacao || "";
+  const [senha, setSenha] = useState("");
+  const [erro, setErro] = useState("");
+  const lotacao = DEFENSORES[nome] || "";
+  const perfilAtualAutenticado = perfil.nome && DEFENSORES[perfil.nome];
+
+  const salvar = () => {
+    // Se está tentando trocar para um defensor cadastrado, exige senha
+    if (nome && DEFENSORES[nome]) {
+      if (senha !== SENHA_CORRETA) {
+        setErro("Senha incorreta. Apenas defensores autorizados podem usar este perfil.");
+        return;
+      }
+    }
+    onSave({ nome, lotacao, apiKey });
+    onClose();
+  };
+
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ background: C.branco, borderRadius: 12, padding: 32, width: 460, boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
         <h2 style={{ margin: "0 0 20px", color: C.verde }}>⚙ Configurar Perfil</h2>
         <div style={{ marginBottom: 14 }}>
           <label style={{ display: "block", fontWeight: 600, marginBottom: 4, color: C.cinza, fontSize: 13 }}>Nome do Defensor</label>
-          <select value={nome} onChange={e => setNome(e.target.value)} style={{ width: "100%", padding: "9px 12px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 14, boxSizing: "border-box" }}>
-            <option value="">— Selecione —</option>
+          <select value={nome} onChange={e => { setNome(e.target.value); setErro(""); setSenha(""); }} style={{ width: "100%", padding: "9px 12px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 14, boxSizing: "border-box" }}>
+            <option value="">— Nenhum (visitante) —</option>
             {Object.keys(DEFENSORES).map((d, i) => <option key={i} value={d}>{d}</option>)}
           </select>
         </div>
-        <div style={{ marginBottom: 14 }}>
-          <label style={{ display: "block", fontWeight: 600, marginBottom: 4, color: C.cinza, fontSize: 13 }}>Defensoria (automática)</label>
-          <input value={lotacao} disabled style={{ width: "100%", padding: "9px 12px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 14, boxSizing: "border-box", background: C.cinzaClaro, color: C.cinza }} />
-        </div>
+        {nome && DEFENSORES[nome] && (
+          <>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: "block", fontWeight: 600, marginBottom: 4, color: C.cinza, fontSize: 13 }}>Defensoria (automática)</label>
+              <input value={lotacao} disabled style={{ width: "100%", padding: "9px 12px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 14, boxSizing: "border-box", background: C.cinzaClaro, color: C.cinza }} />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: "block", fontWeight: 600, marginBottom: 4, color: C.cinza, fontSize: 13 }}>Senha de acesso</label>
+              <input type="password" value={senha} onChange={e => { setSenha(e.target.value); setErro(""); }} placeholder="Digite a senha do defensor"
+                onKeyDown={e => e.key === "Enter" && salvar()}
+                style={{ width: "100%", padding: "9px 12px", borderRadius: 6, border: `1px solid ${erro ? C.vermelho : C.borda}`, fontSize: 14, boxSizing: "border-box" }} />
+              {erro && <div style={{ fontSize: 12, color: C.vermelho, marginTop: 4 }}>🚫 {erro}</div>}
+            </div>
+          </>
+        )}
         <div style={{ marginBottom: 14 }}>
           <label style={{ display: "block", fontWeight: 600, marginBottom: 4, color: C.cinza, fontSize: 13 }}>Chave de API (Anthropic) — opcional</label>
           <div style={{ position: "relative" }}>
@@ -193,7 +220,7 @@ const ModalPerfil = ({ perfil, onSave, onClose }) => {
           <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Para leitura automática de sentença. <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" style={{ color: C.verde }}>console.anthropic.com/settings/keys</a></div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <Btn onClick={() => { onSave({ nome, lotacao, apiKey }); onClose(); }}>Salvar</Btn>
+          <Btn onClick={salvar}>Salvar</Btn>
           <Btn onClick={onClose} outline cor={C.cinza}>Cancelar</Btn>
         </div>
       </div>
