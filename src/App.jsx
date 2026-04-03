@@ -1,4 +1,4 @@
-// v3.2
+// v3.2 — Base v3.1 + 13º salário opcional + justificativa no PDF + r2 reforçado
 import { useState, useRef } from “react”;
 
 const C = {
@@ -11,13 +11,14 @@ const r2 = (v) => Math.round((Number(v)||0) * 100) / 100;
 const fmt = (v) => “R$ “ + r2(v).toFixed(2).replace(”.”, “,”).replace(/\B(?=(\d{3})+(?!\d))/g, “.”);
 const fmtMes = (mes, ano) => {
 const n = [“Jan”,“Fev”,“Mar”,“Abr”,“Mai”,“Jun”,“Jul”,“Ago”,“Set”,“Out”,“Nov”,“Dez”];
-return mes === 13 ? “13o/” + ano : n[mes-1] + “/” + ano;
+return mes === 13 ? `13º/${ano}` : `${n[mes-1]}/${ano}`;
 };
 
+// Máscara processo PJe
 function maskProcesso(raw) {
-var d = raw.replace(/\D/g,””).slice(0,17);
-var r = “”;
-for (var i = 0; i < d.length; i++) {
+let d = raw.replace(/\D/g,””).slice(0,17);
+let r = “”;
+for (let i = 0; i < d.length; i++) {
 if (i===7) r += “-”;
 if (i===9) r += “.”;
 if (i===13) r += “.8.18.”;
@@ -26,7 +27,7 @@ r += d[i];
 return r;
 }
 
-var SALARIO_MINIMO = {
+const SALARIO_MINIMO = {
 “2020-01”:1045,“2020-02”:1045,“2020-03”:1045,“2020-04”:1045,“2020-05”:1045,“2020-06”:1045,
 “2020-07”:1045,“2020-08”:1045,“2020-09”:1045,“2020-10”:1045,“2020-11”:1045,“2020-12”:1045,
 “2021-01”:1100,“2021-02”:1100,“2021-03”:1100,“2021-04”:1100,“2021-05”:1100,“2021-06”:1100,
@@ -40,410 +41,373 @@ var SALARIO_MINIMO = {
 “2025-01”:1518,“2025-02”:1518,“2025-03”:1518,“2025-04”:1518,“2025-05”:1518,“2025-06”:1518,
 “2025-07”:1518,“2025-08”:1518,“2025-09”:1518,“2025-10”:1518,“2025-11”:1518,“2025-12”:1518,
 “2026-01”:1621,“2026-02”:1621,“2026-03”:1621,“2026-04”:1621,“2026-05”:1621,“2026-06”:1621,
-“2026-07”:1621,“2026-08”:1621,“2026-09”:1621,“2026-10”:1621,“2026-11”:1621,“2026-12”:1621
+“2026-07”:1621,“2026-08”:1621,“2026-09”:1621,“2026-10”:1621,“2026-11”:1621,“2026-12”:1621,
 };
-var getSM = function(m, a) { return SALARIO_MINIMO[a + “-” + String(m).padStart(2,“0”)] || 1621; };
+const getSM = (m, a) => SALARIO_MINIMO[`${a}-${String(m).padStart(2,"0")}`] || 1621;
 
-var IPCA_E = {
+const IPCA_E = {
 “2022-01”:0.54,“2022-02”:0.58,“2022-03”:1.05,“2022-04”:1.06,“2022-05”:0.81,“2022-06”:0.68,
 “2022-07”:-0.07,“2022-08”:-0.04,“2022-09”:0.24,“2022-10”:0.40,“2022-11”:0.54,“2022-12”:0.54,
 “2023-01”:0.53,“2023-02”:0.39,“2023-03”:0.17,“2023-04”:0.23,“2023-05”:0.22,“2023-06”:0.06,
 “2023-07”:0.18,“2023-08”:0.37,“2023-09”:0.26,“2023-10”:0.24,“2023-11”:0.33,“2023-12”:0.44,
 “2024-01”:0.42,“2024-02”:0.40,“2024-03”:0.36,“2024-04”:0.38,“2024-05”:0.40,“2024-06”:0.39,
 “2024-07”:0.43,“2024-08”:0.44,“2024-09”:0.44,“2024-10”:0.56,“2024-11”:0.39,“2024-12”:0.48,
-“2025-01”:0.41,“2025-02”:1.23,“2025-03”:0.44
+“2025-01”:0.41,“2025-02”:1.23,“2025-03”:0.44,
 };
 
 function corrigirAte(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo) {
-var fator = 1, m = mesVenc, a = anoVenc;
+let fator = 1, m = mesVenc, a = anoVenc;
 while (a < anoAlvo || (a === anoAlvo && m < mesAlvo)) {
-var k = a + “-” + String(m).padStart(2,“0”);
+const k = `${a}-${String(m).padStart(2,"0")}`;
 if (IPCA_E[k] !== undefined) fator *= (1 + IPCA_E[k] / 100);
 m++; if (m > 12) { m = 1; a++; }
 }
-var venc = new Date(anoVenc, mesVenc - 1, 1);
-var alvo = new Date(anoAlvo, mesAlvo - 1, 1);
-var meses = Math.max(0, (alvo.getFullYear() - venc.getFullYear()) * 12 + (alvo.getMonth() - venc.getMonth()));
-var corrigido = r2(saldo * fator);
-var juros = r2(corrigido * meses * 0.01);
-return { fator: r2(fator * 1000000) / 1000000, corrigido: corrigido, juros: juros, total: r2(corrigido + juros), mesesAtraso: meses };
+const venc = new Date(anoVenc, mesVenc - 1, 1);
+const alvo = new Date(anoAlvo, mesAlvo - 1, 1);
+const meses = Math.max(0, (alvo.getFullYear() - venc.getFullYear()) * 12 + (alvo.getMonth() - venc.getMonth()));
+const corrigido = r2(saldo * fator);
+const juros = r2(corrigido * meses * 0.01);
+return { fator: r2(fator * 1000000) / 1000000, corrigido, juros, total: r2(corrigido + juros), mesesAtraso: meses };
 }
 
 function corrigir(saldo, mes, ano) {
-var mesCorr = mes === 13 ? 12 : mes;
-var h = new Date();
+const mesCorr = mes === 13 ? 12 : mes; // 13º usa dezembro
+const h = new Date();
 return corrigirAte(saldo, mesCorr, ano, h.getMonth() + 1, h.getFullYear());
 }
 
-var MESES = [“Janeiro”,“Fevereiro”,“Marco”,“Abril”,“Maio”,“Junho”,“Julho”,“Agosto”,“Setembro”,“Outubro”,“Novembro”,“Dezembro”];
+const MESES = [“Janeiro”,“Fevereiro”,“Março”,“Abril”,“Maio”,“Junho”,“Julho”,“Agosto”,“Setembro”,“Outubro”,“Novembro”,“Dezembro”];
 
-var DEFENSORES = {
-“Dr. Robert Rios Junior”: { lotacao: “2a Defensoria Itinerante”, senha: “Robert2027” },
-“Dra. Andrea Melo de Carvalho”: { lotacao: “1a Defensoria de Familia”, senha: “Andrea2027” },
-“Dra. Dayana Sampaio Mendes Magalhaes”: { lotacao: “2a Defensoria Publica Regional de Altos”, senha: “Dayana2027” },
-“Dr. Eric Leonardo Pires de Melo”: { lotacao: “7a Defensoria de Familia”, senha: “Eric2027” },
-“Dr. Marcos Martins de Oliveira”: { lotacao: “2a Defensoria de Floriano”, senha: “Marcos2027” },
-“Dra. Priscila Gimenes do Nascimento Godoi”: { lotacao: “2a Defensoria Regional de Uniao”, senha: “Priscila2027” },
-“Dra. Julyanne Cristine Douglas Leone”: { lotacao: “Assessora - 2a Defensoria Itinerante”, senha: “Julyanne2027” }
+const DEFENSORES = {
+“Dr. Robert Rios Júnior”: { lotacao: “2ª Defensoria Itinerante”, senha: “Robert2027” },
+“Dra. Andrea Melo de Carvalho”: { lotacao: “1ª Defensoria de Família”, senha: “Andrea2027” },
+“Dra. Dayana Sampaio Mendes Magalhães”: { lotacao: “2ª Defensoria Pública Regional de Altos”, senha: “Dayana2027” },
+“Dr. Eric Leonardo Pires de Melo”: { lotacao: “7ª Defensoria de Família”, senha: “Eric2027” },
+“Dr. Marcos Martins de Oliveira”: { lotacao: “2ª Defensoria de Floriano”, senha: “Marcos2027” },
+“Dra. Priscila Gimenes do Nascimento Godói”: { lotacao: “2ª Defensoria Regional de União”, senha: “Priscila2027” },
+“Dra. Julyanne Cristine Douglas Leone”: { lotacao: “Assessora - 2ª Defensoria Itinerante”, senha: “Julyanne2027” },
 };
 
-var _logoB64 = null;
-var _logoRatio = 1.5;
+let _logoB64 = null;
+let _logoRatio = 1.5;
 function carregarLogo() {
 if (_logoB64) return Promise.resolve(_logoB64);
-return new Promise(function(res) {
-var img = new Image();
+return new Promise((res) => {
+const img = new Image();
 img.crossOrigin = “anonymous”;
-img.onload = function() {
+img.onload = () => {
 try {
-var cv = document.createElement(“canvas”);
+const cv = document.createElement(“canvas”);
 cv.width = img.naturalWidth; cv.height = img.naturalHeight;
 cv.getContext(“2d”).drawImage(img, 0, 0);
 _logoB64 = cv.toDataURL(“image/png”);
 _logoRatio = img.naturalWidth / img.naturalHeight;
 res(_logoB64);
-} catch(e) { res(null); }
+} catch { res(null); }
 };
-img.onerror = function() { res(null); };
+img.onerror = () => res(null);
 img.src = “/logo-apidep.png”;
 });
 }
 carregarLogo();
 
-function TelaLogin(props) {
-var onLogin = props.onLogin;
-var onVisitante = props.onVisitante;
-var _s1 = useState(””); var nome = _s1[0]; var setNome = _s1[1];
-var _s2 = useState(””); var senha = _s2[0]; var setSenha = _s2[1];
-var _s3 = useState(””); var erro = _s3[0]; var setErro = _s3[1];
-var tentar = function() {
-var def = DEFENSORES[nome];
-if (!nome || !def) { setErro(“Selecione um defensor.”); return; }
-if (senha !== def.senha) { setErro(“Senha incorreta.”); return; }
-onLogin({ nome: nome, lotacao: def.lotacao, autenticado: true });
+// ── Tela de Login ──────────────────────────────────────────────
+const TelaLogin = ({ onLogin, onVisitante }) => {
+const [nome, setNome] = useState(””);
+const [senha, setSenha] = useState(””);
+const [erro, setErro] = useState(””);
+const tentar = () => {
+const def = DEFENSORES[nome];
+if (!def || senha !== def.senha) { setErro(“Credenciais inválidas.”); return; }
+onLogin({ nome, lotacao: def.lotacao, autenticado: true });
 };
 return (
 <div style={{ minHeight:“100vh”, background:”#f0f2f0”, display:“flex”, alignItems:“center”, justifyContent:“center” }}>
 <div style={{ background:”#fff”, borderRadius:12, padding:40, width:400, boxShadow:“0 8px 32px rgba(0,0,0,0.15)” }}>
 <div style={{ textAlign:“center”, marginBottom:28 }}>
-<img src=”/logo-apidep.png” alt=“APIDEP” crossOrigin=“anonymous” style={{ height:60, objectFit:“contain”, marginBottom:12 }} onError={function(e){e.target.style.display=“none”}} />
-<div style={{ fontWeight:800, fontSize:16, color:C.verde }}>Calculadora de Debitos Alimentares</div>
-<div style={{ fontSize:12, color:”#888”, marginTop:4 }}>APIDEP - Acesso restrito</div>
+<img src=”/logo-apidep.png” alt=“APIDEP” crossOrigin=“anonymous” style={{ height:60, objectFit:“contain”, marginBottom:12 }} onError={e=>e.target.style.display=“none”} />
+<div style={{ fontWeight:800, fontSize:16, color:C.verde }}>Calculadora de Débitos Alimentares</div>
+<div style={{ fontSize:12, color:”#888”, marginTop:4 }}>APIDEP — Acesso restrito</div>
 </div>
 <div style={{ marginBottom:14 }}>
 <label style={{ display:“block”, fontWeight:600, marginBottom:6, fontSize:13, color:C.cinza }}>Nome do Defensor</label>
-<select value={nome} onChange={function(e){setNome(e.target.value)}} style={{ width:“100%”, padding:“10px 12px”, borderRadius:6, border:“1px solid #d0d0d0”, fontSize:14, boxSizing:“border-box” }}>
-<option value="">– Selecione –</option>
-{Object.keys(DEFENSORES).map(function(d,i){ return <option key={i} value={d}>{d}</option> })}
+<select value={nome} onChange={e=>setNome(e.target.value)} style={{ width:“100%”, padding:“10px 12px”, borderRadius:6, border:“1px solid #d0d0d0”, fontSize:14, boxSizing:“border-box” }}>
+<option value="">— Selecione —</option>
+{Object.keys(DEFENSORES).map((d,i)=><option key={i} value={d}>{d}</option>)}
 </select>
-{nome && DEFENSORES[nome] && <div style={{ fontSize:12, color:C.verde, marginTop:4, paddingLeft:4 }}>{”>> “}{DEFENSORES[nome].lotacao}</div>}
+{nome && DEFENSORES[nome] && <div style={{ fontSize:12, color:C.verde, marginTop:4, paddingLeft:4 }}>📍 {DEFENSORES[nome].lotacao}</div>}
 </div>
 <div style={{ marginBottom:20 }}>
 <label style={{ display:“block”, fontWeight:600, marginBottom:6, fontSize:13, color:C.cinza }}>Senha de Acesso</label>
-<input type=“password” value={senha} onChange={function(e){setSenha(e.target.value)}} onKeyDown={function(e){if(e.key===“Enter”)tentar()}} placeholder=“Digite a senha”
+<input type=“password” value={senha} onChange={e=>setSenha(e.target.value)} onKeyDown={e=>e.key===“Enter”&&tentar()} placeholder=“Digite a senha”
 style={{ width:“100%”, padding:“10px 12px”, borderRadius:6, border:“1px solid #d0d0d0”, fontSize:14, boxSizing:“border-box” }} />
 </div>
-{erro && <div style={{ background:”#fdecea”, border:“1px solid #e57373”, borderRadius:6, padding:“10px 12px”, fontSize:12, color:C.vermelho, marginBottom:16 }}>{erro}</div>}
+{erro && <div style={{ background:”#fdecea”, border:“1px solid #e57373”, borderRadius:6, padding:“10px 12px”, fontSize:12, color:C.vermelho, marginBottom:16 }}>🚫 {erro}</div>}
 <button onClick={tentar} style={{ width:“100%”, background:C.verde, color:”#fff”, border:“none”, borderRadius:6, padding:12, fontSize:15, fontWeight:700, cursor:“pointer”, touchAction:“manipulation”, marginBottom:10 }}>Entrar</button>
-<button onClick={onVisitante} style={{ width:“100%”, background:“transparent”, color:C.cinza, border:“1px solid “ + C.borda, borderRadius:6, padding:10, fontSize:13, cursor:“pointer”, touchAction:“manipulation” }}>Entrar sem login (visitante)</button>
+<button onClick={onVisitante} style={{ width:“100%”, background:“transparent”, color:C.cinza, border:`1px solid ${C.borda}`, borderRadius:6, padding:10, fontSize:13, cursor:“pointer”, touchAction:“manipulation” }}>Entrar sem login (visitante)</button>
 </div>
 </div>
 );
-}
+};
 
-function Btn(props) {
-var cor = props.cor || C.verde;
-var outline = props.outline || false;
-var small = props.small || false;
-return (
-<button onClick={props.onClick} disabled={props.disabled} style={{
-background: outline ? “transparent” : cor, color: outline ? cor : “#fff”,
-border: “2px solid “ + cor, borderRadius:6, padding: small ? “6px 14px” : “10px 22px”,
-cursor: props.disabled ? “not-allowed” : “pointer”, fontWeight:600, fontSize: small ? 13 : 15,
-opacity: props.disabled ? 0.5 : 1, touchAction:“manipulation”
-}}>{props.children}</button>
+const Btn = ({children,onClick,cor=C.verde,outline=false,small=false,disabled=false}) => (
+<button onClick={onClick} disabled={disabled} style={{
+background:outline?“transparent”:cor, color:outline?cor:”#fff”,
+border:`2px solid ${cor}`, borderRadius:6, padding:small?“6px 14px”:“10px 22px”,
+cursor:disabled?“not-allowed”:“pointer”, fontWeight:600, fontSize:small?13:15,
+opacity:disabled?0.5:1, touchAction:“manipulation”,
+}}>{children}</button>
 );
-}
 
-function Input(props) {
-var type = props.type || “text”;
-return (
-<div style={{ marginBottom:14 }}>
-{props.label && <label style={{ display:“block”, fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{props.label}</label>}
-<input type={type} value={props.value} onChange={function(e){props.onChange(e.target.value)}} placeholder={props.placeholder} disabled={props.disabled}
-style={{ width:“100%”, padding:“9px 12px”, borderRadius:6, border:“1px solid “ + C.borda, fontSize:14, boxSizing:“border-box”, background: props.disabled ? C.cinzaClaro : C.branco }} />
-</div>
+const Input = ({label,value,onChange,placeholder,type=“text”,disabled}) => (
+
+  <div style={{ marginBottom:14 }}>
+    {label && <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{label}</label>}
+    <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} disabled={disabled}
+      style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:`1px solid ${C.borda}`, fontSize:14, boxSizing:"border-box", background:disabled?C.cinzaClaro:C.branco }} />
+  </div>
 );
-}
 
-function Card(props) {
-var style = props.style || {};
-return <div style={Object.assign({ background:C.branco, borderRadius:10, border:“1px solid “ + C.borda, padding:24, marginBottom:20 }, style)}>{props.children}</div>;
-}
+const Card = ({children,style={}}) => (
 
-function ModalPerfil(props) {
-var perfil = props.perfil;
-var _s1 = useState(perfil.nome || “”); var nome = _s1[0]; var setNome = _s1[1];
-var _s2 = useState(perfil.apiKey || “”); var apiKey = _s2[0]; var setApiKey = _s2[1];
-var _s3 = useState(false); var showKey = _s3[0]; var setShowKey = _s3[1];
-var _s4 = useState(””); var senhaModal = _s4[0]; var setSenhaModal = _s4[1];
-var _s5 = useState(””); var erroModal = _s5[0]; var setErroModal = _s5[1];
-var def = DEFENSORES[nome];
-var lotacaoModal = def ? def.lotacao : “”;
-var salvar = function() {
-if (nome && def && senhaModal !== def.senha) { setErroModal(“Senha incorreta.”); return; }
-props.onSave({ nome: nome, lotacao: lotacaoModal, apiKey: apiKey }); props.onClose();
+  <div style={{ background:C.branco, borderRadius:10, border:`1px solid ${C.borda}`, padding:24, marginBottom:20, ...style }}>{children}</div>
+);
+
+const ModalPerfil = ({perfil,onSave,onClose}) => {
+const [nome,setNome] = useState(perfil.nome||””);
+const [apiKey,setApiKey] = useState(perfil.apiKey||””);
+const [showKey,setShowKey] = useState(false);
+const [senhaModal,setSenhaModal] = useState(””);
+const [erroModal,setErroModal] = useState(””);
+const lotacaoModal = DEFENSORES[nome]?.lotacao||””;
+const salvar = () => {
+if (nome && DEFENSORES[nome] && senhaModal !== DEFENSORES[nome].senha) { setErroModal(“Senha incorreta.”); return; }
+onSave({ nome, lotacao:lotacaoModal, apiKey }); onClose();
 };
 return (
 <div style={{ position:“fixed”, inset:0, background:“rgba(0,0,0,0.5)”, zIndex:1000, display:“flex”, alignItems:“center”, justifyContent:“center” }}>
 <div style={{ background:C.branco, borderRadius:12, padding:32, width:460, maxWidth:“90vw”, boxShadow:“0 8px 32px rgba(0,0,0,0.2)” }}>
-<h2 style={{ margin:“0 0 20px”, color:C.verde }}>Configurar Perfil</h2>
+<h2 style={{ margin:“0 0 20px”, color:C.verde }}>⚙ Configurar Perfil</h2>
 <div style={{ marginBottom:14 }}>
 <label style={{ display:“block”, fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>Nome do Defensor</label>
-<select value={nome} onChange={function(e){setNome(e.target.value);setErroModal(””);setSenhaModal(””)}} style={{ width:“100%”, padding:“9px 12px”, borderRadius:6, border:“1px solid “ + C.borda, fontSize:14, boxSizing:“border-box” }}>
-<option value="">– Nenhum (visitante) –</option>
-{Object.keys(DEFENSORES).map(function(d,i){ return <option key={i} value={d}>{d}</option> })}
+<select value={nome} onChange={e=>{setNome(e.target.value);setErroModal(””);setSenhaModal(””);}} style={{ width:“100%”, padding:“9px 12px”, borderRadius:6, border:`1px solid ${C.borda}`, fontSize:14, boxSizing:“border-box” }}>
+<option value="">— Nenhum (visitante) —</option>
+{Object.keys(DEFENSORES).map((d,i)=><option key={i} value={d}>{d}</option>)}
 </select>
 </div>
-{nome && def && (
-<div>
+{nome && DEFENSORES[nome] && (<>
 <div style={{ marginBottom:14 }}>
 <label style={{ display:“block”, fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>Defensoria</label>
-<input value={def.lotacao} disabled style={{ width:“100%”, padding:“9px 12px”, borderRadius:6, border:“1px solid “ + C.borda, fontSize:14, boxSizing:“border-box”, background:C.cinzaClaro }} />
+<input value={lotacaoModal} disabled style={{ width:“100%”, padding:“9px 12px”, borderRadius:6, border:`1px solid ${C.borda}`, fontSize:14, boxSizing:“border-box”, background:C.cinzaClaro }} />
 </div>
 <div style={{ marginBottom:14 }}>
-<label style={{ display:“block”, fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>Senha</label>
-<input type=“password” value={senhaModal} onChange={function(e){setSenhaModal(e.target.value);setErroModal(””)}} onKeyDown={function(e){if(e.key===“Enter”)salvar()}} placeholder=“Senha”
-style={{ width:“100%”, padding:“9px 12px”, borderRadius:6, border:“1px solid “ + (erroModal ? C.vermelho : C.borda), fontSize:14, boxSizing:“border-box” }} />
-{erroModal && <div style={{ fontSize:12, color:C.vermelho, marginTop:4 }}>{erroModal}</div>}
+<label style={{ display:“block”, fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>🔒 Senha</label>
+<input type=“password” value={senhaModal} onChange={e=>{setSenhaModal(e.target.value);setErroModal(””);}} onKeyDown={e=>e.key===“Enter”&&salvar()} placeholder=“Senha”
+style={{ width:“100%”, padding:“9px 12px”, borderRadius:6, border:`1px solid ${erroModal?C.vermelho:C.borda}`, fontSize:14, boxSizing:“border-box” }} />
+{erroModal && <div style={{ fontSize:12, color:C.vermelho, marginTop:4 }}>🚫 {erroModal}</div>}
 </div>
-</div>
-)}
+</>)}
 <div style={{ marginBottom:14 }}>
 <label style={{ display:“block”, fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>Chave API (opcional)</label>
 <div style={{ position:“relative” }}>
-<input type={showKey ? “text” : “password”} value={apiKey} onChange={function(e){setApiKey(e.target.value)}} placeholder=“sk-ant-…”
-style={{ width:“100%”, padding:“9px 40px 9px 12px”, borderRadius:6, border:“1px solid “ + C.borda, fontSize:13, boxSizing:“border-box” }} />
-<button onClick={function(){setShowKey(!showKey)}} style={{ position:“absolute”, right:10, top:“50%”, transform:“translateY(-50%)”, background:“none”, border:“none”, cursor:“pointer”, fontSize:16 }}>{showKey ? “X” : “o”}</button>
+<input type={showKey?“text”:“password”} value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder=“sk-ant-…”
+style={{ width:“100%”, padding:“9px 40px 9px 12px”, borderRadius:6, border:`1px solid ${C.borda}`, fontSize:13, boxSizing:“border-box” }} />
+<button onClick={()=>setShowKey(s=>!s)} style={{ position:“absolute”, right:10, top:“50%”, transform:“translateY(-50%)”, background:“none”, border:“none”, cursor:“pointer”, fontSize:16 }}>{showKey?“🙈”:“👁”}</button>
 </div>
 </div>
 <div style={{ display:“flex”, gap:10 }}>
 <Btn onClick={salvar}>Salvar</Btn>
-<Btn onClick={props.onClose} outline cor={C.cinza}>Cancelar</Btn>
+<Btn onClick={onClose} outline cor={C.cinza}>Cancelar</Btn>
 </div>
 </div>
 </div>
 );
-}
+};
 
-function Header(props) {
-var perfil = props.perfil;
-return (
-<div style={{ background:C.verde, color:”#fff”, padding:“12px 28px”, display:“flex”, alignItems:“center”, justifyContent:“space-between” }}>
-<div style={{ display:“flex”, alignItems:“center”, gap:14 }}>
-<img src=”/logo-apidep.png” alt=“APIDEP” crossOrigin=“anonymous” style={{ height:56, objectFit:“contain” }} onError={function(e){e.target.style.display=“none”}} />
-<div><div style={{ fontWeight:800, fontSize:16 }}>Calculadora de Debitos Alimentares</div><div style={{ fontSize:12, opacity:.8 }}>APIDEP - Associacao Piauiense das Defensoras e Defensores Publicos</div></div>
-</div>
-<div style={{ display:“flex”, gap:8, alignItems:“center” }}>
-<button onClick={props.onPerfil} style={{ background:“rgba(255,255,255,0.15)”, border:“1px solid rgba(255,255,255,0.4)”, borderRadius:6, color:”#fff”, padding:“7px 14px”, cursor:“pointer”, fontSize:13, touchAction:“manipulation” }}>{perfil.nome || “Visitante”}</button>
-<button onClick={props.onLogout} style={{ background:“rgba(255,255,255,0.1)”, border:“1px solid rgba(255,255,255,0.3)”, borderRadius:6, color:”#fff”, padding:“7px 12px”, cursor:“pointer”, fontSize:12, touchAction:“manipulation” }}>Sair</button>
-</div>
-</div>
+const Header = ({perfil,onPerfil,onLogout}) => (
+
+  <div style={{ background:C.verde, color:"#fff", padding:"12px 28px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+    <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+      <img src="/logo-apidep.png" alt="APIDEP" crossOrigin="anonymous" style={{ height:56, objectFit:"contain" }} onError={e=>e.target.style.display="none"} />
+      <div><div style={{ fontWeight:800, fontSize:16 }}>Calculadora de Débitos Alimentares</div><div style={{ fontSize:12, opacity:.8 }}>APIDEP — Associação Piauiense das Defensoras e Defensores Públicos</div></div>
+    </div>
+    <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+      <button onClick={onPerfil} style={{ background:"rgba(255,255,255,0.15)", border:"1px solid rgba(255,255,255,0.4)", borderRadius:6, color:"#fff", padding:"7px 14px", cursor:"pointer", fontSize:13, touchAction:"manipulation" }}>👤 {perfil.nome||"Visitante"}</button>
+      <button onClick={onLogout} style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.3)", borderRadius:6, color:"#fff", padding:"7px 12px", cursor:"pointer", fontSize:12, touchAction:"manipulation" }}>Sair</button>
+    </div>
+  </div>
 );
-}
 
 function novaParcela() {
-var h = new Date();
-return { id: Date.now(), mes: h.getMonth()+1, ano: h.getFullYear(), valor: “”, pago: “”, is13: false };
+const h = new Date();
+return { id:Date.now(), mes:h.getMonth()+1, ano:h.getFullYear(), valor:””, pago:””, is13:false };
 }
 
 export default function App() {
-var _s1 = useState(null); var logado = _s1[0]; var setLogado = _s1[1];
-var fazerLogout = function() {
-localStorage.removeItem(“dpe_perfil”);
-localStorage.removeItem(“dpe_historico”);
-setLogado(null);
-setTimeout(function(){ window.location.reload(); }, 50);
-};
-if (!logado) return <TelaLogin onLogin={function(u){setLogado(u)}} onVisitante={function(){setLogado({nome:””,lotacao:””,autenticado:false})}} />;
+const [logado,setLogado] = useState(null);
+const fazerLogout = () => { localStorage.removeItem(“dpe_perfil”); localStorage.removeItem(“dpe_historico”); setLogado(null); setTimeout(()=>window.location.reload(),50); };
+if (!logado) return <TelaLogin onLogin={u=>setLogado(u)} onVisitante={()=>setLogado({nome:””,lotacao:””,autenticado:false})} />;
 return <AppInterno usuario={logado} onLogout={fazerLogout} />;
 }
 
-function AppInterno(props) {
-var usuario = props.usuario;
-var onLogout = props.onLogout;
-
-var _p = useState(function(){
+function AppInterno({ usuario, onLogout }) {
+const [perfil,setPerfil] = useState(()=>{
 if(usuario.autenticado) return {nome:usuario.nome,lotacao:usuario.lotacao,apiKey:””};
-try{return JSON.parse(localStorage.getItem(“dpe_perfil”)||”{}”)}catch(e){return {}}
-}); var perfil = _p[0]; var setPerfil = _p[1];
+try{return JSON.parse(localStorage.getItem(“dpe_perfil”)||”{}”)}catch{return{}}
+});
+const [showPerfil,setShowPerfil] = useState(false);
+const [tab,setTab] = useState(“calc”);
+const [historico,setHistorico] = useState(()=>{try{return JSON.parse(localStorage.getItem(“dpe_historico”)||”[]”)}catch{return[]}});
 
-var _sp = useState(false); var showPerfil = _sp[0]; var setShowPerfil = _sp[1];
-var _st = useState(“calc”); var tab = _st[0]; var setTab = _st[1];
-var _sh = useState(function(){try{return JSON.parse(localStorage.getItem(“dpe_historico”)||”[]”)}catch(e){return []}}); var historico = _sh[0]; var setHistorico = _sh[1];
+const [processo,setProcesso] = useState(””);
+const [alimentado,setAlimentado] = useState(””);
+const [alimentante,setAlimentante] = useState(””);
+const [comarca,setComarca] = useState(””);
+const [diaVencimento,setDiaVencimento] = useState(“5”);
+const [tipoAlimento,setTipoAlimento] = useState(“sm”);
+const [percentualSM,setPercentualSM] = useState(””);
+const [valorFixoAlimento,setValorFixoAlimento] = useState(””);
+const [parcelas,setParcelas] = useState([novaParcela()]);
+const [showIntervalo,setShowIntervalo] = useState(false);
+const [intervalo,setIntervalo] = useState({mesIni:1,anoIni:2024,mesFim:12,anoFim:2024,pago:””});
+const [incluir13,setIncluir13] = useState(false);
+const [justificativa,setJustificativa] = useState(””);
+const [resultado,setResultado] = useState(null);
+const [loading,setLoading] = useState(false);
+const [loadingIA,setLoadingIA] = useState(false);
+const [msgIA,setMsgIA] = useState(””);
+const fileRef = useRef();
 
-var _proc = useState(””); var processo = _proc[0]; var setProcesso = _proc[1];
-var _alim = useState(””); var alimentado = _alim[0]; var setAlimentado = _alim[1];
-var _alim2 = useState(””); var alimentante = _alim2[0]; var setAlimentante = _alim2[1];
-var _com = useState(””); var comarca = _com[0]; var setComarca = _com[1];
-var _dia = useState(“5”); var diaVencimento = _dia[0]; var setDiaVencimento = _dia[1];
-var _tipo = useState(“sm”); var tipoAlimento = _tipo[0]; var setTipoAlimento = _tipo[1];
-var _pct = useState(””); var percentualSM = _pct[0]; var setPercentualSM = _pct[1];
-var _vfix = useState(””); var valorFixoAlimento = _vfix[0]; var setValorFixoAlimento = _vfix[1];
-var _parc = useState([novaParcela()]); var parcelas = _parc[0]; var setParcelas = _parc[1];
-var _si = useState(false); var showIntervalo = _si[0]; var setShowIntervalo = _si[1];
-var _intv = useState({mesIni:1,anoIni:2024,mesFim:12,anoFim:2024,pago:””}); var intervalo = _intv[0]; var setIntervalo = _intv[1];
-var _i13 = useState(false); var incluir13 = _i13[0]; var setIncluir13 = _i13[1];
-var _just = useState(””); var justificativa = _just[0]; var setJustificativa = _just[1];
-var _res = useState(null); var resultado = _res[0]; var setResultado = _res[1];
-var _ld = useState(false); var loading = _ld[0]; var setLoading = _ld[1];
-var _lia = useState(false); var loadingIA = _lia[0]; var setLoadingIA = _lia[1];
-var _mia = useState(””); var msgIA = _mia[0]; var setMsgIA = _mia[1];
-var fileRef = useRef();
+const salvarPerfil = p => {setPerfil(p);localStorage.setItem(“dpe_perfil”,JSON.stringify(p));};
+const addParcela = () => setParcelas(p=>[…p,novaParcela()]);
+const removeParcela = id => setParcelas(p=>p.filter(x=>x.id!==id));
+const editParcela = (id,campo,val) => setParcelas(p=>p.map(x=>x.id===id?{…x,[campo]:val}:x));
+const limparParcelas = () => { if(window.confirm(“Apagar todas as parcelas?”)) setParcelas([]); };
 
-var salvarPerfil = function(p) { setPerfil(p); localStorage.setItem(“dpe_perfil”, JSON.stringify(p)); };
-var addParcela = function() { setParcelas(function(p){ return p.concat([novaParcela()]); }); };
-var removeParcela = function(id) { setParcelas(function(p){ return p.filter(function(x){ return x.id !== id; }); }); };
-var editParcela = function(id, campo, val) { setParcelas(function(p){ return p.map(function(x){ if(x.id===id){ var n = Object.assign({}, x); n[campo]=val; return n; } return x; }); }); };
-var limparParcelas = function() { if(window.confirm(“Apagar todas as parcelas?”)) setParcelas([]); };
-
-var contarParcelas = function() {
-var n=0, m=intervalo.mesIni, a=intervalo.anoIni;
+const contarParcelas = () => {
+let n=0,m=intervalo.mesIni,a=intervalo.anoIni;
 while(a<intervalo.anoFim||(a===intervalo.anoFim&&m<=intervalo.mesFim)){n++;m++;if(m>12){m=1;a++;}}
 return n;
 };
 
-var addIntervalo = function() {
-var novas=[];
-var m=intervalo.mesIni, a=intervalo.anoIni;
+const addIntervalo = () => {
+const novas=[];
+let m=intervalo.mesIni,a=intervalo.anoIni;
 while(a<intervalo.anoFim||(a===intervalo.anoFim&&m<=intervalo.mesFim)){
-var valor;
+let valor;
 if(tipoAlimento===“sm”) valor=r2(getSM(m,a)*Number(percentualSM)/100).toFixed(2);
 else valor=Number(valorFixoAlimento).toFixed(2);
-novas.push({id:Date.now()+novas.length,mes:m,ano:a,valor:valor,pago:intervalo.pago?Number(intervalo.pago).toFixed(2):””,is13:false});
+novas.push({id:Date.now()+novas.length,mes:m,ano:a,valor,pago:intervalo.pago?Number(intervalo.pago).toFixed(2):””,is13:false});
 m++;if(m>12){m=1;a++;}
 }
-setParcelas(function(prev){
-var existentes={};
-prev.forEach(function(p){ existentes[p.ano+”-”+p.mes]=true; });
-var unicas=novas.filter(function(n){ return !existentes[n.ano+”-”+n.mes]; });
-if(unicas.length<novas.length) alert((novas.length-unicas.length)+” parcela(s) duplicada(s) ignorada(s).”);
-return prev.concat(unicas);
+setParcelas(prev=>{
+const existentes=new Set(prev.map(p=>`${p.ano}-${p.mes}`));
+const unicas=novas.filter(n=>!existentes.has(`${n.ano}-${n.mes}`));
+if(unicas.length<novas.length) alert(`${novas.length-unicas.length} parcela(s) duplicada(s) ignorada(s).`);
+return […prev,…unicas];
 });
-setIntervalo(function(i){ return Object.assign({}, i, {pago:””}); });
+setIntervalo(i=>({…i,pago:””}));
 };
 
-var handleUpload = function(e) {
-var file=e.target.files[0]; if(!file)return;
-if(!perfil.apiKey){setMsgIA(“Erro: Configure sua chave de API no perfil.”);return;}
+const handleUpload = async e => {
+const file=e.target.files[0];if(!file)return;
+if(!perfil.apiKey){setMsgIA(“❌ Configure sua chave de API no perfil.”);return;}
 setLoadingIA(true);setMsgIA(“Lendo documento com IA…”);
-var reader = new FileReader();
-reader.onload = function() {
-var base64 = reader.result.split(”,”)[1];
-var block = file.type===“application/pdf”
-? {type:“document”,source:{type:“base64”,media_type:“application/pdf”,data:base64}}
-: {type:“image”,source:{type:“base64”,media_type:file.type,data:base64}};
-fetch(“https://api.anthropic.com/v1/messages”,{
-method:“POST”,
-headers:{“Content-Type”:“application/json”,“x-api-key”:perfil.apiKey,“anthropic-version”:“2023-06-01”,“anthropic-dangerous-direct-browser-access”:“true”},
-body:JSON.stringify({model:“claude-sonnet-4-20250514”,max_tokens:1000,messages:[{role:“user”,content:[block,{type:“text”,text:“Extraia: numero do processo CNJ, alimentado, alimentante, parcelas. Responda SOMENTE em JSON: {"processo":"","alimentado":"","alimentante":"","parcelas":[{"mes":1,"ano":2024,"valor":1500.00}]}”}]}]})
-}).then(function(resp){return resp.json()}).then(function(data){
-var text=(data.content&&data.content[0]&&data.content[0].text)||””;
-var parsed=JSON.parse(text.replace(/`json|`/g,””).trim());
+try{
+const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(”,”)[1]);r.onerror=rej;r.readAsDataURL(file);});
+const block=file.type===“application/pdf”?{type:“document”,source:{type:“base64”,media_type:“application/pdf”,data:base64}}:{type:“image”,source:{type:“base64”,media_type:file.type,data:base64}};
+const resp=await fetch(“https://api.anthropic.com/v1/messages”,{
+method:“POST”,headers:{“Content-Type”:“application/json”,“x-api-key”:perfil.apiKey,“anthropic-version”:“2023-06-01”,“anthropic-dangerous-direct-browser-access”:“true”},
+body:JSON.stringify({model:“claude-sonnet-4-20250514”,max_tokens:1000,messages:[{role:“user”,content:[block,{type:“text”,text:‘Extraia: número do processo CNJ, alimentado, alimentante, parcelas. Responda SOMENTE em JSON: {“processo”:””,“alimentado”:””,“alimentante”:””,“parcelas”:[{“mes”:1,“ano”:2024,“valor”:1500.00}]}’}]}]})
+});
+const data=await resp.json();
+const text=data.content?.find(b=>b.type===“text”)?.text||””;
+const parsed=JSON.parse(text.replace(/`json|`/g,””).trim());
 if(parsed.processo) setProcesso(maskProcesso(parsed.processo.replace(/\D/g,””)));
 if(parsed.alimentado) setAlimentado(parsed.alimentado);
 if(parsed.alimentante) setAlimentante(parsed.alimentante);
-if(parsed.parcelas&&parsed.parcelas.length) setParcelas(parsed.parcelas.map(function(p,i){return {id:Date.now()+i,mes:p.mes,ano:p.ano,valor:String(r2(p.valor)),pago:””,is13:false}}));
-setMsgIA(“OK! “ + (parsed.parcelas?parsed.parcelas.length:0) + “ parcela(s) extraida(s). Revise antes de calcular.”);
+if(parsed.parcelas?.length) setParcelas(parsed.parcelas.map((p,i)=>({id:Date.now()+i,mes:p.mes,ano:p.ano,valor:String(r2(p.valor)),pago:””,is13:false})));
+setMsgIA(`✅ ${parsed.parcelas?.length||0} parcela(s) extraída(s). Revise antes de calcular.`);
+}catch{setMsgIA(“❌ Não foi possível ler o documento.”);}
 setLoadingIA(false);
 if(fileRef.current) fileRef.current.value=””;
-}).catch(function(){
-setMsgIA(“Erro: Nao foi possivel ler o documento.”);
-setLoadingIA(false);
-if(fileRef.current) fileRef.current.value=””;
-});
-};
-reader.onerror = function(){ setMsgIA(“Erro ao ler arquivo.”); setLoadingIA(false); };
-reader.readAsDataURL(file);
 };
 
-var calcular = function() {
-if(!usuario.autenticado&&!perfil.nome){alert(“Faca login no perfil para continuar.”);return;}
+// ── CÁLCULO — crédito cascata v3.1 + 13º ──────────────────
+const calcular = () => {
+if(!usuario.autenticado&&!perfil.nome){alert(“Faça login no perfil (👤) para continuar.”);return;}
 setLoading(true);setResultado(null);
-setTimeout(function(){
-var raw = parcelas
-.filter(function(p){return p.valor&&Number(p.valor)>0})
-.sort(function(a,b){return a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes})
-.map(function(p){return {
+setTimeout(()=>{
+let raw = parcelas
+.filter(p=>p.valor&&Number(p.valor)>0)
+.sort((a,b)=>a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes)
+.map(p=>({
 mes:p.mes, ano:p.ano, label:fmtMes(p.mes,p.ano), smVig:getSM(p.mes===13?12:p.mes,p.ano),
-nominal:r2(Number(p.valor)), pago:r2(Number(p.pago||0)), is13:!!p.is13
-}});
+nominal:r2(Number(p.valor)), pago:r2(Number(p.pago||0)), is13:!!p.is13,
+}));
 
 ```
+  // Gerar 13º se ativado
   if(incluir13){
-    var anosSet={};
-    raw.filter(function(p){return !p.is13}).forEach(function(p){anosSet[p.ano]=true});
-    var anos=Object.keys(anosSet).map(Number);
-    var parcelas13=[];
-    anos.forEach(function(ano){
-      var doAno=raw.filter(function(p){return p.ano===ano&&!p.is13});
+    const anos=[...new Set(raw.filter(p=>!p.is13).map(p=>p.ano))];
+    const parcelas13=[];
+    anos.forEach(ano=>{
+      const doAno=raw.filter(p=>p.ano===ano&&!p.is13);
       if(doAno.length>0){
-        var ja13=raw.filter(function(p){return p.ano===ano&&p.is13}).length>0;
+        const ja13=raw.find(p=>p.ano===ano&&p.is13);
         if(!ja13){
-          var soma=0; doAno.forEach(function(p){soma+=p.nominal});
-          var media=r2(soma/doAno.length);
-          parcelas13.push({mes:13,ano:ano,label:"13o/"+ano,smVig:getSM(12,ano),nominal:media,pago:0,is13:true});
+          const media=r2(doAno.reduce((s,p)=>s+p.nominal,0)/doAno.length);
+          parcelas13.push({mes:13,ano,label:`13º/${ano}`,smVig:getSM(12,ano),nominal:media,pago:0,is13:true});
         }
       }
     });
-    raw=raw.concat(parcelas13).sort(function(a,b){return a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes});
+    raw=[...raw,...parcelas13].sort((a,b)=>a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes);
   }
 
   if(!raw.length){setLoading(false);return;}
 
-  var creditos=[];
-  var parcelasComSaldo=raw.map(function(p){
-    var saldoBruto=r2(p.nominal-p.pago);
+  const creditos=[];
+  const parcelasComSaldo=raw.map(p=>{
+    const saldoBruto=r2(p.nominal-p.pago);
     if(saldoBruto<0){
       creditos.push({valor:r2(Math.abs(saldoBruto)),mesPgto:p.mes===13?12:p.mes,anoPgto:p.ano});
-      return Object.assign({},p,{saldoBruto:0,quitadoPorPagamento:true});
+      return {...p,saldoBruto:0,quitadoPorPagamento:true};
     }
-    return Object.assign({},p,{saldoBruto:saldoBruto});
+    return {...p,saldoBruto};
   });
 
-  var prisaoRaw=parcelasComSaldo.slice(-3);
-  var penhoraRaw=parcelasComSaldo.slice(0,-3);
+  const prisaoRaw=parcelasComSaldo.slice(-3);
+  const penhoraRaw=parcelasComSaldo.slice(0,-3);
 
   function aplicarCreditosCascata(blocoArr,creds){
-    var h=new Date(),mH=h.getMonth()+1,aH=h.getFullYear();
-    var credsR=creds.map(function(c){var cc=corrigirAte(c.valor,c.mesPgto,c.anoPgto,mH,aH);return Object.assign({},c,{valorCorrigido:cc.total})});
-    var totalCredDisp=0; credsR.forEach(function(c){totalCredDisp+=c.valorCorrigido});
-    var resultado2=blocoArr.map(function(p){
-      if(p.quitadoPorPagamento) return Object.assign({},p,{saldoFinal:0,creditoAplicado:0,quitado:true},corrigir(0,p.mes,p.ano));
-      var calc=corrigir(p.saldoBruto,p.mes,p.ano);
-      var totalDevido=calc.total,creditoAplicado=0;
+    const h=new Date(),mH=h.getMonth()+1,aH=h.getFullYear();
+    let credsR=creds.map(c=>{const cc=corrigirAte(c.valor,c.mesPgto,c.anoPgto,mH,aH);return {...c,valorCorrigido:cc.total};});
+    let totalCredDisp=credsR.reduce((s,c)=>s+c.valorCorrigido,0);
+    const resultado=blocoArr.map(p=>{
+      if(p.quitadoPorPagamento) return {...p,saldoFinal:0,creditoAplicado:0,quitado:true,...corrigir(0,p.mes,p.ano)};
+      const calc=corrigir(p.saldoBruto,p.mes,p.ano);
+      let totalDevido=calc.total,creditoAplicado=0;
       if(totalCredDisp>0&&totalDevido>0){
-        var abate=r2(Math.min(totalCredDisp,totalDevido));
+        const abate=r2(Math.min(totalCredDisp,totalDevido));
         creditoAplicado=abate;totalDevido=r2(totalDevido-abate);totalCredDisp=r2(totalCredDisp-abate);
       }
-      return Object.assign({},p,calc,{total:totalDevido,creditoAplicado:creditoAplicado,saldoFinal:totalDevido>0?p.saldoBruto:0,quitado:totalDevido<=0});
+      return {...p,...calc,total:totalDevido,creditoAplicado,saldoFinal:totalDevido>0?p.saldoBruto:0,quitado:totalDevido<=0};
     });
-    return {items:resultado2,creditoSobrando:r2(totalCredDisp)};
+    return {items:resultado,creditoSobrando:r2(totalCredDisp)};
   }
 
-  var b2=aplicarCreditosCascata(penhoraRaw,creditos);
-  var credsRest=b2.creditoSobrando>0?[{valor:b2.creditoSobrando,mesPgto:new Date().getMonth()+1,anoPgto:new Date().getFullYear(),valorCorrigido:b2.creditoSobrando}]:[];
-  var b1=aplicarCreditosCascata(prisaoRaw,credsRest);
+  const b2=aplicarCreditosCascata(penhoraRaw,creditos);
+  const credsRest=b2.creditoSobrando>0?[{valor:b2.creditoSobrando,mesPgto:new Date().getMonth()+1,anoPgto:new Date().getFullYear(),valorCorrigido:b2.creditoSobrando}]:[];
+  const b1=aplicarCreditosCascata(prisaoRaw,credsRest);
 
-  var somaArr=function(arr){var s=0;arr.forEach(function(x){s+=x.total});return r2(s)};
-  var res={
-    processo:processo,alimentado:alimentado,alimentante:alimentante,comarca:comarca,diaVencimento:diaVencimento,
-    tipoAlimento:tipoAlimento,percentualSM:percentualSM,valorFixoAlimento:valorFixoAlimento,justificativa:justificativa,
-    prisao:b1.items,penhora:b2.items,totalPrisao:somaArr(b1.items),totalPenhora:somaArr(b2.items),
-    data:new Date().toLocaleDateString("pt-BR"),defensor:perfil.nome||"",lotacao:perfil.lotacao||""
+  const soma=arr=>r2(arr.reduce((s,x)=>s+x.total,0));
+  const res={
+    processo,alimentado,alimentante,comarca,diaVencimento,tipoAlimento,percentualSM,valorFixoAlimento,justificativa,
+    prisao:b1.items,penhora:b2.items,totalPrisao:soma(b1.items),totalPenhora:soma(b2.items),
+    data:new Date().toLocaleDateString("pt-BR"),defensor:perfil.nome||"",lotacao:perfil.lotacao||"",
   };
   setResultado(res);
-  var hist=[Object.assign({id:Date.now()},res,{total:r2(somaArr(b1.items)+somaArr(b2.items))})].concat(historico).slice(0,50);
+  const hist=[{id:Date.now(),...res,total:r2(soma(b1.items)+soma(b2.items))},...historico].slice(0,50);
   setHistorico(hist);localStorage.setItem("dpe_historico",JSON.stringify(hist));
   setLoading(false);
 },400);
@@ -451,325 +415,321 @@ nominal:r2(Number(p.valor)), pago:r2(Number(p.pago||0)), is13:!!p.is13
 
 };
 
-var gerarPDF = function() {
+// ── PDF — v3.1 layout + justificativa + 13º destaque ──────
+const gerarPDF = async () => {
 if(!resultado)return;
-var jsPDFLib=window.jspdf&&window.jspdf.jsPDF||window.jsPDF;
-if(!jsPDFLib){alert(“PDF nao carregou. Recarregue.”);return;}
-carregarLogo().then(function(logoData){
-var doc=new jsPDFLib({orientation:“landscape”,unit:“mm”,format:“a4”});
-var W=297,mg=12,y=0;
+const jsPDFLib=window.jspdf?.jsPDF||window.jsPDF;
+if(!jsPDFLib){alert(“PDF não carregou. Recarregue.”);return;}
+const logoData=await carregarLogo();
+const doc=new jsPDFLib({orientation:“landscape”,unit:“mm”,format:“a4”});
+const W=297,mg=12;let y=0;
 
 ```
-  doc.setFillColor(26,107,58);doc.rect(0,0,W,28,"F");
-  if(logoData){try{var lh=22,lw=Math.max(lh*_logoRatio,30);doc.addImage(logoData,"PNG",6,3,lw,lh);doc.addImage(logoData,"PNG",W-6-lw,3,lw,lh)}catch(e){}}
-  doc.setTextColor(255,255,255);doc.setFontSize(14);doc.setFont("helvetica","bold");
-  doc.text("MEMORIAL DE CALCULO",W/2,10,{align:"center"});
-  doc.setFontSize(9);doc.setFont("helvetica","normal");
-  doc.text("Debito Alimentar - Execucao de Alimentos (art. 528 CPC)",W/2,16,{align:"center"});
-  doc.setFontSize(7.5);doc.text("APIDEP - Associacao Piauiense das Defensoras e Defensores Publicos",W/2,22,{align:"center"});
-  y=36;
+// Cabeçalho
+doc.setFillColor(26,107,58);doc.rect(0,0,W,28,"F");
+if(logoData){try{const lh=22,lw=Math.max(lh*_logoRatio,30);doc.addImage(logoData,"PNG",6,3,lw,lh);doc.addImage(logoData,"PNG",W-6-lw,3,lw,lh);}catch{}}
+doc.setTextColor(255,255,255);doc.setFontSize(14);doc.setFont("helvetica","bold");
+doc.text("MEMORIAL DE CÁLCULO",W/2,10,{align:"center"});
+doc.setFontSize(9);doc.setFont("helvetica","normal");
+doc.text("Débito Alimentar — Execução de Alimentos (art. 528 CPC)",W/2,16,{align:"center"});
+doc.setFontSize(7.5);doc.text("APIDEP — Associação Piauiense das Defensoras e Defensores Públicos",W/2,22,{align:"center"});
+y=36;
 
-  doc.setFillColor(232,245,238);doc.rect(mg,y,W-mg*2,28,"F");
-  doc.setDrawColor(26,107,58);doc.setLineWidth(0.3);doc.rect(mg,y,W-mg*2,28);
-  doc.setFillColor(26,107,58);doc.rect(mg,y,W-mg*2,7,"F");
+// Dados
+doc.setFillColor(232,245,238);doc.rect(mg,y,W-mg*2,28,"F");
+doc.setDrawColor(26,107,58);doc.setLineWidth(0.3);doc.rect(mg,y,W-mg*2,28);
+doc.setFillColor(26,107,58);doc.rect(mg,y,W-mg*2,7,"F");
+doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(8.5);
+doc.text("DADOS DO PROCESSO",mg+3,y+5);y+=9;
+const c1=mg+3,c2=mg+100,c3=mg+195;
+doc.setTextColor(40,40,40);doc.setFontSize(8);
+const lb=(l,v,x,yy)=>{doc.setFont("helvetica","bold");doc.text(l,x,yy);doc.setFont("helvetica","normal");doc.text(v||"—",x+doc.getTextWidth(l)+2,yy);};
+lb("Processo nº:",resultado.processo,c1,y);lb("Vara/Comarca:",resultado.comarca,c2,y);lb("Data-base:",resultado.data,c3,y);y+=6;
+lb("Exequente:",resultado.alimentado,c1,y);lb("Executado:",resultado.alimentante,c2,y);y+=6;
+const tl=resultado.tipoAlimento==="sm"?`${resultado.percentualSM}% do salário mínimo federal`:`${fmt(Number(resultado.valorFixoAlimento||0))} (valor fixo)`;
+lb("Alimentos fixados:",tl,c1,y);lb("Vencimento:",`Dia ${resultado.diaVencimento}`,c2,y);lb("Índice:","IPCA-E",c3,y);y+=6;
+lb("Juros de mora:","1% ao mês — art. 406 CC c/c art. 161 §1º CTN",c1,y);y+=8;
+
+// Justificativa
+if(resultado.justificativa){
+  doc.setTextColor(26,107,58);doc.setFont("helvetica","bold");doc.setFontSize(8.5);
+  doc.text("JUSTIFICATIVA / OBSERVAÇÕES",mg,y);y+=5;
+  doc.setDrawColor(26,107,58);doc.line(mg,y,W-mg,y);y+=4;
+  doc.setTextColor(40,40,40);doc.setFont("helvetica","normal");doc.setFontSize(8);
+  const linhas=doc.splitTextToSize(resultado.justificativa,W-mg*2);
+  linhas.forEach(l=>{if(y>185){doc.addPage();y=15;}doc.text(l,mg,y);y+=4.5;});
+  y+=4;
+}
+
+// Tabela
+const desenharTabela=(titulo,corRGB,items,subtotal,numI)=>{
+  if(y>150){doc.addPage();y=15;}
+  doc.setFillColor(...corRGB);doc.rect(mg,y,W-mg*2,7,"F");
   doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(8.5);
-  doc.text("DADOS DO PROCESSO",mg+3,y+5);y+=9;
-  var c1=mg+3,c2=mg+100,c3=mg+195;
-  doc.setTextColor(40,40,40);doc.setFontSize(8);
-  var lb=function(l,v,x,yy){doc.setFont("helvetica","bold");doc.text(l,x,yy);doc.setFont("helvetica","normal");doc.text(v||"-",x+doc.getTextWidth(l)+2,yy)};
-  lb("Processo no:",resultado.processo,c1,y);lb("Vara/Comarca:",resultado.comarca,c2,y);lb("Data-base:",resultado.data,c3,y);y+=6;
-  lb("Exequente:",resultado.alimentado,c1,y);lb("Executado:",resultado.alimentante,c2,y);y+=6;
-  var tl=resultado.tipoAlimento==="sm"?resultado.percentualSM+"% do salario minimo federal":fmt(Number(resultado.valorFixoAlimento||0))+" (valor fixo)";
-  lb("Alimentos fixados:",tl,c1,y);lb("Vencimento:","Dia "+resultado.diaVencimento,c2,y);lb("Indice:","IPCA-E",c3,y);y+=6;
-  lb("Juros de mora:","1% ao mes - art. 406 CC c/c art. 161 par. 1o CTN",c1,y);y+=8;
-
-  if(resultado.justificativa){
-    doc.setTextColor(26,107,58);doc.setFont("helvetica","bold");doc.setFontSize(8.5);
-    doc.text("JUSTIFICATIVA / OBSERVACOES",mg,y);y+=5;
-    doc.setDrawColor(26,107,58);doc.line(mg,y,W-mg,y);y+=4;
-    doc.setTextColor(40,40,40);doc.setFont("helvetica","normal");doc.setFontSize(8);
-    var linhas=doc.splitTextToSize(resultado.justificativa,W-mg*2);
-    linhas.forEach(function(l){if(y>185){doc.addPage();y=15}doc.text(l,mg,y);y+=4.5});
-    y+=4;
-  }
-
-  var desenharTabela=function(titulo,corRGB,items,subtotal,numI){
-    if(y>150){doc.addPage();y=15}
-    doc.setFillColor(corRGB[0],corRGB[1],corRGB[2]);doc.rect(mg,y,W-mg*2,7,"F");
-    doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(8.5);
-    doc.text(titulo,mg+3,y+5);y+=9;
-    var cw=[8,18,20,20,20,18,18,18,20,20,10,18,20];
-    var cx=[mg];cw.forEach(function(w,i){cx.push(cx[i]+w+1)});
-    var hd=["#","Compet.","Vcto.","SM Vig.","Nominal","Pago","Cred.Apl.","Saldo","Fator","Corrigido","M.","Juros","Total"];
-    doc.setFillColor(230,230,230);doc.rect(mg,y-2,W-mg*2,6,"F");
-    doc.setTextColor(40,40,40);doc.setFont("helvetica","bold");doc.setFontSize(6);
-    hd.forEach(function(h,i){doc.text(h,cx[i],y+2)});y+=7;
-    items.forEach(function(p,i){
-      if(y>182){doc.addPage();y=15}
-      if(p.is13){doc.setFillColor(255,248,225);doc.rect(mg,y-2,W-mg*2,5.5,"F")}
-      else if(i%2===0){doc.setFillColor(248,250,248);doc.rect(mg,y-2,W-mg*2,5.5,"F")}
-      var mesCorr=p.mes===13?12:p.mes;
-      var vcto=String(resultado.diaVencimento).padStart(2,"0")+"/"+String(mesCorr).padStart(2,"0")+"/"+p.ano;
-      doc.setTextColor(p.is13?"#1a5276":"#282828");doc.setFont("helvetica","normal");doc.setFontSize(6);
-      doc.text(String(numI+i),cx[0],y+2);doc.text(p.label,cx[1],y+2);doc.text(vcto,cx[2],y+2);
-      doc.text(fmt(p.smVig),cx[3],y+2);doc.text(fmt(p.nominal),cx[4],y+2);
-      if(p.pago>0){doc.setTextColor(26,107,58);doc.setFont("helvetica","bold")}
-      doc.text(fmt(p.pago),cx[5],y+2);doc.setTextColor(40,40,40);doc.setFont("helvetica","normal");
-      if(p.creditoAplicado>0){doc.setTextColor(26,82,118);doc.setFont("helvetica","bold");doc.text(fmt(p.creditoAplicado),cx[6],y+2);doc.setTextColor(40,40,40);doc.setFont("helvetica","normal")}
-      else doc.text("-",cx[6],y+2);
-      doc.setFont("helvetica","bold");
-      if(p.quitado){doc.setTextColor(26,107,58);doc.text("QUITADO",cx[7],y+2)}
-      else{doc.setTextColor(40,40,40);doc.text(fmt(p.saldoBruto),cx[7],y+2)}
-      doc.setTextColor(40,40,40);doc.setFont("helvetica","normal");
-      doc.text(p.fator.toFixed(6),cx[8],y+2);doc.text(p.quitado?"-":fmt(p.corrigido),cx[9],y+2);
-      doc.text(String(p.mesesAtraso),cx[10],y+2);doc.text(p.quitado?"-":fmt(p.juros),cx[11],y+2);
-      doc.setFont("helvetica","bold");
-      if(p.quitado){doc.setTextColor(26,107,58);doc.text("-",cx[12],y+2)}
-      else{doc.setTextColor(40,40,40);doc.text(fmt(p.total),cx[12],y+2)}
-      y+=5.5;
-    });
-    doc.setFillColor(corRGB[0],corRGB[1],corRGB[2]);doc.rect(mg,y,W-mg*2,6,"F");
-    doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(8);
-    doc.text("SUBTOTAL: "+fmt(subtotal),W-mg-3,y+4,{align:"right"});y+=10;
-  };
-
-  if(resultado.penhora.length>0) desenharTabela("BLOCO 2 - DEBITO ANTERIOR (art. 528, par. 8o CPC)",[26,82,118],resultado.penhora,resultado.totalPenhora,1);
-  if(resultado.prisao.length>0) desenharTabela("BLOCO 1 - ULTIMAS 3 PARCELAS (art. 528, par. 3o CPC)",[26,107,58],resultado.prisao,resultado.totalPrisao,resultado.penhora.length+1);
-
-  if(y>165){doc.addPage();y=15}
-  var bW=(W-mg*2-4)/2;
-  doc.setFillColor(26,107,58);doc.rect(mg,y,bW,22,"F");
+  doc.text(titulo,mg+3,y+5);y+=9;
+  const cw=[8,18,20,20,20,18,18,18,20,20,10,18,20];
+  const cx=[mg];cw.forEach((w,i)=>cx.push(cx[i]+w+1));
+  const hd=["#","Compet.","Vcto.","SM Vig.","Nominal","Pago","Créd.Apl.","Saldo","Fator","Corrigido","M.","Juros","Total"];
+  doc.setFillColor(230,230,230);doc.rect(mg,y-2,W-mg*2,6,"F");
+  doc.setTextColor(40,40,40);doc.setFont("helvetica","bold");doc.setFontSize(6);
+  hd.forEach((h,i)=>doc.text(h,cx[i],y+2));y+=7;
+  items.forEach((p,i)=>{
+    if(y>182){doc.addPage();y=15;}
+    if(p.is13){doc.setFillColor(255,248,225);doc.rect(mg,y-2,W-mg*2,5.5,"F");}
+    else if(i%2===0){doc.setFillColor(248,250,248);doc.rect(mg,y-2,W-mg*2,5.5,"F");}
+    const mesCorr=p.mes===13?12:p.mes;
+    const vcto=`${String(resultado.diaVencimento).padStart(2,"0")}/${String(mesCorr).padStart(2,"0")}/${p.ano}`;
+    doc.setTextColor(p.is13?C.azul:"#282828");doc.setFont("helvetica","normal");doc.setFontSize(6);
+    doc.text(String(numI+i),cx[0],y+2);doc.text(p.label,cx[1],y+2);doc.text(vcto,cx[2],y+2);
+    doc.text(fmt(p.smVig),cx[3],y+2);doc.text(fmt(p.nominal),cx[4],y+2);
+    if(p.pago>0){doc.setTextColor(26,107,58);doc.setFont("helvetica","bold");}
+    doc.text(fmt(p.pago),cx[5],y+2);doc.setTextColor(40,40,40);doc.setFont("helvetica","normal");
+    if(p.creditoAplicado>0){doc.setTextColor(26,82,118);doc.setFont("helvetica","bold");doc.text(fmt(p.creditoAplicado),cx[6],y+2);doc.setTextColor(40,40,40);doc.setFont("helvetica","normal");}
+    else doc.text("—",cx[6],y+2);
+    doc.setFont("helvetica","bold");
+    if(p.quitado){doc.setTextColor(26,107,58);doc.text("QUITADO",cx[7],y+2);}
+    else{doc.setTextColor(40,40,40);doc.text(fmt(p.saldoBruto),cx[7],y+2);}
+    doc.setTextColor(40,40,40);doc.setFont("helvetica","normal");
+    doc.text(p.fator.toFixed(6),cx[8],y+2);doc.text(p.quitado?"—":fmt(p.corrigido),cx[9],y+2);
+    doc.text(`${p.mesesAtraso}`,cx[10],y+2);doc.text(p.quitado?"—":fmt(p.juros),cx[11],y+2);
+    doc.setFont("helvetica","bold");
+    if(p.quitado){doc.setTextColor(26,107,58);doc.text("—",cx[12],y+2);}
+    else{doc.setTextColor(40,40,40);doc.text(fmt(p.total),cx[12],y+2);}
+    y+=5.5;
+  });
+  doc.setFillColor(...corRGB);doc.rect(mg,y,W-mg*2,6,"F");
   doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(8);
-  doc.text("BLOCO 1 - PRISAO CIVIL",mg+3,y+7);doc.setFontSize(7);doc.setFont("helvetica","normal");
-  doc.text("Ultimas 3 parcelas - art. 528, par. 3o CPC",mg+3,y+12);doc.setFont("helvetica","bold");doc.setFontSize(12);
-  doc.text(fmt(resultado.totalPrisao),mg+bW/2,y+19,{align:"center"});
-  var x2=mg+bW+4;
-  doc.setFillColor(26,82,118);doc.rect(x2,y,bW,22,"F");
-  doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(8);
-  doc.text("BLOCO 2 - PENHORA",x2+3,y+7);doc.setFontSize(7);doc.setFont("helvetica","normal");
-  doc.text("Parcelas anteriores - art. 528, par. 8o CPC",x2+3,y+12);doc.setFont("helvetica","bold");doc.setFontSize(12);
-  doc.text(fmt(resultado.totalPenhora),x2+bW/2,y+19,{align:"center"});y+=30;
+  doc.text(`SUBTOTAL: ${fmt(subtotal)}`,W-mg-3,y+4,{align:"right"});y+=10;
+};
 
-  if(y>170){doc.addPage();y=15}
-  doc.setTextColor(40,40,40);doc.setFont("helvetica","bold");doc.setFontSize(8);doc.text("Observacoes:",mg,y);y+=5;
-  doc.setFont("helvetica","normal");doc.setFontSize(7.5);
-  var obs=["1. Correcao monetaria pelo IPCA-E (Res. CJF no 134/2010).","2. Juros de mora 1% a.m. sobre valor corrigido (art. 406 CC c/c art. 161 par. 1o CTN).","3. Data-base: "+resultado.data+". Sujeitos a complementacao ate efetivo pagamento.","4. Creditos (pagamentos excedentes) corrigidos e abatidos das parcelas mais antigas."];
-  obs.forEach(function(o){doc.text(o,mg,y);y+=4.5});y+=8;
+if(resultado.penhora.length>0) desenharTabela("BLOCO 2 — DÉBITO ANTERIOR (art. 528, §8º CPC)",[26,82,118],resultado.penhora,resultado.totalPenhora,1);
+if(resultado.prisao.length>0) desenharTabela("BLOCO 1 — ÚLTIMAS 3 PARCELAS (art. 528, §3º CPC)",[26,107,58],resultado.prisao,resultado.totalPrisao,resultado.penhora.length+1);
 
-  if(y>185){doc.addPage();y=15}
-  doc.setFont("helvetica","normal");doc.setFontSize(9);doc.text(resultado.data,W/2,y,{align:"center"});y+=16;
-  doc.setDrawColor(80,80,80);doc.setLineWidth(0.3);doc.line(W/2-45,y,W/2+45,y);y+=5;
-  doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.text(resultado.defensor||"",W/2,y,{align:"center"});y+=5;
-  doc.setFont("helvetica","normal");doc.setFontSize(8.5);doc.text("Defensor(a) Publico(a)",W/2,y,{align:"center"});y+=4;
-  if(resultado.lotacao) doc.text(resultado.lotacao,W/2,y,{align:"center"});
+// Resumo
+if(y>165){doc.addPage();y=15;}
+const bW=(W-mg*2-4)/2;
+doc.setFillColor(26,107,58);doc.rect(mg,y,bW,22,"F");
+doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(8);
+doc.text("BLOCO 1 — PRISÃO CIVIL",mg+3,y+7);doc.setFontSize(7);doc.setFont("helvetica","normal");
+doc.text("Últimas 3 parcelas — art. 528, §3° CPC",mg+3,y+12);doc.setFont("helvetica","bold");doc.setFontSize(12);
+doc.text(fmt(resultado.totalPrisao),mg+bW/2,y+19,{align:"center"});
+const x2=mg+bW+4;
+doc.setFillColor(26,82,118);doc.rect(x2,y,bW,22,"F");
+doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(8);
+doc.text("BLOCO 2 — PENHORA",x2+3,y+7);doc.setFontSize(7);doc.setFont("helvetica","normal");
+doc.text("Parcelas anteriores — art. 528, §8° CPC",x2+3,y+12);doc.setFont("helvetica","bold");doc.setFontSize(12);
+doc.text(fmt(resultado.totalPenhora),x2+bW/2,y+19,{align:"center"});y+=30;
 
-  var fn="Memorial_Calculo_"+(resultado.processo||"calculo")+"_"+resultado.data.replace(/\//g,"-")+".pdf";
-  if(/iPad|iPhone|iPod/.test(navigator.userAgent)){var w=window.open();if(w)w.document.write("<html><body style='margin:0'><iframe src='"+doc.output("datauristring")+"' style='width:100%;height:100vh;border:none'></iframe></body></html>")}
-  else doc.save(fn);
-});
+// Observações
+if(y>170){doc.addPage();y=15;}
+doc.setTextColor(40,40,40);doc.setFont("helvetica","bold");doc.setFontSize(8);doc.text("Observações:",mg,y);y+=5;
+doc.setFont("helvetica","normal");doc.setFontSize(7.5);
+["1. Correção monetária pelo IPCA-E (Res. CJF nº 134/2010).","2. Juros de mora 1% a.m. sobre valor corrigido (art. 406 CC c/c art. 161 §1º CTN).",
+ `3. Data-base: ${resultado.data}. Sujeitos a complementação até efetivo pagamento.`,
+ "4. Créditos (pagamentos excedentes) corrigidos e abatidos das parcelas mais antigas.",
+].forEach(o=>{doc.text(o,mg,y);y+=4.5;});y+=8;
+
+// Assinatura
+if(y>185){doc.addPage();y=15;}
+doc.setFont("helvetica","normal");doc.setFontSize(9);doc.text(resultado.data,W/2,y,{align:"center"});y+=16;
+doc.setDrawColor(80,80,80);doc.setLineWidth(0.3);doc.line(W/2-45,y,W/2+45,y);y+=5;
+doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.text(resultado.defensor||"",W/2,y,{align:"center"});y+=5;
+doc.setFont("helvetica","normal");doc.setFontSize(8.5);doc.text("Defensor(a) Público(a)",W/2,y,{align:"center"});y+=4;
+if(resultado.lotacao) doc.text(resultado.lotacao,W/2,y,{align:"center"});
+
+const fn=`Memorial_Calculo_${resultado.processo||"calculo"}_${resultado.data.replace(/\//g,"-")}.pdf`;
+if(/iPad|iPhone|iPod/.test(navigator.userAgent)){const w=window.open();if(w)w.document.write(`<iframe src="${doc.output("datauristring")}" style="width:100%;height:100vh;border:none;"></iframe>`);}
+else doc.save(fn);
 ```
 
 };
 
-var inpStyle = {width:“100%”,padding:“8px”,borderRadius:6,border:“1px solid “+C.borda,fontSize:13,boxSizing:“border-box”};
+const inpStyle={width:“100%”,padding:“8px”,borderRadius:6,border:`1px solid ${C.borda}`,fontSize:13,boxSizing:“border-box”};
 
 return (
-<div style={{ fontFamily:“Segoe UI, Arial, sans-serif”, minHeight:“100vh”, background:”#f0f2f0” }}>
-<Header perfil={perfil} onPerfil={function(){setShowPerfil(true)}} onLogout={onLogout}/>
-{showPerfil && <ModalPerfil perfil={perfil} onSave={salvarPerfil} onClose={function(){setShowPerfil(false)}}/>}
-<div style={{ background:C.branco, borderBottom:“1px solid “+C.borda, display:“flex”, padding:“0 28px” }}>
-{[[“calc”,“Novo Calculo”],[“historico”,“Historico”]].map(function(item){
-var id=item[0], label=item[1];
-return <button key={id} onClick={function(){setTab(id)}} style={{ padding:“14px 20px”, border:“none”, background:“transparent”, cursor:“pointer”, fontWeight:600, fontSize:14, color:tab===id?C.verde:C.cinza, borderBottom:tab===id?“3px solid “+C.verde:“3px solid transparent”, touchAction:“manipulation” }}>{label}</button>
-})}
+<div style={{ fontFamily:”‘Segoe UI’,Arial,sans-serif”, minHeight:“100vh”, background:”#f0f2f0” }}>
+<Header perfil={perfil} onPerfil={()=>setShowPerfil(true)} onLogout={onLogout}/>
+{showPerfil&&<ModalPerfil perfil={perfil} onSave={salvarPerfil} onClose={()=>setShowPerfil(false)}/>}
+<div style={{ background:C.branco, borderBottom:`1px solid ${C.borda}`, display:“flex”, padding:“0 28px” }}>
+{[[“calc”,“🧮 Novo Cálculo”],[“historico”,“📋 Histórico”]].map(([id,label])=>(
+<button key={id} onClick={()=>setTab(id)} style={{ padding:“14px 20px”, border:“none”, background:“transparent”, cursor:“pointer”, fontWeight:600, fontSize:14, color:tab===id?C.verde:C.cinza, borderBottom:tab===id?`3px solid ${C.verde}`:“3px solid transparent”, touchAction:“manipulation” }}>{label}</button>
+))}
 </div>
 <div style={{ maxWidth:900, margin:“0 auto”, padding:“24px 16px” }}>
-{tab===“calc” && (
-<div>
-{!perfil.nome && (
+{tab===“calc”&&(<>
+{!perfil.nome&&(
 <div style={{ background:”#fff8e1”, border:“1px solid #f0c040”, borderRadius:8, padding:“12px 18px”, marginBottom:18, fontSize:14 }}>
-Configure seu perfil para aparecer nos PDFs.{” “}
-<span style={{ color:C.verde, cursor:“pointer”, textDecoration:“underline” }} onClick={function(){setShowPerfil(true)}}>Configurar agora</span>
+⚠️ <strong>Configure seu perfil</strong> para aparecer nos PDFs.{” “}
+<span style={{ color:C.verde, cursor:“pointer”, textDecoration:“underline” }} onClick={()=>setShowPerfil(true)}>Configurar agora</span>
 </div>
 )}
+{/* Opções */}
 <div style={{ display:“grid”, gridTemplateColumns:“1fr 1fr”, gap:16, marginBottom:20 }}>
-<Card style={{ margin:0, borderTop:“3px solid “+C.azul }}>
-<div style={{ display:“flex”, alignItems:“center”, gap:8, marginBottom:8 }}>
-<span style={{ fontSize:20 }}>AI</span>
-<div><div style={{ fontWeight:700, color:C.azul, fontSize:14 }}>Opcao A - Importar com IA</div><div style={{ fontSize:11, color:”#666” }}>Envie a sentenca e a IA preenche</div></div>
-</div>
+<Card style={{ margin:0, borderTop:`3px solid ${C.azul}` }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:8, marginBottom:8 }}><span style={{ fontSize:20 }}>🤖</span><div><div style={{ fontWeight:700, color:C.azul, fontSize:14 }}>Opção A — Importar com IA</div><div style={{ fontSize:11, color:”#666” }}>Envie a sentença e a IA preenche</div></div></div>
 <input ref={fileRef} type=“file” accept=”.pdf,image/*” onChange={handleUpload} style={{ display:“none” }}/>
-<Btn onClick={function(){fileRef.current.click()}} disabled={loadingIA} cor={C.azul} small>{loadingIA ? “Processando…” : “Selecionar PDF ou imagem”}</Btn>
-{msgIA && <div style={{ marginTop:8, fontSize:12, color:msgIA.indexOf(“OK”)===0?C.verde:C.vermelho }}>{msgIA}</div>}
-{!perfil.apiKey && <div style={{ marginTop:6, fontSize:11, color:”#999” }}>Opcional. Requer chave API no perfil.</div>}
+<Btn onClick={()=>fileRef.current.click()} disabled={loadingIA} cor={C.azul} small>{loadingIA?“⏳ Processando…”:“📄 Selecionar PDF ou imagem”}</Btn>
+{msgIA&&<div style={{ marginTop:8, fontSize:12, color:msgIA.startsWith(“✅”)?C.verde:C.vermelho }}>{msgIA}</div>}
+{!perfil.apiKey&&<div style={{ marginTop:6, fontSize:11, color:”#999” }}>⚠️ Opcional. Requer chave API no perfil.</div>}
 </Card>
-<Card style={{ margin:0, borderTop:“3px solid “+C.verde }}>
-<div style={{ display:“flex”, alignItems:“center”, gap:8, marginBottom:8 }}>
-<span style={{ fontSize:20 }}>Ed</span>
-<div><div style={{ fontWeight:700, color:C.verde, fontSize:14 }}>Opcao B - Manual</div><div style={{ fontSize:11, color:”#666” }}>Sempre disponivel</div></div>
-</div>
+<Card style={{ margin:0, borderTop:`3px solid ${C.verde}` }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:8, marginBottom:8 }}><span style={{ fontSize:20 }}>✏️</span><div><div style={{ fontWeight:700, color:C.verde, fontSize:14 }}>Opção B — Manual</div><div style={{ fontSize:11, color:”#666” }}>Sempre disponível</div></div></div>
 <div style={{ fontSize:12, color:”#555” }}>Preencha os dados abaixo.</div>
-<div style={{ marginTop:10 }}><span style={{ background:C.verdePale, color:C.verde, borderRadius:20, padding:“3px 10px”, fontSize:11, fontWeight:600 }}>Sem conta necessaria</span></div>
+<div style={{ marginTop:10 }}><span style={{ background:C.verdePale, color:C.verde, borderRadius:20, padding:“3px 10px”, fontSize:11, fontWeight:600 }}>✅ Sem conta necessária</span></div>
 </Card>
 </div>
+{/* Dados */}
 <Card>
-<h3 style={{ margin:“0 0 16px”, color:C.verde, fontSize:15 }}>Dados do Processo</h3>
+<h3 style={{ margin:“0 0 16px”, color:C.verde, fontSize:15 }}>📁 Dados do Processo</h3>
 <div style={{ display:“grid”, gridTemplateColumns:“1fr 1fr”, gap:“0 16px” }}>
 <div style={{ marginBottom:14 }}>
-<label style={{ display:“block”, fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>Numero do Processo</label>
-<input type=“text” inputMode=“numeric” value={processo} onChange={function(e){setProcesso(maskProcesso(e.target.value))}} placeholder=“0000000-00.0000.8.18.0000”
-style={{ width:“100%”, padding:“9px 12px”, borderRadius:6, border:“1px solid “+C.borda, fontSize:14, boxSizing:“border-box”, fontFamily:“monospace”, letterSpacing:“0.5px” }}/>
+<label style={{ display:“block”, fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>Número do Processo</label>
+<input type=“text” inputMode=“numeric” value={processo} onChange={e=>setProcesso(maskProcesso(e.target.value))} placeholder=“0000000-00.0000.8.18.0000”
+style={{ width:“100%”, padding:“9px 12px”, borderRadius:6, border:`1px solid ${C.borda}`, fontSize:14, boxSizing:“border-box”, fontFamily:“monospace”, letterSpacing:“0.5px” }}/>
 </div>
-<Input label="Vara/Comarca" value={comarca} onChange={setComarca} placeholder="1a Vara - Itaueira/PI"/>
+<Input label="Vara/Comarca" value={comarca} onChange={setComarca} placeholder="1ª Vara — Itaueira/PI"/>
 <Input label="Alimentado(a) / Exequente" value={alimentado} onChange={setAlimentado} placeholder="Nome completo"/>
 <Input label="Alimentante / Executado" value={alimentante} onChange={setAlimentante} placeholder="Nome completo"/>
 </div>
 <div style={{ marginBottom:14 }}>
 <label style={{ display:“block”, fontWeight:600, marginBottom:8, color:C.cinza, fontSize:13 }}>Alimentos fixados em</label>
 <div style={{ display:“flex”, gap:10, marginBottom:10 }}>
-{[[“sm”,”% do Salario Minimo”],[“fixo”,“Valor fixo (R$)”]].map(function(item){
-var v=item[0], l=item[1];
-return <button key={v} onClick={function(){setTipoAlimento(v)}} style={{ padding:“7px 16px”, borderRadius:6, border:“2px solid “+(tipoAlimento===v?C.verde:C.borda), background:tipoAlimento===v?C.verde:C.branco, color:tipoAlimento===v?”#fff”:C.cinza, fontWeight:600, fontSize:13, cursor:“pointer”, touchAction:“manipulation” }}>{l}</button>
-})}
+{[[“sm”,”% do Salário Mínimo”],[“fixo”,“Valor fixo (R$)”]].map(([v,l])=>(
+<button key={v} onClick={()=>setTipoAlimento(v)} style={{ padding:“7px 16px”, borderRadius:6, border:`2px solid ${tipoAlimento===v?C.verde:C.borda}`, background:tipoAlimento===v?C.verde:C.branco, color:tipoAlimento===v?”#fff”:C.cinza, fontWeight:600, fontSize:13, cursor:“pointer”, touchAction:“manipulation” }}>{l}</button>
+))}
 </div>
 {tipoAlimento===“sm”
-? <div style={{ display:“flex”, alignItems:“center”, gap:8 }}><input type=“number” value={percentualSM} onChange={function(e){setPercentualSM(e.target.value)}} placeholder=“ex: 20” style={{ width:100, padding:“9px 12px”, borderRadius:6, border:“1px solid “+C.borda, fontSize:14, boxSizing:“border-box” }}/><span style={{ fontSize:14, color:C.cinza }}>% do salario minimo federal</span></div>
-: <div style={{ display:“flex”, alignItems:“center”, gap:8 }}><span style={{ fontSize:14, color:C.cinza }}>R$</span><input type=“number” value={valorFixoAlimento} onChange={function(e){setValorFixoAlimento(e.target.value)}} placeholder=“0,00” style={{ width:150, padding:“9px 12px”, borderRadius:6, border:“1px solid “+C.borda, fontSize:14, boxSizing:“border-box” }}/></div>
+?<div style={{ display:“flex”, alignItems:“center”, gap:8 }}><input type=“number” value={percentualSM} onChange={e=>setPercentualSM(e.target.value)} placeholder=“ex: 20” style={{ width:100, padding:“9px 12px”, borderRadius:6, border:`1px solid ${C.borda}`, fontSize:14, boxSizing:“border-box” }}/><span style={{ fontSize:14, color:C.cinza }}>% do salário mínimo federal</span></div>
+:<div style={{ display:“flex”, alignItems:“center”, gap:8 }}><span style={{ fontSize:14, color:C.cinza }}>R$</span><input type=“number” value={valorFixoAlimento} onChange={e=>setValorFixoAlimento(e.target.value)} placeholder=“0,00” style={{ width:150, padding:“9px 12px”, borderRadius:6, border:`1px solid ${C.borda}`, fontSize:14, boxSizing:“border-box” }}/></div>
 }
 </div>
 <div style={{ maxWidth:200 }}><Input label="Dia de vencimento" value={diaVencimento} onChange={setDiaVencimento} placeholder="5" type="number"/></div>
 </Card>
+{/* Opções adicionais: 13º + justificativa */}
 <Card>
-<h3 style={{ margin:“0 0 16px”, color:C.verde, fontSize:15 }}>Opcoes Adicionais</h3>
-<div style={{ display:“flex”, alignItems:“center”, gap:10, marginBottom:16, padding:“12px 16px”, background:incluir13?”#fff8e1”:”#f9f9f9”, border:“1px solid “+(incluir13?”#f0c040”:C.borda), borderRadius:8 }}>
-<input type=“checkbox” checked={incluir13} onChange={function(e){setIncluir13(e.target.checked)}} style={{ width:20, height:20, cursor:“pointer” }}/>
+<h3 style={{ margin:“0 0 16px”, color:C.verde, fontSize:15 }}>⚙ Opções Adicionais</h3>
+<div style={{ display:“flex”, alignItems:“center”, gap:10, marginBottom:16, padding:“12px 16px”, background:incluir13?”#fff8e1”:”#f9f9f9”, border:`1px solid ${incluir13?"#f0c040":C.borda}`, borderRadius:8 }}>
+<input type=“checkbox” checked={incluir13} onChange={e=>setIncluir13(e.target.checked)} style={{ width:20, height:20, cursor:“pointer” }}/>
 <div>
-<div style={{ fontWeight:700, fontSize:13, color:C.cinza }}>Incluir 13o salario</div>
-<div style={{ fontSize:11, color:”#888” }}>Gera parcela de 13o ao final de cada ano (media dos meses). Valor editavel manualmente.</div>
+<div style={{ fontWeight:700, fontSize:13, color:C.cinza }}>Incluir 13º salário</div>
+<div style={{ fontSize:11, color:”#888” }}>Gera parcela de 13º ao final de cada ano (média dos meses). Valor editável manualmente nas parcelas.</div>
 </div>
 </div>
 <div>
-<label style={{ display:“block”, fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>Justificativa / Observacoes (aparece no PDF)</label>
-<textarea value={justificativa} onChange={function(e){setJustificativa(e.target.value)}} rows={4}
-placeholder=“Ex.: Calculo elaborado com base na sentenca proferida nos autos…”
-style={{ width:“100%”, padding:“10px 12px”, borderRadius:6, border:“1px solid “+C.borda, fontSize:13, boxSizing:“border-box”, resize:“vertical”, fontFamily:“inherit”, lineHeight:1.5 }}/>
+<label style={{ display:“block”, fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>Justificativa / Observações (aparece no PDF)</label>
+<textarea value={justificativa} onChange={e=>setJustificativa(e.target.value)} rows={4}
+placeholder=“Ex.: Cálculo elaborado com base na sentença proferida nos autos, considerando o período de inadimplência de janeiro/2023 a dezembro/2024…”
+style={{ width:“100%”, padding:“10px 12px”, borderRadius:6, border:`1px solid ${C.borda}`, fontSize:13, boxSizing:“border-box”, resize:“vertical”, fontFamily:“inherit”, lineHeight:1.5 }}/>
 </div>
 </Card>
+{/* Parcelas */}
 <Card>
 <div style={{ display:“flex”, justifyContent:“space-between”, alignItems:“center”, marginBottom:16 }}>
-<h3 style={{ margin:0, color:C.verde, fontSize:15 }}>Parcelas em Atraso</h3>
+<h3 style={{ margin:0, color:C.verde, fontSize:15 }}>💰 Parcelas em Atraso</h3>
 <div style={{ display:“flex”, gap:8 }}>
-<Btn small onClick={function(){setShowIntervalo(!showIntervalo)}} cor={C.azul}>Intervalo</Btn>
+<Btn small onClick={()=>setShowIntervalo(s=>!s)} cor={C.azul}>📅 Intervalo</Btn>
 <Btn small onClick={addParcela} cor={C.verdeClaro}>+ Avulsa</Btn>
-{parcelas.length>0 && <Btn small onClick={limparParcelas} cor={C.vermelho} outline>Limpar</Btn>}
+{parcelas.length>0&&<Btn small onClick={limparParcelas} cor={C.vermelho} outline>🗑 Limpar</Btn>}
 </div>
 </div>
-{showIntervalo && (
-<div style={{ background:”#f0f4f8”, border:“1px solid “+C.azul, borderRadius:8, padding:16, marginBottom:16 }}>
-<div style={{ fontWeight:700, color:C.azul, marginBottom:8 }}>Adicionar intervalo</div>
+{showIntervalo&&(
+<div style={{ background:”#e8f0f820”, border:`1px solid ${C.azul}`, borderRadius:8, padding:16, marginBottom:16 }}>
+<div style={{ fontWeight:700, color:C.azul, marginBottom:8 }}>📅 Adicionar intervalo</div>
 <div style={{ fontSize:12, color:”#555”, marginBottom:12, background:”#e8f0f8”, padding:“8px 12px”, borderRadius:6 }}>
-{“Valor: “}{tipoAlimento===“sm” ? (percentualSM||”?”)+”% do SM vigente” : “R$ “+(valorFixoAlimento||”?”)+” (fixo)”}
+Valor: <strong>{tipoAlimento===“sm”?`${percentualSM||"?"}% do SM vigente`:`R$ ${valorFixoAlimento||"?"} (fixo)`}</strong>
 </div>
 <div style={{ display:“grid”, gridTemplateColumns:“repeat(5,1fr)”, gap:8, alignItems:“end” }}>
-<div><label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:“block”, marginBottom:3 }}>Mes ini</label><select value={intervalo.mesIni} onChange={function(e){setIntervalo(Object.assign({},intervalo,{mesIni:Number(e.target.value)}))}} style={inpStyle}>{MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>})}</select></div>
-<div><label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:“block”, marginBottom:3 }}>Ano ini</label><input type="number" value={intervalo.anoIni} onChange={function(e){setIntervalo(Object.assign({},intervalo,{anoIni:Number(e.target.value)}))}} style={inpStyle}/></div>
-<div><label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:“block”, marginBottom:3 }}>Mes fim</label><select value={intervalo.mesFim} onChange={function(e){setIntervalo(Object.assign({},intervalo,{mesFim:Number(e.target.value)}))}} style={inpStyle}>{MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>})}</select></div>
-<div><label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:“block”, marginBottom:3 }}>Ano fim</label><input type="number" value={intervalo.anoFim} onChange={function(e){setIntervalo(Object.assign({},intervalo,{anoFim:Number(e.target.value)}))}} style={inpStyle}/></div>
-<div><label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:“block”, marginBottom:3 }}>Pago (R$)</label><input type="number" value={intervalo.pago} onChange={function(e){setIntervalo(Object.assign({},intervalo,{pago:e.target.value}))}} placeholder="0,00" style={inpStyle}/></div>
+<div><label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:“block”, marginBottom:3 }}>Mês ini</label><select value={intervalo.mesIni} onChange={e=>setIntervalo(i=>({…i,mesIni:Number(e.target.value)}))} style={inpStyle}>{MESES.map((m,idx)=><option key={idx} value={idx+1}>{m}</option>)}</select></div>
+<div><label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:“block”, marginBottom:3 }}>Ano ini</label><input type=“number” value={intervalo.anoIni} onChange={e=>setIntervalo(i=>({…i,anoIni:Number(e.target.value)}))} style={inpStyle}/></div>
+<div><label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:“block”, marginBottom:3 }}>Mês fim</label><select value={intervalo.mesFim} onChange={e=>setIntervalo(i=>({…i,mesFim:Number(e.target.value)}))} style={inpStyle}>{MESES.map((m,idx)=><option key={idx} value={idx+1}>{m}</option>)}</select></div>
+<div><label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:“block”, marginBottom:3 }}>Ano fim</label><input type=“number” value={intervalo.anoFim} onChange={e=>setIntervalo(i=>({…i,anoFim:Number(e.target.value)}))} style={inpStyle}/></div>
+<div><label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:“block”, marginBottom:3 }}>Pago (R$)</label><input type=“number” value={intervalo.pago} onChange={e=>setIntervalo(i=>({…i,pago:e.target.value}))} placeholder=“0,00” style={inpStyle}/></div>
 </div>
 <div style={{ marginTop:12, display:“flex”, gap:8, alignItems:“center” }}>
-<Btn small onClick={addIntervalo} cor={C.azul}>{“Adicionar “+contarParcelas()+” parcelas”}</Btn>
-<Btn small onClick={function(){setShowIntervalo(false)}} outline cor={C.cinza}>Fechar</Btn>
+<Btn small onClick={addIntervalo} cor={C.azul}>✅ Adicionar {contarParcelas()} parcelas</Btn>
+<Btn small onClick={()=>setShowIntervalo(false)} outline cor={C.cinza}>Fechar</Btn>
 </div>
 </div>
 )}
-{parcelas.map(function(p){
-return (
+{parcelas.map(p=>(
 <div key={p.id} style={{ display:“grid”, gridTemplateColumns:“1fr 1fr 1fr 1fr auto”, gap:10, alignItems:“end”, marginBottom:10, padding:12, background:p.is13?”#fff8e1”:C.cinzaClaro, borderRadius:8, border:p.is13?“1px solid #f0c040”:“none” }}>
 <div>
-<label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:“block”, marginBottom:3 }}>{p.is13?“13o Salario”:“Mes”}</label>
+<label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:“block”, marginBottom:3 }}>{p.is13?“13º Salário”:“Mês”}</label>
 {p.is13
-? <div style={{ padding:8, fontSize:13, color:C.azul, fontWeight:700 }}>{“13o/”+p.ano}</div>
-: <select value={p.mes} onChange={function(e){editParcela(p.id,“mes”,Number(e.target.value))}} style={inpStyle}>{MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>})}</select>
+?<div style={{ padding:8, fontSize:13, color:C.azul, fontWeight:700 }}>13º/{p.ano}</div>
+:<select value={p.mes} onChange={e=>editParcela(p.id,“mes”,Number(e.target.value))} style={inpStyle}>{MESES.map((m,idx)=><option key={idx} value={idx+1}>{m}</option>)}</select>
 }
 </div>
-<div><label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:“block”, marginBottom:3 }}>Ano</label><input type=“number” value={p.ano} onChange={function(e){editParcela(p.id,“ano”,Number(e.target.value))}} style={inpStyle}/></div>
-<div><label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:“block”, marginBottom:3 }}>Valor (R$)</label><input type=“number” value={p.valor} onChange={function(e){editParcela(p.id,“valor”,e.target.value)}} placeholder=“0,00” style={inpStyle}/></div>
-<div><label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:“block”, marginBottom:3 }}>Pago (R$)</label><input type=“number” value={p.pago} onChange={function(e){editParcela(p.id,“pago”,e.target.value)}} placeholder=“0,00” style={inpStyle}/></div>
-<button onClick={function(){removeParcela(p.id)}} style={{ background:“transparent”, border:“none”, cursor:“pointer”, color:C.vermelho, fontSize:18, paddingBottom:4, touchAction:“manipulation” }}>X</button>
+<div><label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:“block”, marginBottom:3 }}>Ano</label><input type=“number” value={p.ano} onChange={e=>editParcela(p.id,“ano”,Number(e.target.value))} style={inpStyle}/></div>
+<div><label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:“block”, marginBottom:3 }}>Valor (R$)</label><input type=“number” value={p.valor} onChange={e=>editParcela(p.id,“valor”,e.target.value)} placeholder=“0,00” style={inpStyle}/></div>
+<div><label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:“block”, marginBottom:3 }}>Pago (R$)</label><input type=“number” value={p.pago} onChange={e=>editParcela(p.id,“pago”,e.target.value)} placeholder=“0,00” style={inpStyle}/></div>
+<button onClick={()=>removeParcela(p.id)} style={{ background:“transparent”, border:“none”, cursor:“pointer”, color:C.vermelho, fontSize:18, paddingBottom:4, touchAction:“manipulation” }}>✕</button>
 </div>
-);
-})}
-<div style={{ marginTop:16 }}><Btn onClick={calcular} disabled={loading||parcelas.every(function(p){return !p.valor})}>{loading ? “Calculando…” : “Calcular Debito”}</Btn></div>
+))}
+<div style={{ marginTop:16 }}><Btn onClick={calcular} disabled={loading||parcelas.every(p=>!p.valor)}>{loading?“⏳ Calculando…”:“🧮 Calcular Débito”}</Btn></div>
 </Card>
-{resultado && (
-<Card style={{ borderLeft:“4px solid “+C.verde }}>
+{/* Resultado */}
+{resultado&&(
+<Card style={{ borderLeft:`4px solid ${C.verde}` }}>
 <div style={{ display:“flex”, justifyContent:“space-between”, alignItems:“center”, marginBottom:20 }}>
-<h3 style={{ margin:0, color:C.verde }}>Resultado</h3>
-<Btn onClick={gerarPDF} cor={C.azul}>Gerar PDF</Btn>
+<h3 style={{ margin:0, color:C.verde }}>📊 Resultado</h3>
+<Btn onClick={gerarPDF} cor={C.azul}>📄 Gerar PDF</Btn>
 </div>
-{resultado.processo && <p style={{ margin:“0 0 4px”, fontSize:13, color:”#666” }}>{“Processo: “}<strong>{resultado.processo}</strong></p>}
-{resultado.alimentado && <p style={{ margin:“0 0 16px”, fontSize:13, color:”#666” }}>{“Alimentado(a): “}<strong>{resultado.alimentado}</strong></p>}
-{resultado.prisao.length>0 && (
-<div style={{ background:C.verdePale, border:“1px solid “+C.verde, borderRadius:8, padding:16, marginBottom:12 }}>
+{resultado.processo&&<p style={{ margin:“0 0 4px”, fontSize:13, color:”#666” }}>Processo: <strong>{resultado.processo}</strong></p>}
+{resultado.alimentado&&<p style={{ margin:“0 0 16px”, fontSize:13, color:”#666” }}>Alimentado(a): <strong>{resultado.alimentado}</strong></p>}
+{resultado.prisao.length>0&&(
+<div style={{ background:C.verdePale, border:`1px solid ${C.verde}`, borderRadius:8, padding:16, marginBottom:12 }}>
 <div style={{ display:“flex”, justifyContent:“space-between”, alignItems:“center”, marginBottom:8 }}>
-<div style={{ fontWeight:700, color:C.verde }}>BLOCO 1 - Prisao Civil</div>
+<div style={{ fontWeight:700, color:C.verde }}>BLOCO 1 — Prisão Civil</div>
 <span style={{ background:C.verde, color:”#fff”, borderRadius:20, padding:“3px 12px”, fontSize:12, fontWeight:700 }}>{fmt(resultado.totalPrisao)}</span>
 </div>
-{resultado.prisao.map(function(p,i){
-return (
+{resultado.prisao.map((p,i)=>(
 <div key={i} style={{ display:“flex”, justifyContent:“space-between”, fontSize:13, marginTop:4 }}>
-<span>{p.label}{p.is13?” [13o]”:””}{p.pago>0?(” (pago: “+fmt(p.pago)+”)”):””}{p.creditoAplicado>0?(” (cred: “+fmt(p.creditoAplicado)+”)”):””}{p.quitado?” QUITADO”:””}</span>
-<span style={{ fontWeight:600, color:p.quitado?C.verde:“inherit” }}>{p.quitado?”-”:fmt(p.total)}</span>
+<span>{p.label}{p.is13&&” 🎄”}{p.pago>0&&<span style={{ color:C.verde, fontSize:11 }}> (pago: {fmt(p.pago)})</span>}{p.creditoAplicado>0&&<span style={{ color:C.azul, fontSize:11 }}> (créd: {fmt(p.creditoAplicado)})</span>}{p.quitado&&<span style={{ color:C.verde, fontSize:11, fontWeight:700 }}> ✅ QUITADO</span>}</span>
+<span style={{ fontWeight:600, color:p.quitado?C.verde:“inherit” }}>{p.quitado?”—”:fmt(p.total)}</span>
 </div>
-);
-})}
+))}
 </div>
 )}
-{resultado.penhora.length>0 && (
-<div style={{ background:”#e8f0f8”, border:“1px solid “+C.azul, borderRadius:8, padding:16, marginBottom:12 }}>
+{resultado.penhora.length>0&&(
+<div style={{ background:”#e8f0f8”, border:`1px solid ${C.azul}`, borderRadius:8, padding:16, marginBottom:12 }}>
 <div style={{ display:“flex”, justifyContent:“space-between”, alignItems:“center”, marginBottom:8 }}>
-<div style={{ fontWeight:700, color:C.azul }}>BLOCO 2 - Penhora</div>
+<div style={{ fontWeight:700, color:C.azul }}>BLOCO 2 — Penhora</div>
 <span style={{ background:C.azul, color:”#fff”, borderRadius:20, padding:“3px 12px”, fontSize:12, fontWeight:700 }}>{fmt(resultado.totalPenhora)}</span>
 </div>
-{resultado.penhora.map(function(p,i){
-return (
+{resultado.penhora.map((p,i)=>(
 <div key={i} style={{ display:“flex”, justifyContent:“space-between”, fontSize:13, marginTop:4 }}>
-<span>{p.label}{p.is13?” [13o]”:””}{p.pago>0?(” (pago: “+fmt(p.pago)+”)”):””}{p.creditoAplicado>0?(” (cred: “+fmt(p.creditoAplicado)+”)”):””}{p.quitado?” QUITADO”:””}</span>
-<span style={{ fontWeight:600, color:p.quitado?C.verde:“inherit” }}>{p.quitado?”-”:fmt(p.total)}</span>
+<span>{p.label}{p.is13&&” 🎄”}{p.pago>0&&<span style={{ color:C.verde, fontSize:11 }}> (pago: {fmt(p.pago)})</span>}{p.creditoAplicado>0&&<span style={{ color:C.azul, fontSize:11 }}> (créd: {fmt(p.creditoAplicado)})</span>}{p.quitado&&<span style={{ color:C.verde, fontSize:11, fontWeight:700 }}> ✅ QUITADO</span>}</span>
+<span style={{ fontWeight:600, color:p.quitado?C.verde:“inherit” }}>{p.quitado?”—”:fmt(p.total)}</span>
 </div>
-);
-})}
+))}
 </div>
 )}
 <div style={{ display:“grid”, gridTemplateColumns:“1fr 1fr”, gap:8, marginTop:8 }}>
 <div style={{ background:C.verde, borderRadius:8, padding:“12px 16px”, textAlign:“center” }}>
-<div style={{ color:”#fff”, fontSize:11, opacity:.8 }}>BLOCO 1 - Prisao Civil</div>
+<div style={{ color:”#fff”, fontSize:11, opacity:.8 }}>BLOCO 1 — Prisão Civil</div>
 <div style={{ color:”#fff”, fontWeight:800, fontSize:18 }}>{fmt(resultado.totalPrisao)}</div>
 </div>
 <div style={{ background:C.azul, borderRadius:8, padding:“12px 16px”, textAlign:“center” }}>
-<div style={{ color:”#fff”, fontSize:11, opacity:.8 }}>BLOCO 2 - Penhora</div>
+<div style={{ color:”#fff”, fontSize:11, opacity:.8 }}>BLOCO 2 — Penhora</div>
 <div style={{ color:”#fff”, fontWeight:800, fontSize:18 }}>{fmt(resultado.totalPenhora)}</div>
 </div>
 </div>
 </Card>
 )}
-</div>
-)}
-{tab===“historico” && (
+</>)}
+{tab===“historico”&&(
 <Card>
-<h3 style={{ margin:“0 0 16px”, color:C.verde }}>Historico</h3>
-{historico.length===0 ? <p style={{ color:”#888”, textAlign:“center”, padding:32 }}>Nenhum calculo ainda.</p>
-: historico.map(function(h){
-return (
-<div key={h.id} style={{ borderBottom:“1px solid “+C.borda, padding:“14px 0”, display:“flex”, justifyContent:“space-between”, alignItems:“center” }}>
-<div><div style={{ fontWeight:600, fontSize:14 }}>{h.alimentado||”-”}</div><div style={{ fontSize:12, color:”#888” }}>{(h.processo||“Sem no”)+” - “+h.data}</div></div>
+<h3 style={{ margin:“0 0 16px”, color:C.verde }}>📋 Histórico</h3>
+{historico.length===0?<p style={{ color:”#888”, textAlign:“center”, padding:32 }}>Nenhum cálculo ainda.</p>
+:historico.map(h=>(
+<div key={h.id} style={{ borderBottom:`1px solid ${C.borda}`, padding:“14px 0”, display:“flex”, justifyContent:“space-between”, alignItems:“center” }}>
+<div><div style={{ fontWeight:600, fontSize:14 }}>{h.alimentado||”—”}</div><div style={{ fontSize:12, color:”#888” }}>{h.processo||“Sem nº”} • {h.data}</div></div>
 <div style={{ fontWeight:700, color:C.verde, fontSize:15 }}>{fmt(h.total||0)}</div>
 </div>
-);
-})
+))
 }
-{historico.length>0 && <div style={{ marginTop:16 }}><Btn small outline cor={C.vermelho} onClick={function(){if(confirm(“Limpar historico?”)){setHistorico([]);localStorage.removeItem(“dpe_historico”)}}}>Limpar</Btn></div>}
+{historico.length>0&&<div style={{ marginTop:16 }}><Btn small outline cor={C.vermelho} onClick={()=>{if(confirm(“Limpar histórico?”)){setHistorico([]);localStorage.removeItem(“dpe_historico”);}}}>🗑 Limpar</Btn></div>}
 </Card>
 )}
 </div>
