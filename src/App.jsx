@@ -676,19 +676,7 @@ function AppInterno({ usuario, onLogout }) {
             <h3 style={{ margin: "0 0 16px", color: C.verde, fontSize: 15 }}>📁 Dados do Processo</h3>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
               <Input label="Número do Processo" value={processo} onChange={setProcesso} placeholder="0000000-00.0000.8.18.0000" />
-// Máscara processo PJe: 0000000-00.0000.8.18.0000
-function maskProcesso(raw) {
-  const d = raw.replace(/\D/g,"").slice(0,17);
-  let r = "";
-  for (let i = 0; i < d.length; i++) {
-    if (i===7) r += "-";
-    if (i===9) r += ".";
-    if (i===13) r += ".8.18.";
-    r += d[i];
-  }
-  return r;
-}
-              <Input label="Vara/Comarca" value={comarca} onChange={setComarca} placeholder="insira o nome da Comarca" />
+              <Input label="Vara/Comarca" value={comarca} onChange={setComarca} placeholder="1ª Vara — Itaueira/PI" />
               <Input label="Nome do Alimentado(a) / Exequente" value={alimentado} onChange={setAlimentado} placeholder="Nome completo" />
               <Input label="Nome do Alimentante / Executado" value={alimentante} onChange={setAlimentante} placeholder="Nome completo" />
             </div>
