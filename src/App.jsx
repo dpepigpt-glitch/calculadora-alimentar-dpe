@@ -1,5 +1,5 @@
 // v3.2 — Base v3.1 + 13º salário opcional + justificativa no PDF + r2 reforçado
-import { useState, useRef } from “react”;
+import { useState, useRef } from "react";
 
 const C = {
 verde: “#1a6b3a”, verdeClaro: “#2d8a50”, verdePale: “#e8f5ee”,
