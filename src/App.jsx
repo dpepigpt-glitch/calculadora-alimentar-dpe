@@ -71,6 +71,7 @@ const DEFENSORES = {
   "Dra. Andrea Melo de Carvalho": "1ª Defensoria de Família",
   "Dra. Dayana Sampaio Mendes Magalhães": "2ª Defensoria Pública Regional de Altos",
   "Dra. Priscila Gimenes do Nascimento Godói": "2ª Defensoria Regional de União",
+  "Dra. Julyanne Cristine Douglas Leone": "Assessora - 2ª Defensoria Itinerante",
 };
 const SENHA_CORRETA = "JB2027";
 
@@ -222,7 +223,13 @@ function novaParcela() {
 export default function App() {
   const [logado, setLogado] = useState(null);
   const fazerLogin = (u) => setLogado(u);
-  const fazerLogout = () => { setLogado(null); window.location.reload(); };
+  const fazerLogout = () => {
+    localStorage.removeItem("dpe_perfil");
+    localStorage.removeItem("dpe_historico");
+    setLogado(null);
+    // Força reload completo para limpar todo estado React
+    setTimeout(() => window.location.reload(), 50);
+  };
   const entrarVisitante = () => setLogado({ nome: "", lotacao: "", autenticado: false });
   if (!logado) return <TelaLogin onLogin={fazerLogin} onVisitante={entrarVisitante} />;
   return <AppInterno usuario={logado} onLogout={fazerLogout} />;
@@ -341,7 +348,8 @@ function AppInterno({ usuario, onLogout }) {
           mes: p.mes, ano: p.ano, label: fmtMes(p.mes, p.ano),
           smVig: getSM(p.mes, p.ano),
           nominal: r2(Number(p.valor)),
-          pago: r2(Number(p.pago) || 0),
+          // Pago: usa parseFloat direto para preservar o valor EXATO digitado
+          pago: parseFloat(Number(p.pago || 0).toFixed(2)),
         }));
 
       if (!raw.length) { setLoading(false); return; }
@@ -440,15 +448,17 @@ function AppInterno({ usuario, onLogout }) {
     const doc = new jsPDFLib({ orientation: "landscape", unit: "mm", format: "a4" });
     const W = 297, mg = 12; let y = 0;
 
-    // Cabeçalho com logo proporcional
+    // Cabeçalho com dois logos simétricos
     doc.setFillColor(26, 107, 58); doc.rect(0, 0, W, 28, "F");
     if (logoData) {
       try {
-        // Logo proporcional: altura 20mm, largura calculada
         const img = new Image(); img.src = logoData;
-        const ratio = img.naturalWidth / img.naturalHeight;
-        const lh = 20, lw = lh * (ratio || 1.5);
-        doc.addImage(logoData, "PNG", 6, 4, lw, lh);
+        const ratio = img.naturalWidth / img.naturalHeight || 1.5;
+        const lh = 22, lw = lh * ratio;
+        // Logo esquerdo
+        doc.addImage(logoData, "PNG", 6, 3, lw, lh);
+        // Logo direito (espelhado na posição)
+        doc.addImage(logoData, "PNG", W - 6 - lw, 3, lw, lh);
       } catch {}
     }
     doc.setTextColor(255, 255, 255);
