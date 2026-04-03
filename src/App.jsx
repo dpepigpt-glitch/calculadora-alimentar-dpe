@@ -1,5 +1,4 @@
-// v3.0 — Correções: logo no PDF, créditos dentro do bloco, sem total geral somando blocos,
-// sem duplicação de meses, SM 2026 = R$1.621
+// v3.1 — Crédito cascata sobre valor corrigido, logo proporcional, login unificado, modo visitante
 import { useState, useRef } from "react";
 
 const C = {
@@ -8,11 +7,12 @@ const C = {
   borda: "#d0d0d0", vermelho: "#c0392b", azul: "#1a5276",
 };
 
-const fmt = (v) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const fmt = (v) => "R$ " + Number(v).toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 const fmtMes = (mes, ano) => {
   const n = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
   return `${n[mes-1]}/${ano}`;
 };
+const r2 = (v) => Math.round(v * 100) / 100;
 
 const SALARIO_MINIMO = {
   "2020-01":1045,"2020-02":1045,"2020-03":1045,"2020-04":1045,"2020-05":1045,"2020-06":1045,
@@ -42,22 +42,26 @@ const IPCA_E = {
   "2025-01":0.41,"2025-02":1.23,"2025-03":0.44,
 };
 
-function corrigir(saldo, mes, ano) {
-  const hoje = new Date();
-  const aAtual = hoje.getFullYear(), mAtual = hoje.getMonth() + 1;
-  let fator = 1, m = mes, a = ano;
-  while (a < aAtual || (a === aAtual && m < mAtual)) {
+// Correção do vencimento até uma data-alvo (mês/ano alvo)
+function corrigirAte(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo) {
+  let fator = 1, m = mesVenc, a = anoVenc;
+  while (a < anoAlvo || (a === anoAlvo && m < mesAlvo)) {
     const k = `${a}-${String(m).padStart(2,"0")}`;
     if (IPCA_E[k] !== undefined) fator *= (1 + IPCA_E[k] / 100);
     m++; if (m > 12) { m = 1; a++; }
   }
-  const venc = new Date(ano, mes - 1, 1);
-  const mesesAtraso = Math.max(0,
-    (hoje.getFullYear() - venc.getFullYear()) * 12 + (hoje.getMonth() - venc.getMonth())
-  );
-  const corrigido = saldo * fator;
-  const juros = corrigido * mesesAtraso * 0.01;
-  return { fator, corrigido, juros, total: corrigido + juros, mesesAtraso };
+  const venc = new Date(anoVenc, mesVenc - 1, 1);
+  const alvo = new Date(anoAlvo, mesAlvo - 1, 1);
+  const meses = Math.max(0, (alvo.getFullYear() - venc.getFullYear()) * 12 + (alvo.getMonth() - venc.getMonth()));
+  const corrigido = r2(saldo * fator);
+  const juros = r2(corrigido * meses * 0.01);
+  return { fator: r2(fator * 1000000) / 1000000, corrigido, juros, total: r2(corrigido + juros), mesesAtraso: meses };
+}
+
+// Correção até o mês atual (data-base)
+function corrigir(saldo, mes, ano) {
+  const h = new Date();
+  return corrigirAte(saldo, mes, ano, h.getMonth() + 1, h.getFullYear());
 }
 
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -67,15 +71,9 @@ const DEFENSORES = {
   "Dra. Andrea Melo de Carvalho": "1ª Defensoria de Família",
   "Dra. Dayana Sampaio Mendes Magalhães": "2ª Defensoria Pública Regional de Altos",
   "Dra. Priscila Gimenes do Nascimento Godói": "2ª Defensoria Regional de União",
-"DoutorIS Brucha Lalasca": "1º D-INF",
 };
 const SENHA_CORRETA = "JB2027";
 
-function usuarioEstaLogado(nome, senha) {
-  return DEFENSORES[nome] && senha === SENHA_CORRETA;
-}
-
-// ── Logo cache (carrega 1x, usa no PDF) ────────────────────────
 let _logoB64 = null;
 function carregarLogo() {
   if (_logoB64) return Promise.resolve(_logoB64);
@@ -95,20 +93,19 @@ function carregarLogo() {
     img.src = "/logo-apidep.png";
   });
 }
-// dispara carregamento assim que o módulo é importado
 carregarLogo();
 
-// ── Tela de Login ──────────────────────────────────────────────
-const TelaLogin = ({ onLogin }) => {
+// ── Tela de Login (com opção de entrar sem login) ──────────────
+const TelaLogin = ({ onLogin, onVisitante }) => {
   const [nome, setNome] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
   const tentar = () => {
-    if (!usuarioEstaLogado(nome, senha)) {
-      setErro("Esse aplicativo está disponibilizado em fase experimental apenas para Defensores Legais, se você não tem senha, você não deve ser legal.");
+    if (!DEFENSORES[nome] || senha !== SENHA_CORRETA) {
+      setErro("Credenciais inválidas. Verifique nome e senha.");
       return;
     }
-    onLogin({ nome, lotacao: DEFENSORES[nome] });
+    onLogin({ nome, lotacao: DEFENSORES[nome], autenticado: true });
   };
   return (
     <div style={{ minHeight: "100vh", background: "#f0f2f0", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -132,8 +129,9 @@ const TelaLogin = ({ onLogin }) => {
             style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid #d0d0d0", fontSize: 14, boxSizing: "border-box" }} />
         </div>
         {erro && <div style={{ background: "#fdecea", border: "1px solid #e57373", borderRadius: 6, padding: "10px 12px", fontSize: 12, color: C.vermelho, marginBottom: 16, lineHeight: 1.5 }}>🚫 {erro}</div>}
-        <button onClick={tentar} style={{ width: "100%", background: C.verde, color: "#fff", border: "none", borderRadius: 6, padding: "12px", fontSize: 15, fontWeight: 700, cursor: "pointer", touchAction: "manipulation" }}>Entrar</button>
-        <div style={{ textAlign: "center", fontSize: 11, color: "#aaa", marginTop: 16 }}>Acesso exclusivo para membros da APIDEP</div>
+        <button onClick={tentar} style={{ width: "100%", background: C.verde, color: "#fff", border: "none", borderRadius: 6, padding: "12px", fontSize: 15, fontWeight: 700, cursor: "pointer", touchAction: "manipulation", marginBottom: 10 }}>Entrar</button>
+        <button onClick={onVisitante} style={{ width: "100%", background: "transparent", color: C.cinza, border: `1px solid ${C.borda}`, borderRadius: 6, padding: "10px", fontSize: 13, cursor: "pointer", touchAction: "manipulation" }}>Entrar sem login (visitante)</button>
+        <div style={{ textAlign: "center", fontSize: 11, color: "#aaa", marginTop: 16 }}>Ferramenta experimental — APIDEP</div>
       </div>
     </div>
   );
@@ -189,7 +187,7 @@ const ModalPerfil = ({ perfil, onSave, onClose }) => {
               style={{ width: "100%", padding: "9px 40px 9px 12px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 13, boxSizing: "border-box" }} />
             <button onClick={() => setShowKey(s => !s)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16 }}>{showKey ? "🙈" : "👁"}</button>
           </div>
-          <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Necessária apenas para leitura automática de sentença. <a href="https://console.anthropic.com/keys" target="_blank" rel="noreferrer" style={{ color: C.verde }}>console.anthropic.com/keys</a></div>
+          <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Para leitura automática de sentença. <a href="https://console.anthropic.com/keys" target="_blank" rel="noreferrer" style={{ color: C.verde }}>console.anthropic.com/keys</a></div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <Btn onClick={() => { onSave({ nome, lotacao, apiKey }); onClose(); }}>Salvar</Btn>
@@ -210,7 +208,7 @@ const Header = ({ perfil, onPerfil, onLogout }) => (
       </div>
     </div>
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-      <button onClick={onPerfil} style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.4)", borderRadius: 6, color: "#fff", padding: "7px 14px", cursor: "pointer", fontSize: 13, touchAction: "manipulation" }}>👤 {perfil.nome}</button>
+      <button onClick={onPerfil} style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.4)", borderRadius: 6, color: "#fff", padding: "7px 14px", cursor: "pointer", fontSize: 13, touchAction: "manipulation" }}>👤 {perfil.nome || "Visitante"}</button>
       <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 6, color: "#fff", padding: "7px 12px", cursor: "pointer", fontSize: 12, touchAction: "manipulation" }}>Sair</button>
     </div>
   </div>
@@ -222,15 +220,20 @@ function novaParcela() {
 }
 
 export default function App() {
-  const [logado, setLogado] = useState(() => { try { return JSON.parse(sessionStorage.getItem("dpe_logado") || "null"); } catch { return null; } });
-  const fazerLogin = (u) => { sessionStorage.setItem("dpe_logado", JSON.stringify(u)); setLogado(u); };
-  const fazerLogout = () => { sessionStorage.removeItem("dpe_logado"); setLogado(null); };
-  if (!logado) return <TelaLogin onLogin={fazerLogin} />;
+  const [logado, setLogado] = useState(null);
+  const fazerLogin = (u) => setLogado(u);
+  const fazerLogout = () => setLogado(null);
+  const entrarVisitante = () => setLogado({ nome: "", lotacao: "", autenticado: false });
+  if (!logado) return <TelaLogin onLogin={fazerLogin} onVisitante={entrarVisitante} />;
   return <AppInterno usuario={logado} onLogout={fazerLogout} />;
 }
 
 function AppInterno({ usuario, onLogout }) {
-  const [perfil, setPerfil] = useState(() => { try { return JSON.parse(localStorage.getItem("dpe_perfil") || "{}"); } catch { return {}; } });
+  // Perfil inicia com dados do login (se autenticado)
+  const [perfil, setPerfil] = useState(() => {
+    if (usuario.autenticado) return { nome: usuario.nome, lotacao: usuario.lotacao, apiKey: "" };
+    try { const p = JSON.parse(localStorage.getItem("dpe_perfil") || "{}"); return p; } catch { return {}; }
+  });
   const [showPerfil, setShowPerfil] = useState(false);
   const [tab, setTab] = useState("calc");
   const [historico, setHistorico] = useState(() => { try { return JSON.parse(localStorage.getItem("dpe_historico") || "[]"); } catch { return []; } });
@@ -263,24 +266,21 @@ function AppInterno({ usuario, onLogout }) {
     while (a < intervalo.anoFim || (a === intervalo.anoFim && m <= intervalo.mesFim)) { n++; m++; if (m > 12) { m = 1; a++; } }
     return n;
   };
-
   const limparParcelas = () => { if (window.confirm("Apagar todas as parcelas?")) setParcelas([]); };
 
-  // ── CORREÇÃO: addIntervalo com deduplicação ──────────────────
   const addIntervalo = () => {
     const novas = [];
     let m = intervalo.mesIni, a = intervalo.anoIni;
     while (a < intervalo.anoFim || (a === intervalo.anoFim && m <= intervalo.mesFim)) {
       let valor;
       if (tipoAlimento === "sm") {
-        valor = (getSM(m, a) * Number(percentualSM) / 100).toFixed(2);
+        valor = r2(getSM(m, a) * Number(percentualSM) / 100).toFixed(2);
       } else {
-        valor = valorFixoAlimento;
+        valor = Number(valorFixoAlimento).toFixed(2);
       }
-      novas.push({ id: Date.now() + novas.length, mes: m, ano: a, valor, pago: intervalo.pago });
+      novas.push({ id: Date.now() + novas.length, mes: m, ano: a, valor, pago: intervalo.pago ? Number(intervalo.pago).toFixed(2) : "" });
       m++; if (m > 12) { m = 1; a++; }
     }
-    // Deduplicar: se já existe parcela com mesmo mês/ano, não adiciona novamente
     setParcelas(prev => {
       const existentes = new Set(prev.map(p => `${p.ano}-${p.mes}`));
       const unicas = novas.filter(n => !existentes.has(`${n.ano}-${n.mes}`));
@@ -317,121 +317,139 @@ function AppInterno({ usuario, onLogout }) {
       if (parsed.processo) setProcesso(parsed.processo);
       if (parsed.alimentado) setAlimentado(parsed.alimentado);
       if (parsed.alimentante) setAlimentante(parsed.alimentante);
-      if (parsed.parcelas?.length) setParcelas(parsed.parcelas.map((p, i) => ({ id: Date.now() + i, mes: p.mes, ano: p.ano, valor: String(p.valor), pago: "" })));
+      if (parsed.parcelas?.length) setParcelas(parsed.parcelas.map((p, i) => ({ id: Date.now() + i, mes: p.mes, ano: p.ano, valor: String(r2(p.valor)), pago: "" })));
       setMsgIA(`✅ ${parsed.parcelas?.length || 0} parcela(s) extraída(s). Revise antes de calcular.`);
     } catch { setMsgIA("❌ Não foi possível ler o documento."); }
     setLoadingIA(false);
     if (fileRef.current) fileRef.current.value = "";
   };
 
-  // ── CORREÇÃO: Cálculo com crédito cascata dentro de cada bloco ──
+  // ── CÁLCULO com crédito cascata sobre valor CORRIGIDO ──────
   const calcular = () => {
+    // Visitante: brincadeira
+    if (!usuario.autenticado && !perfil.nome) {
+      alert("Esse aplicativo está disponibilizado em fase experimental apenas para Defensores Legais. Se você não tem senha, você não deve ser legal. 😄\n\nFaça login no perfil (👤) para continuar.");
+      return;
+    }
     setLoading(true); setResultado(null);
     setTimeout(() => {
-      // 1) Monta detalhes com saldo bruto (nominal - pago) por parcela
-      const detalhes = parcelas
+      // 1) Monta parcelas brutas ordenadas cronologicamente
+      const raw = parcelas
         .filter(p => p.valor && Number(p.valor) > 0)
         .sort((a, b) => a.ano !== b.ano ? a.ano - b.ano : a.mes - b.mes)
-        .map(p => {
-          const smVig = getSM(p.mes, p.ano);
-          const nominal = Number(p.valor) || 0;
-          const pago = Number(p.pago) || 0;
-          const saldoBruto = nominal - pago;
-          return { mes: p.mes, ano: p.ano, label: fmtMes(p.mes, p.ano), nominal, pago, saldoBruto, smVig };
+        .map(p => ({
+          mes: p.mes, ano: p.ano, label: fmtMes(p.mes, p.ano),
+          smVig: getSM(p.mes, p.ano),
+          nominal: r2(Number(p.valor)),
+          pago: r2(Number(p.pago) || 0),
+        }));
+
+      if (!raw.length) { setLoading(false); return; }
+
+      // 2) Identifica parcelas com pagamento excedente e coleta créditos
+      //    Crédito = pago - nominal (quando pago > nominal)
+      //    O crédito é na data do vencimento dessa parcela (mês do pagamento excedente)
+      const creditos = []; // {valor, mesPgto, anoPgto}
+      const parcelasComSaldo = raw.map(p => {
+        const saldoBruto = r2(p.nominal - p.pago);
+        if (saldoBruto < 0) {
+          // Pagou a mais: parcela quitada + gera crédito
+          creditos.push({ valor: r2(Math.abs(saldoBruto)), mesPgto: p.mes, anoPgto: p.ano });
+          return { ...p, saldoBruto: 0, quitadoPorPagamento: true };
+        }
+        return { ...p, saldoBruto };
+      });
+
+      // 3) Separa em blocos
+      const prisaoRaw = parcelasComSaldo.slice(-3);
+      const penhoraRaw = parcelasComSaldo.slice(0, -3);
+
+      // 4) Aplica créditos sobre VALOR CORRIGIDO
+      //    Para cada crédito: corrige o crédito da data do pagamento até a data-base
+      //    Para cada parcela devida: corrige o saldo do vencimento até a data-base
+      //    Abate o crédito corrigido das parcelas mais antigas (corrigidas)
+      function aplicarCreditosCascata(blocoArr, creds) {
+        const hoje = new Date();
+        const mHoje = hoje.getMonth() + 1, aHoje = hoje.getFullYear();
+        let credsRestantes = creds.map(c => {
+          // Corrige o crédito da data do pagamento excedente até a data-base
+          const cc = corrigirAte(c.valor, c.mesPgto, c.anoPgto, mHoje, aHoje);
+          return { ...c, valorCorrigido: cc.total };
+        });
+        let totalCredDisp = credsRestantes.reduce((s, c) => s + c.valorCorrigido, 0);
+
+        // Calcula cada parcela e aplica crédito
+        const resultado = blocoArr.map(p => {
+          if (p.quitadoPorPagamento) {
+            return { ...p, saldoFinal: 0, creditoAplicado: 0, quitado: true, ...corrigir(0, p.mes, p.ano) };
+          }
+          const calc = corrigir(p.saldoBruto, p.mes, p.ano);
+          let totalDevido = calc.total;
+          let creditoAplicado = 0;
+
+          if (totalCredDisp > 0 && totalDevido > 0) {
+            const abate = r2(Math.min(totalCredDisp, totalDevido));
+            creditoAplicado = abate;
+            totalDevido = r2(totalDevido - abate);
+            totalCredDisp = r2(totalCredDisp - abate);
+          }
+
+          return {
+            ...p, ...calc,
+            total: totalDevido,
+            creditoAplicado,
+            saldoFinal: totalDevido > 0 ? p.saldoBruto : 0,
+            quitado: totalDevido <= 0,
+          };
         });
 
-      if (!detalhes.length) { setLoading(false); return; }
-
-      // 2) Separar em blocos ANTES de aplicar créditos
-      const prisaoRaw = detalhes.slice(-3);
-      const penhoraRaw = detalhes.slice(0, -3);
-
-      // 3) Função: aplicar crédito cascata dentro de um bloco
-      //    - parcela com saldo negativo gera crédito
-      //    - crédito abate parcelas mais antigas (do início do array) em ordem
-      function aplicarCreditos(arr) {
-        // Primeiro calcula sem cascata para ter os valores
-        let credAcum = 0;
-        // Coleta créditos (parcelas onde pago > nominal)
-        const items = arr.map(p => ({ ...p, saldoFinal: p.saldoBruto, creditoAplicado: 0 }));
-        // Passa 1: identifica créditos
-        for (const it of items) {
-          if (it.saldoFinal < 0) {
-            credAcum += Math.abs(it.saldoFinal);
-            it.saldoFinal = 0;
-            it.quitado = true;
-          }
-        }
-        // Passa 2: aplica crédito acumulado nas parcelas mais antigas (do início)
-        for (const it of items) {
-          if (credAcum <= 0) break;
-          if (it.quitado) continue;
-          if (it.saldoFinal <= 0) continue;
-          const abate = Math.min(credAcum, it.saldoFinal);
-          it.creditoAplicado = abate;
-          it.saldoFinal -= abate;
-          credAcum -= abate;
-          if (it.saldoFinal <= 0) it.quitado = true;
-        }
-        // Passa 3: corrige monetariamente o saldo final
-        return { items: items.map(it => {
-          const calc = corrigir(Math.max(0, it.saldoFinal), it.mes, it.ano);
-          return { ...it, ...calc, isCredito: false };
-        }), creditoSobrando: credAcum };
+        return { items: resultado, creditoSobrando: r2(totalCredDisp) };
       }
 
-      const b2 = aplicarCreditos(penhoraRaw);
-      const b1 = aplicarCreditos(prisaoRaw);
+      // Aplica créditos primeiro no Bloco 2 (parcelas mais antigas)
+      const b2 = aplicarCreditosCascata(penhoraRaw, creditos);
+      // Sobra de crédito vai para o Bloco 1
+      const credsRestantes = b2.creditoSobrando > 0
+        ? [{ valor: b2.creditoSobrando, mesPgto: new Date().getMonth() + 1, anoPgto: new Date().getFullYear(), valorCorrigido: b2.creditoSobrando }]
+        : [];
+      const b1 = aplicarCreditosCascata(prisaoRaw, credsRestantes);
 
-      // Se sobrou crédito do bloco 1, abate no bloco 2 (mais antigo primeiro)
-      let creditoExtra = b1.creditoSobrando + b2.creditoSobrando;
-      if (creditoExtra > 0) {
-        for (const it of b2.items) {
-          if (creditoExtra <= 0) break;
-          if (it.saldoFinal <= 0) continue;
-          const abate = Math.min(creditoExtra, it.saldoFinal);
-          it.creditoAplicado = (it.creditoAplicado || 0) + abate;
-          it.saldoFinal -= abate;
-          creditoExtra -= abate;
-          if (it.saldoFinal <= 0) it.quitado = true;
-          const calc = corrigir(Math.max(0, it.saldoFinal), it.mes, it.ano);
-          Object.assign(it, calc);
-        }
-      }
-
-      const soma = arr => arr.reduce((s, x) => s + x.total, 0);
-      const totalPrisao = soma(b1.items);
-      const totalPenhora = soma(b2.items);
+      const soma = arr => r2(arr.reduce((s, x) => s + x.total, 0));
 
       const res = {
         processo, alimentado, alimentante, comarca, diaVencimento,
         tipoAlimento, percentualSM, valorFixoAlimento,
         prisao: b1.items, penhora: b2.items,
-        totalPrisao, totalPenhora,
+        totalPrisao: soma(b1.items), totalPenhora: soma(b2.items),
         data: new Date().toLocaleDateString("pt-BR"),
-        defensor: perfil.nome || usuario.nome || "", lotacao: perfil.lotacao || usuario.lotacao || "",
+        defensor: perfil.nome || "", lotacao: perfil.lotacao || "",
       };
       setResultado(res);
-      const hist = [{ id: Date.now(), ...res, total: totalPrisao + totalPenhora }, ...historico].slice(0, 50);
+      const hist = [{ id: Date.now(), ...res, total: r2(soma(b1.items) + soma(b2.items)) }, ...historico].slice(0, 50);
       setHistorico(hist); localStorage.setItem("dpe_historico", JSON.stringify(hist));
       setLoading(false);
     }, 400);
   };
 
-  // ── CORREÇÃO: PDF com logo, sem total geral, créditos dentro dos blocos ──
+  // ── PDF ────────────────────────────────────────────────────
   const gerarPDF = async () => {
     if (!resultado) return;
     const jsPDFLib = window.jspdf?.jsPDF || window.jsPDF;
     if (!jsPDFLib) { alert("PDF não carregou. Recarregue a página."); return; }
-
     const logoData = await carregarLogo();
     const doc = new jsPDFLib({ orientation: "landscape", unit: "mm", format: "a4" });
     const W = 297, mg = 12; let y = 0;
 
-    // ── Cabeçalho com logo ──
+    // Cabeçalho com logo proporcional
     doc.setFillColor(26, 107, 58); doc.rect(0, 0, W, 28, "F");
     if (logoData) {
-      try { doc.addImage(logoData, "PNG", 8, 3, 22, 22); } catch {}
+      try {
+        // Logo proporcional: altura 20mm, largura calculada
+        const img = new Image(); img.src = logoData;
+        const ratio = img.naturalWidth / img.naturalHeight;
+        const lh = 20, lw = lh * (ratio || 1.5);
+        doc.addImage(logoData, "PNG", 6, 4, lw, lh);
+      } catch {}
     }
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(14); doc.setFont("helvetica", "bold");
@@ -442,157 +460,114 @@ function AppInterno({ usuario, onLogout }) {
     doc.text("APIDEP — Associação Piauiense das Defensoras e Defensores Públicos", W / 2, 22, { align: "center" });
     y = 36;
 
-    // ── Dados do processo ──
+    // Dados do processo
     doc.setFillColor(232, 245, 238); doc.rect(mg, y, W - mg * 2, 28, "F");
     doc.setDrawColor(26, 107, 58); doc.setLineWidth(0.3); doc.rect(mg, y, W - mg * 2, 28);
     doc.setFillColor(26, 107, 58); doc.rect(mg, y, W - mg * 2, 7, "F");
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);
     doc.text("DADOS DO PROCESSO", mg + 3, y + 5);
     y += 9;
-    const col1 = mg + 3, col2 = mg + 100, col3 = mg + 195;
+    const c1 = mg + 3, c2 = mg + 100, c3 = mg + 195;
     doc.setTextColor(40, 40, 40); doc.setFontSize(8);
-    doc.setFont("helvetica", "bold"); doc.text("Processo nº:", col1, y);
-    doc.setFont("helvetica", "normal"); doc.text(resultado.processo || "—", col1 + 22, y);
-    doc.setFont("helvetica", "bold"); doc.text("Vara/Comarca:", col2, y);
-    doc.setFont("helvetica", "normal"); doc.text(resultado.comarca || "—", col2 + 24, y);
-    doc.setFont("helvetica", "bold"); doc.text("Data-base:", col3, y);
-    doc.setFont("helvetica", "normal"); doc.text(resultado.data, col3 + 18, y);
+    const lb = (l, v, x, yy) => { doc.setFont("helvetica", "bold"); doc.text(l, x, yy); doc.setFont("helvetica", "normal"); doc.text(v || "—", x + doc.getTextWidth(l) + 2, yy); };
+    lb("Processo nº:", resultado.processo, c1, y);
+    lb("Vara/Comarca:", resultado.comarca, c2, y);
+    lb("Data-base:", resultado.data, c3, y);
     y += 6;
-    doc.setFont("helvetica", "bold"); doc.text("Exequente:", col1, y);
-    doc.setFont("helvetica", "normal"); doc.text(resultado.alimentado || "—", col1 + 18, y);
-    doc.setFont("helvetica", "bold"); doc.text("Executado:", col2, y);
-    doc.setFont("helvetica", "normal"); doc.text(resultado.alimentante || "—", col2 + 18, y);
+    lb("Exequente:", resultado.alimentado, c1, y);
+    lb("Executado:", resultado.alimentante, c2, y);
     y += 6;
-    const tipoLabel = resultado.tipoAlimento === "sm"
-      ? `${resultado.percentualSM}% do salário mínimo federal`
-      : `R$ ${Number(resultado.valorFixoAlimento || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (valor fixo)`;
-    doc.setFont("helvetica", "bold"); doc.text("Alimentos fixados:", col1, y);
-    doc.setFont("helvetica", "normal"); doc.text(tipoLabel, col1 + 30, y);
-    doc.setFont("helvetica", "bold"); doc.text("Vencimento:", col2, y);
-    doc.setFont("helvetica", "normal"); doc.text(`Dia ${resultado.diaVencimento} de cada mês`, col2 + 20, y);
-    doc.setFont("helvetica", "bold"); doc.text("Índice:", col3, y);
-    doc.setFont("helvetica", "normal"); doc.text("IPCA-E (Res. CJF nº 134/2010)", col3 + 12, y);
+    const tl = resultado.tipoAlimento === "sm" ? `${resultado.percentualSM}% do salário mínimo federal` : `${fmt(Number(resultado.valorFixoAlimento || 0))} (valor fixo)`;
+    lb("Alimentos fixados:", tl, c1, y);
+    lb("Vencimento:", `Dia ${resultado.diaVencimento} de cada mês`, c2, y);
+    lb("Índice:", "IPCA-E (Res. CJF nº 134/2010)", c3, y);
     y += 6;
-    doc.setFont("helvetica", "bold"); doc.text("Juros de mora:", col1, y);
-    doc.setFont("helvetica", "normal"); doc.text("1% ao mês — art. 406 CC c/c art. 161 §1º CTN", col1 + 24, y);
+    lb("Juros de mora:", "1% ao mês — art. 406 CC c/c art. 161 §1º CTN", c1, y);
     y += 8;
 
-    // ── Função de tabela (com coluna "Crédito Aplicado") ──
-    const desenharTabela = (titulo, corRGB, items, subtotal, numInicio) => {
+    // Tabela
+    const desenharTabela = (titulo, corRGB, items, subtotal, numI) => {
       if (y > 150) { doc.addPage(); y = 15; }
       doc.setFillColor(...corRGB); doc.rect(mg, y, W - mg * 2, 7, "F");
       doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);
-      doc.text(titulo, mg + 3, y + 5);
-      y += 9;
+      doc.text(titulo, mg + 3, y + 5); y += 9;
 
       const cw = [8, 18, 20, 20, 20, 18, 18, 18, 20, 20, 10, 18, 20];
       const cx = [mg]; cw.forEach((w, i) => cx.push(cx[i] + w + 1));
-      const headers = ["#", "Compet.", "Vcto.", "SM Vig.", "Nominal", "Pago", "Créd.Apl.", "Saldo", "Fator", "Corrigido", "M.", "Juros", "Total"];
-
+      const hd = ["#", "Compet.", "Vcto.", "SM Vig.", "Nominal", "Pago", "Créd.Apl.", "Saldo", "Fator", "Corrigido", "M.", "Juros", "Total"];
       doc.setFillColor(230, 230, 230); doc.rect(mg, y - 2, W - mg * 2, 6, "F");
       doc.setTextColor(40, 40, 40); doc.setFont("helvetica", "bold"); doc.setFontSize(6);
-      headers.forEach((h, i) => doc.text(h, cx[i], y + 2));
-      y += 7;
+      hd.forEach((h, i) => doc.text(h, cx[i], y + 2)); y += 7;
 
       items.forEach((p, i) => {
         if (y > 182) { doc.addPage(); y = 15; }
         if (i % 2 === 0) { doc.setFillColor(248, 250, 248); doc.rect(mg, y - 2, W - mg * 2, 5.5, "F"); }
         const vcto = `${String(resultado.diaVencimento).padStart(2,"0")}/${String(p.mes).padStart(2,"0")}/${p.ano}`;
-        const smV = p.smVig || getSM(p.mes, p.ano);
-        const fmtN = (v) => `R$ ${Number(v).toLocaleString("pt-BR", {minimumFractionDigits:2})}`;
-
         doc.setTextColor(40, 40, 40); doc.setFont("helvetica", "normal"); doc.setFontSize(6);
-        doc.text(String(numInicio + i), cx[0], y + 2);
+        doc.text(String(numI + i), cx[0], y + 2);
         doc.text(p.label, cx[1], y + 2);
         doc.text(vcto, cx[2], y + 2);
-        doc.text(fmtN(smV), cx[3], y + 2);
-        doc.text(fmtN(p.nominal), cx[4], y + 2);
-
-        // Pago
+        doc.text(fmt(p.smVig), cx[3], y + 2);
+        doc.text(fmt(p.nominal), cx[4], y + 2);
         if (p.pago > 0) { doc.setTextColor(26, 107, 58); doc.setFont("helvetica", "bold"); }
-        doc.text(fmtN(p.pago), cx[5], y + 2);
+        doc.text(fmt(p.pago), cx[5], y + 2);
         doc.setTextColor(40, 40, 40); doc.setFont("helvetica", "normal");
-
-        // Crédito aplicado
-        if (p.creditoAplicado > 0) {
-          doc.setTextColor(26, 107, 58); doc.setFont("helvetica", "bold");
-          doc.text(fmtN(p.creditoAplicado), cx[6], y + 2);
-          doc.setTextColor(40, 40, 40); doc.setFont("helvetica", "normal");
-        } else {
-          doc.text("—", cx[6], y + 2);
-        }
-
-        // Saldo
+        if (p.creditoAplicado > 0) { doc.setTextColor(26, 82, 118); doc.setFont("helvetica", "bold"); doc.text(fmt(p.creditoAplicado), cx[6], y + 2); doc.setTextColor(40, 40, 40); doc.setFont("helvetica", "normal"); }
+        else { doc.text("—", cx[6], y + 2); }
         doc.setFont("helvetica", "bold");
-        if (p.quitado) {
-          doc.setTextColor(26, 107, 58);
-          doc.text("QUITADO", cx[7], y + 2);
-        } else {
-          doc.setTextColor(40, 40, 40);
-          doc.text(fmtN(p.saldoFinal), cx[7], y + 2);
-        }
+        if (p.quitado) { doc.setTextColor(26, 107, 58); doc.text("QUITADO", cx[7], y + 2); }
+        else { doc.setTextColor(40, 40, 40); doc.text(fmt(p.saldoBruto), cx[7], y + 2); }
         doc.setTextColor(40, 40, 40); doc.setFont("helvetica", "normal");
-
         doc.text(p.fator.toFixed(6), cx[8], y + 2);
-        doc.text(fmtN(p.corrigido), cx[9], y + 2);
+        doc.text(p.quitado ? "—" : fmt(p.corrigido), cx[9], y + 2);
         doc.text(`${p.mesesAtraso}`, cx[10], y + 2);
-        doc.text(fmtN(p.juros), cx[11], y + 2);
+        doc.text(p.quitado ? "—" : fmt(p.juros), cx[11], y + 2);
         doc.setFont("helvetica", "bold");
         if (p.quitado) { doc.setTextColor(26, 107, 58); doc.text("—", cx[12], y + 2); }
         else { doc.setTextColor(40, 40, 40); doc.text(fmt(p.total), cx[12], y + 2); }
         y += 5.5;
       });
-
-      // Subtotal líquido do bloco
       doc.setFillColor(...corRGB); doc.rect(mg, y, W - mg * 2, 6, "F");
       doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(8);
-      doc.text(`SUBTOTAL: ${fmt(subtotal)}`, W - mg - 3, y + 4, { align: "right" });
-      y += 10;
+      doc.text(`SUBTOTAL: ${fmt(subtotal)}`, W - mg - 3, y + 4, { align: "right" }); y += 10;
     };
 
-    // ── Desenhar Bloco 2 (penhora) e Bloco 1 (prisão) ──
-    if (resultado.penhora.length > 0)
-      desenharTabela("BLOCO 2 — DÉBITO ANTERIOR (Execução por Quantia Certa — art. 528, §8º CPC)", [26, 82, 118], resultado.penhora, resultado.totalPenhora, 1);
-    if (resultado.prisao.length > 0)
-      desenharTabela("BLOCO 1 — ÚLTIMAS 3 PARCELAS (Sujeitas a Prisão Civil — art. 528, §3º CPC)", [26, 107, 58], resultado.prisao, resultado.totalPrisao, resultado.penhora.length + 1);
+    if (resultado.penhora.length > 0) desenharTabela("BLOCO 2 — DÉBITO ANTERIOR (Execução por Quantia Certa — art. 528, §8º CPC)", [26, 82, 118], resultado.penhora, resultado.totalPenhora, 1);
+    if (resultado.prisao.length > 0) desenharTabela("BLOCO 1 — ÚLTIMAS 3 PARCELAS (Sujeitas a Prisão Civil — art. 528, §3º CPC)", [26, 107, 58], resultado.prisao, resultado.totalPrisao, resultado.penhora.length + 1);
 
-    // ── SEM TOTAL GERAL SOMANDO OS BLOCOS — apenas resumo lado a lado ──
+    // Resumo lado a lado (sem total geral somando)
     if (y > 165) { doc.addPage(); y = 15; }
-    const boxW = (W - mg * 2 - 4) / 2;
-    // Bloco 1 box
-    doc.setFillColor(26, 107, 58); doc.rect(mg, y, boxW, 22, "F");
+    const bW = (W - mg * 2 - 4) / 2;
+    doc.setFillColor(26, 107, 58); doc.rect(mg, y, bW, 22, "F");
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(8);
     doc.text("BLOCO 1 — PRISÃO CIVIL", mg + 3, y + 7);
     doc.setFontSize(7); doc.setFont("helvetica", "normal");
     doc.text("Últimas 3 parcelas — art. 528, §3° CPC", mg + 3, y + 12);
     doc.setFont("helvetica", "bold"); doc.setFontSize(12);
-    doc.text(fmt(resultado.totalPrisao), mg + boxW / 2, y + 19, { align: "center" });
-    // Bloco 2 box
-    const x2 = mg + boxW + 4;
-    doc.setFillColor(26, 82, 118); doc.rect(x2, y, boxW, 22, "F");
+    doc.text(fmt(resultado.totalPrisao), mg + bW / 2, y + 19, { align: "center" });
+    const x2 = mg + bW + 4;
+    doc.setFillColor(26, 82, 118); doc.rect(x2, y, bW, 22, "F");
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(8);
     doc.text("BLOCO 2 — PENHORA", x2 + 3, y + 7);
     doc.setFontSize(7); doc.setFont("helvetica", "normal");
     doc.text("Parcelas anteriores — art. 528, §8° CPC", x2 + 3, y + 12);
     doc.setFont("helvetica", "bold"); doc.setFontSize(12);
-    doc.text(fmt(resultado.totalPenhora), x2 + boxW / 2, y + 19, { align: "center" });
+    doc.text(fmt(resultado.totalPenhora), x2 + bW / 2, y + 19, { align: "center" });
     y += 30;
 
-    // ── Observações ──
+    // Observações
     if (y > 170) { doc.addPage(); y = 15; }
     doc.setTextColor(40, 40, 40); doc.setFont("helvetica", "bold"); doc.setFontSize(8);
     doc.text("Observações:", mg, y); y += 5;
     doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
-    [
-      "1. Correção monetária aplicada pelo índice IPCA-E, conforme Resolução CJF nº 134/2010.",
-      "2. Juros de mora de 1% ao mês, incidentes sobre o valor já corrigido (art. 406 CC c/c art. 161 §1º CTN).",
-      `3. Valores calculados até a data-base de ${resultado.data}. Sujeitos a complementação até o efetivo pagamento.`,
-      "4. Fonte dos fatores IPCA-E: tabela oficial acumulada mês a mês.",
-      "5. Parcelas com pagamento excedente geram crédito aplicado às mais antigas do bloco.",
-    ].forEach(o => { doc.text(o, mg, y); y += 4.5; });
-    y += 8;
+    ["1. Correção monetária aplicada pelo índice IPCA-E, conforme Resolução CJF nº 134/2010.",
+     "2. Juros de mora de 1% ao mês, incidentes sobre o valor já corrigido (art. 406 CC c/c art. 161 §1º CTN).",
+     `3. Valores calculados até a data-base de ${resultado.data}. Sujeitos a complementação até o efetivo pagamento.`,
+     "4. Fonte dos fatores IPCA-E: tabela oficial acumulada mês a mês.",
+     "5. Créditos (pagamentos excedentes) são corrigidos até a data-base e abatidos das parcelas mais antigas.",
+    ].forEach(o => { doc.text(o, mg, y); y += 4.5; }); y += 8;
 
-    // ── Assinatura ──
+    // Assinatura
     if (y > 185) { doc.addPage(); y = 15; }
     const cidade = resultado.lotacao?.split("—")[1]?.trim() || resultado.comarca || "Teresina - PI";
     doc.setFont("helvetica", "normal"); doc.setFontSize(9);
@@ -604,12 +579,10 @@ function AppInterno({ usuario, onLogout }) {
     doc.text("Defensor(a) Público(a)", W / 2, y, { align: "center" }); y += 4;
     if (resultado.lotacao) doc.text(resultado.lotacao, W / 2, y, { align: "center" });
 
-    const filename = `Memorial_Calculo_${resultado.processo || "calculo"}_${resultado.data.replace(/\//g, "-")}.pdf`;
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    if (isIOS) {
-      const win = window.open();
-      if (win) win.document.write(`<iframe src="${doc.output("datauristring")}" style="width:100%;height:100vh;border:none;"></iframe>`);
-    } else { doc.save(filename); }
+    const fn = `Memorial_Calculo_${resultado.processo || "calculo"}_${resultado.data.replace(/\//g, "-")}.pdf`;
+    if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+      const w = window.open(); if (w) w.document.write(`<iframe src="${doc.output("datauristring")}" style="width:100%;height:100vh;border:none;"></iframe>`);
+    } else { doc.save(fn); }
   };
 
   const inpStyle = { width: "100%", padding: "8px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 13, boxSizing: "border-box" };
@@ -618,241 +591,153 @@ function AppInterno({ usuario, onLogout }) {
     <div style={{ fontFamily: "'Segoe UI', Arial, sans-serif", minHeight: "100vh", background: "#f0f2f0" }}>
       <Header perfil={perfil} onPerfil={() => setShowPerfil(true)} onLogout={onLogout} />
       {showPerfil && <ModalPerfil perfil={perfil} onSave={salvarPerfil} onClose={() => setShowPerfil(false)} />}
-
       <div style={{ background: C.branco, borderBottom: `1px solid ${C.borda}`, display: "flex", padding: "0 28px" }}>
         {[["calc", "🧮 Novo Cálculo"], ["historico", "📋 Histórico"]].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{ padding: "14px 20px", border: "none", background: "transparent", cursor: "pointer", fontWeight: 600, fontSize: 14, color: tab === id ? C.verde : C.cinza, borderBottom: tab === id ? `3px solid ${C.verde}` : "3px solid transparent", touchAction: "manipulation" }}>{label}</button>
         ))}
       </div>
-
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 16px" }}>
-        {tab === "calc" && (
-          <>
-            {!perfil.nome && (
-              <div style={{ background: "#fff8e1", border: "1px solid #f0c040", borderRadius: 8, padding: "12px 18px", marginBottom: 18, fontSize: 14 }}>
-                ⚠️ <strong>Configure seu perfil</strong> para que seu nome apareça nos PDFs.{" "}
-                <span style={{ color: C.verde, cursor: "pointer", textDecoration: "underline" }} onClick={() => setShowPerfil(true)}>Configurar agora</span>
+        {tab === "calc" && (<>
+          {!perfil.nome && (
+            <div style={{ background: "#fff8e1", border: "1px solid #f0c040", borderRadius: 8, padding: "12px 18px", marginBottom: 18, fontSize: 14 }}>
+              ⚠️ <strong>Configure seu perfil</strong> para que seu nome apareça nos PDFs.{" "}
+              <span style={{ color: C.verde, cursor: "pointer", textDecoration: "underline" }} onClick={() => setShowPerfil(true)}>Configurar agora</span>
+            </div>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+            <Card style={{ margin: 0, borderTop: `3px solid ${C.azul}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 20 }}>🤖</span>
+                <div><div style={{ fontWeight: 700, color: C.azul, fontSize: 14 }}>Opção A — Importar com IA</div><div style={{ fontSize: 11, color: "#666" }}>Envie a sentença e a IA preenche tudo</div></div>
+              </div>
+              <input ref={fileRef} type="file" accept=".pdf,image/*" onChange={handleUpload} style={{ display: "none" }} />
+              <Btn onClick={() => fileRef.current.click()} disabled={loadingIA} cor={C.azul} small>{loadingIA ? "⏳ Processando…" : "📄 Selecionar PDF ou imagem"}</Btn>
+              {msgIA && <div style={{ marginTop: 8, fontSize: 12, color: msgIA.startsWith("✅") ? C.verde : C.vermelho }}>{msgIA}</div>}
+              {!perfil.apiKey && <div style={{ marginTop: 6, fontSize: 11, color: "#999" }}>⚠️ Requer chave de API no perfil.</div>}
+            </Card>
+            <Card style={{ margin: 0, borderTop: `3px solid ${C.verde}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 20 }}>✏️</span>
+                <div><div style={{ fontWeight: 700, color: C.verde, fontSize: 14 }}>Opção B — Inserir manualmente</div><div style={{ fontSize: 11, color: "#666" }}>Sempre disponível, sem conta ou chave</div></div>
+              </div>
+              <div style={{ fontSize: 12, color: "#555" }}>Preencha os dados do processo e parcelas abaixo.</div>
+              <div style={{ marginTop: 10 }}><span style={{ background: C.verdePale, color: C.verde, borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>✅ Sempre disponível</span></div>
+            </Card>
+          </div>
+          <Card>
+            <h3 style={{ margin: "0 0 16px", color: C.verde, fontSize: 15 }}>📁 Dados do Processo</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+              <Input label="Número do Processo" value={processo} onChange={setProcesso} placeholder="0000000-00.0000.8.18.0000" />
+              <Input label="Vara/Comarca" value={comarca} onChange={setComarca} placeholder="1ª Vara — Itaueira/PI" />
+              <Input label="Nome do Alimentado(a) / Exequente" value={alimentado} onChange={setAlimentado} placeholder="Nome completo" />
+              <Input label="Nome do Alimentante / Executado" value={alimentante} onChange={setAlimentante} placeholder="Nome completo" />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: "block", fontWeight: 600, marginBottom: 8, color: C.cinza, fontSize: 13 }}>Alimentos fixados em</label>
+              <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+                {[["sm", "% do Salário Mínimo"], ["fixo", "Valor fixo (R$)"]].map(([v, l]) => (
+                  <button key={v} onClick={() => setTipoAlimento(v)} style={{ padding: "7px 16px", borderRadius: 6, border: `2px solid ${tipoAlimento === v ? C.verde : C.borda}`, background: tipoAlimento === v ? C.verde : C.branco, color: tipoAlimento === v ? "#fff" : C.cinza, fontWeight: 600, fontSize: 13, cursor: "pointer", touchAction: "manipulation" }}>{l}</button>
+                ))}
+              </div>
+              {tipoAlimento === "sm"
+                ? <div style={{ display: "flex", alignItems: "center", gap: 8 }}><input type="number" value={percentualSM} onChange={e => setPercentualSM(e.target.value)} placeholder="ex: 20" style={{ width: 100, padding: "9px 12px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 14, boxSizing: "border-box" }} /><span style={{ fontSize: 14, color: C.cinza }}>% do salário mínimo federal</span></div>
+                : <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 14, color: C.cinza }}>R$</span><input type="number" value={valorFixoAlimento} onChange={e => setValorFixoAlimento(e.target.value)} placeholder="0,00" style={{ width: 150, padding: "9px 12px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 14, boxSizing: "border-box" }} /></div>
+              }
+            </div>
+            <div style={{ maxWidth: 200 }}><Input label="Dia de vencimento" value={diaVencimento} onChange={setDiaVencimento} placeholder="5" type="number" /></div>
+          </Card>
+          <Card>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ margin: 0, color: C.verde, fontSize: 15 }}>💰 Parcelas em Atraso</h3>
+              <div style={{ display: "flex", gap: 8 }}>
+                <Btn small onClick={() => setShowIntervalo(s => !s)} cor={C.azul}>📅 Intervalo</Btn>
+                <Btn small onClick={addParcela} cor={C.verdeClaro}>+ Avulsa</Btn>
+                {parcelas.length > 0 && <Btn small onClick={limparParcelas} cor={C.vermelho} outline>🗑 Limpar tudo</Btn>}
+              </div>
+            </div>
+            {showIntervalo && (
+              <div style={{ background: "#e8f0f820", border: `1px solid ${C.azul}`, borderRadius: 8, padding: 16, marginBottom: 16 }}>
+                <div style={{ fontWeight: 700, color: C.azul, marginBottom: 8 }}>📅 Adicionar intervalo de parcelas</div>
+                <div style={{ fontSize: 12, color: "#555", marginBottom: 12, background: "#e8f0f8", padding: "8px 12px", borderRadius: 6 }}>
+                  Valor automático: <strong>{tipoAlimento === "sm" ? `${percentualSM || "?"}% do SM vigente em cada mês` : `R$ ${valorFixoAlimento || "?"} (fixo)`}</strong>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, alignItems: "end" }}>
+                  <div><label style={{ fontSize: 11, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Mês inicial</label><select value={intervalo.mesIni} onChange={e => setIntervalo(i => ({ ...i, mesIni: Number(e.target.value) }))} style={inpStyle}>{MESES.map((m, idx) => <option key={idx} value={idx + 1}>{m}</option>)}</select></div>
+                  <div><label style={{ fontSize: 11, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Ano inicial</label><input type="number" value={intervalo.anoIni} onChange={e => setIntervalo(i => ({ ...i, anoIni: Number(e.target.value) }))} style={inpStyle} /></div>
+                  <div><label style={{ fontSize: 11, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Mês final</label><select value={intervalo.mesFim} onChange={e => setIntervalo(i => ({ ...i, mesFim: Number(e.target.value) }))} style={inpStyle}>{MESES.map((m, idx) => <option key={idx} value={idx + 1}>{m}</option>)}</select></div>
+                  <div><label style={{ fontSize: 11, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Ano final</label><input type="number" value={intervalo.anoFim} onChange={e => setIntervalo(i => ({ ...i, anoFim: Number(e.target.value) }))} style={inpStyle} /></div>
+                  <div><label style={{ fontSize: 11, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Já pago em todos (R$)</label><input type="number" value={intervalo.pago} onChange={e => setIntervalo(i => ({ ...i, pago: e.target.value }))} placeholder="0,00" style={inpStyle} /></div>
+                </div>
+                <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
+                  <button onClick={addIntervalo} style={{ padding: "6px 14px", borderRadius: 6, border: `2px solid ${C.azul}`, background: C.azul, color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", touchAction: "manipulation" }}>✅ Adicionar intervalo</button>
+                  <button onClick={() => setShowIntervalo(false)} style={{ padding: "6px 14px", borderRadius: 6, border: `2px solid ${C.cinza}`, background: "transparent", color: C.cinza, fontWeight: 600, fontSize: 13, cursor: "pointer", touchAction: "manipulation" }}>Fechar</button>
+                  <span style={{ fontSize: 12, color: C.azul }}>→ {contarParcelas()} parcela(s)</span>
+                </div>
+                <div style={{ marginTop: 6, fontSize: 11, color: "#888" }}>💡 Parcelas com mesmo mês/ano já existentes serão ignoradas.</div>
               </div>
             )}
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-              <Card style={{ margin: 0, borderTop: `3px solid ${C.azul}` }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: 20 }}>🤖</span>
-                  <div>
-                    <div style={{ fontWeight: 700, color: C.azul, fontSize: 14 }}>Opção A — Importar com IA</div>
-                    <div style={{ fontSize: 11, color: "#666" }}>Envie a sentença e a IA preenche tudo</div>
-                  </div>
-                </div>
-                <input ref={fileRef} type="file" accept=".pdf,image/*" onChange={handleUpload} style={{ display: "none" }} />
-                <Btn onClick={() => fileRef.current.click()} disabled={loadingIA} cor={C.azul} small>
-                  {loadingIA ? "⏳ Processando…" : "📄 Selecionar PDF ou imagem"}
-                </Btn>
-                {msgIA && <div style={{ marginTop: 8, fontSize: 12, color: msgIA.startsWith("✅") ? C.verde : C.vermelho }}>{msgIA}</div>}
-                {!perfil.apiKey && <div style={{ marginTop: 6, fontSize: 11, color: "#999" }}>⚠️ Requer chave de API no perfil.</div>}
-              </Card>
-              <Card style={{ margin: 0, borderTop: `3px solid ${C.verde}` }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: 20 }}>✏️</span>
-                  <div>
-                    <div style={{ fontWeight: 700, color: C.verde, fontSize: 14 }}>Opção B — Inserir manualmente</div>
-                    <div style={{ fontSize: 11, color: "#666" }}>Sempre disponível, sem conta ou chave</div>
-                  </div>
-                </div>
-                <div style={{ fontSize: 12, color: "#555" }}>Preencha os dados do processo e parcelas abaixo.</div>
-                <div style={{ marginTop: 10 }}>
-                  <span style={{ background: C.verdePale, color: C.verde, borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>✅ Sempre disponível</span>
-                </div>
-              </Card>
-            </div>
-
-            <Card>
-              <h3 style={{ margin: "0 0 16px", color: C.verde, fontSize: 15 }}>📁 Dados do Processo</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-                <Input label="Número do Processo" value={processo} onChange={setProcesso} placeholder="0000000-00.0000.8.18.0000" />
-                <Input label="Vara/Comarca" value={comarca} onChange={setComarca} placeholder="1ª Vara — Itaueira/PI" />
-                <Input label="Nome do Alimentado(a) / Exequente" value={alimentado} onChange={setAlimentado} placeholder="Nome completo" />
-                <Input label="Nome do Alimentante / Executado" value={alimentante} onChange={setAlimentante} placeholder="Nome completo" />
+            {parcelas.map((p) => (
+              <div key={p.id} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr auto", gap: 10, alignItems: "end", marginBottom: 10, padding: 12, background: C.cinzaClaro, borderRadius: 8 }}>
+                <div><label style={{ fontSize: 12, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Mês</label><select value={p.mes} onChange={e => editParcela(p.id, "mes", Number(e.target.value))} style={inpStyle}>{MESES.map((m, idx) => <option key={idx} value={idx + 1}>{m}</option>)}</select></div>
+                <div><label style={{ fontSize: 12, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Ano</label><input type="number" value={p.ano} onChange={e => editParcela(p.id, "ano", Number(e.target.value))} style={inpStyle} /></div>
+                <div><label style={{ fontSize: 12, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Valor (R$)</label><input type="number" value={p.valor} onChange={e => editParcela(p.id, "valor", e.target.value)} placeholder="0,00" style={inpStyle} /></div>
+                <div><label style={{ fontSize: 12, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Já pago (R$)</label><input type="number" value={p.pago} onChange={e => editParcela(p.id, "pago", e.target.value)} placeholder="0,00" style={inpStyle} /></div>
+                <button onClick={() => removeParcela(p.id)} style={{ background: "transparent", border: "none", cursor: "pointer", color: C.vermelho, fontSize: 18, paddingBottom: 4, touchAction: "manipulation" }}>✕</button>
               </div>
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", fontWeight: 600, marginBottom: 8, color: C.cinza, fontSize: 13 }}>Alimentos fixados em</label>
-                <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                  {[["sm", "% do Salário Mínimo"], ["fixo", "Valor fixo (R$)"]].map(([val, label]) => (
-                    <button key={val} onClick={() => setTipoAlimento(val)} style={{ padding: "7px 16px", borderRadius: 6, border: `2px solid ${tipoAlimento === val ? C.verde : C.borda}`, background: tipoAlimento === val ? C.verde : C.branco, color: tipoAlimento === val ? "#fff" : C.cinza, fontWeight: 600, fontSize: 13, cursor: "pointer", touchAction: "manipulation" }}>{label}</button>
+            ))}
+            <div style={{ marginTop: 16 }}><Btn onClick={calcular} disabled={loading || parcelas.every(p => !p.valor)}>{loading ? "⏳ Calculando…" : "🧮 Calcular Débito"}</Btn></div>
+          </Card>
+          {resultado && (
+            <Card style={{ borderLeft: `4px solid ${C.verde}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <h3 style={{ margin: 0, color: C.verde }}>📊 Resultado do Cálculo</h3>
+                <Btn onClick={gerarPDF} cor={C.azul}>📄 Gerar PDF</Btn>
+              </div>
+              {resultado.processo && <p style={{ margin: "0 0 4px", fontSize: 13, color: "#666" }}>Processo: <strong>{resultado.processo}</strong></p>}
+              {resultado.alimentado && <p style={{ margin: "0 0 16px", fontSize: 13, color: "#666" }}>Alimentado(a): <strong>{resultado.alimentado}</strong></p>}
+              {resultado.prisao.length > 0 && (
+                <div style={{ background: C.verdePale, border: `1px solid ${C.verde}`, borderRadius: 8, padding: 16, marginBottom: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <div style={{ fontWeight: 700, color: C.verde }}>BLOCO 1 — Prisão Civil (últimas 3 parcelas)</div>
+                    <span style={{ background: C.verde, color: "#fff", borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700 }}>{fmt(resultado.totalPrisao)}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#555", marginBottom: 6 }}>Art. 528, §3° CPC</div>
+                  {resultado.prisao.map((p, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 4 }}>
+                      <span>{p.label}{p.pago > 0 && <span style={{ color: C.verde, fontSize: 11 }}> (pago: {fmt(p.pago)})</span>}{p.creditoAplicado > 0 && <span style={{ color: C.azul, fontSize: 11 }}> (créd: {fmt(p.creditoAplicado)})</span>}{p.quitado && <span style={{ color: C.verde, fontSize: 11, fontWeight: 700 }}> ✅ QUITADO</span>}</span>
+                      <span style={{ fontWeight: 600, color: p.quitado ? C.verde : "inherit" }}>{p.quitado ? "—" : fmt(p.total)}</span>
+                    </div>
                   ))}
                 </div>
-                {tipoAlimento === "sm"
-                  ? <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <input type="number" value={percentualSM} onChange={e => setPercentualSM(e.target.value)} placeholder="ex: 20"
-                        style={{ width: 100, padding: "9px 12px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 14, boxSizing: "border-box" }} />
-                      <span style={{ fontSize: 14, color: C.cinza }}>% do salário mínimo federal</span>
-                    </div>
-                  : <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 14, color: C.cinza }}>R$</span>
-                      <input type="number" value={valorFixoAlimento} onChange={e => setValorFixoAlimento(e.target.value)} placeholder="0,00"
-                        style={{ width: 150, padding: "9px 12px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 14, boxSizing: "border-box" }} />
-                    </div>
-                }
-              </div>
-              <div style={{ maxWidth: 200 }}>
-                <Input label="Dia de vencimento" value={diaVencimento} onChange={setDiaVencimento} placeholder="5" type="number" />
-              </div>
-            </Card>
-
-            <Card>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <h3 style={{ margin: 0, color: C.verde, fontSize: 15 }}>💰 Parcelas em Atraso</h3>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <Btn small onClick={() => setShowIntervalo(s => !s)} cor={C.azul}>📅 Intervalo</Btn>
-                  <Btn small onClick={addParcela} cor={C.verdeClaro}>+ Avulsa</Btn>
-                  {parcelas.length > 0 && <Btn small onClick={limparParcelas} cor={C.vermelho} outline>🗑 Limpar tudo</Btn>}
-                </div>
-              </div>
-
-              {showIntervalo && (
-                <div style={{ background: "#e8f0f820", border: `1px solid ${C.azul}`, borderRadius: 8, padding: 16, marginBottom: 16 }}>
-                  <div style={{ fontWeight: 700, color: C.azul, marginBottom: 8 }}>📅 Adicionar intervalo de parcelas</div>
-                  <div style={{ fontSize: 12, color: "#555", marginBottom: 12, background: "#e8f0f8", padding: "8px 12px", borderRadius: 6 }}>
-                    Valor automático: <strong>{tipoAlimento === "sm" ? `${percentualSM || "?"}% do SM vigente em cada mês` : `R$ ${valorFixoAlimento || "?"} (fixo)`}</strong>
+              )}
+              {resultado.penhora.length > 0 && (
+                <div style={{ background: "#e8f0f8", border: `1px solid ${C.azul}`, borderRadius: 8, padding: 16, marginBottom: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <div style={{ fontWeight: 700, color: C.azul }}>BLOCO 2 — Penhora (parcelas anteriores)</div>
+                    <span style={{ background: C.azul, color: "#fff", borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700 }}>{fmt(resultado.totalPenhora)}</span>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, alignItems: "end" }}>
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Mês inicial</label>
-                      <select value={intervalo.mesIni} onChange={e => setIntervalo(i => ({ ...i, mesIni: Number(e.target.value) }))} style={inpStyle}>
-                        {MESES.map((m, idx) => <option key={idx} value={idx + 1}>{m}</option>)}
-                      </select>
+                  {resultado.penhora.map((p, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 4 }}>
+                      <span>{p.label}{p.pago > 0 && <span style={{ color: C.verde, fontSize: 11 }}> (pago: {fmt(p.pago)})</span>}{p.creditoAplicado > 0 && <span style={{ color: C.azul, fontSize: 11 }}> (créd: {fmt(p.creditoAplicado)})</span>}{p.quitado && <span style={{ color: C.verde, fontSize: 11, fontWeight: 700 }}> ✅ QUITADO</span>}</span>
+                      <span style={{ fontWeight: 600, color: p.quitado ? C.verde : "inherit" }}>{p.quitado ? "—" : fmt(p.total)}</span>
                     </div>
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Ano inicial</label>
-                      <input type="number" value={intervalo.anoIni} onChange={e => setIntervalo(i => ({ ...i, anoIni: Number(e.target.value) }))} style={inpStyle} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Mês final</label>
-                      <select value={intervalo.mesFim} onChange={e => setIntervalo(i => ({ ...i, mesFim: Number(e.target.value) }))} style={inpStyle}>
-                        {MESES.map((m, idx) => <option key={idx} value={idx + 1}>{m}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Ano final</label>
-                      <input type="number" value={intervalo.anoFim} onChange={e => setIntervalo(i => ({ ...i, anoFim: Number(e.target.value) }))} style={inpStyle} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Já pago em todos (R$)</label>
-                      <input type="number" value={intervalo.pago} onChange={e => setIntervalo(i => ({ ...i, pago: e.target.value }))} placeholder="0,00" style={inpStyle} />
-                    </div>
-                  </div>
-                  <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
-                    <button onClick={addIntervalo} style={{ padding: "6px 14px", borderRadius: 6, border: `2px solid ${C.azul}`, background: C.azul, color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", touchAction: "manipulation" }}>✅ Adicionar intervalo</button>
-                    <button onClick={() => setShowIntervalo(false)} style={{ padding: "6px 14px", borderRadius: 6, border: `2px solid ${C.cinza}`, background: "transparent", color: C.cinza, fontWeight: 600, fontSize: 13, cursor: "pointer", touchAction: "manipulation" }}>Fechar</button>
-                    <span style={{ fontSize: 12, color: C.azul }}>→ {contarParcelas()} parcela(s)</span>
-                  </div>
-                  <div style={{ marginTop: 6, fontSize: 11, color: "#888" }}>💡 Parcelas com mesmo mês/ano já existentes serão ignoradas automaticamente.</div>
+                  ))}
                 </div>
               )}
-
-              {parcelas.map((p) => (
-                <div key={p.id} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr auto", gap: 10, alignItems: "end", marginBottom: 10, padding: 12, background: C.cinzaClaro, borderRadius: 8 }}>
-                  <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Mês</label>
-                    <select value={p.mes} onChange={e => editParcela(p.id, "mes", Number(e.target.value))} style={inpStyle}>
-                      {MESES.map((m, idx) => <option key={idx} value={idx + 1}>{m}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Ano</label>
-                    <input type="number" value={p.ano} onChange={e => editParcela(p.id, "ano", Number(e.target.value))} style={inpStyle} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Valor (R$)</label>
-                    <input type="number" value={p.valor} onChange={e => editParcela(p.id, "valor", e.target.value)} placeholder="0,00" style={inpStyle} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: C.cinza, display: "block", marginBottom: 3 }}>Já pago (R$)</label>
-                    <input type="number" value={p.pago} onChange={e => editParcela(p.id, "pago", e.target.value)} placeholder="0,00" style={inpStyle} />
-                  </div>
-                  <button onClick={() => removeParcela(p.id)} style={{ background: "transparent", border: "none", cursor: "pointer", color: C.vermelho, fontSize: 18, paddingBottom: 4, touchAction: "manipulation" }}>✕</button>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
+                <div style={{ background: C.verde, borderRadius: 8, padding: "12px 16px", textAlign: "center" }}>
+                  <div style={{ color: "#fff", fontSize: 11, opacity: .8 }}>BLOCO 1 — Prisão Civil</div>
+                  <div style={{ color: "#fff", fontWeight: 800, fontSize: 18 }}>{fmt(resultado.totalPrisao)}</div>
                 </div>
-              ))}
-
-              <div style={{ marginTop: 16 }}>
-                <Btn onClick={calcular} disabled={loading || parcelas.every(p => !p.valor)}>
-                  {loading ? "⏳ Calculando…" : "🧮 Calcular Débito"}
-                </Btn>
+                <div style={{ background: C.azul, borderRadius: 8, padding: "12px 16px", textAlign: "center" }}>
+                  <div style={{ color: "#fff", fontSize: 11, opacity: .8 }}>BLOCO 2 — Penhora</div>
+                  <div style={{ color: "#fff", fontWeight: 800, fontSize: 18 }}>{fmt(resultado.totalPenhora)}</div>
+                </div>
               </div>
+              <p style={{ fontSize: 11, color: "#888", marginTop: 10 }}>Correção por IPCA-E + juros 1% a.m. (art. 406 CC c/c art. 528 CPC) • {resultado.data}</p>
             </Card>
-
-            {resultado && (
-              <Card style={{ borderLeft: `4px solid ${C.verde}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                  <h3 style={{ margin: 0, color: C.verde }}>📊 Resultado do Cálculo</h3>
-                  <Btn onClick={gerarPDF} cor={C.azul}>📄 Gerar PDF</Btn>
-                </div>
-                {resultado.processo && <p style={{ margin: "0 0 4px", fontSize: 13, color: "#666" }}>Processo: <strong>{resultado.processo}</strong></p>}
-                {resultado.alimentado && <p style={{ margin: "0 0 16px", fontSize: 13, color: "#666" }}>Alimentado(a): <strong>{resultado.alimentado}</strong></p>}
-
-                {resultado.prisao.length > 0 && (
-                  <div style={{ background: C.verdePale, border: `1px solid ${C.verde}`, borderRadius: 8, padding: 16, marginBottom: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <div style={{ fontWeight: 700, color: C.verde }}>BLOCO 1 — Prisão Civil (últimas 3 parcelas)</div>
-                      <span style={{ background: C.verde, color: "#fff", borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700 }}>{fmt(resultado.totalPrisao)}</span>
-                    </div>
-                    <div style={{ fontSize: 12, color: "#555", marginBottom: 6 }}>Art. 528, §3° CPC</div>
-                    {resultado.prisao.map((p, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 4 }}>
-                        <span>
-                          {p.label}
-                          {p.pago > 0 && <span style={{ color: C.verde, fontSize: 11 }}> (pago: {fmt(p.pago)})</span>}
-                          {p.creditoAplicado > 0 && <span style={{ color: C.azul, fontSize: 11 }}> (créd: {fmt(p.creditoAplicado)})</span>}
-                          {p.quitado && <span style={{ color: C.verde, fontSize: 11, fontWeight: 700 }}> ✅ QUITADO</span>}
-                        </span>
-                        <span style={{ fontWeight: 600, color: p.quitado ? C.verde : "inherit" }}>
-                          {p.quitado ? "—" : fmt(p.total)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {resultado.penhora.length > 0 && (
-                  <div style={{ background: "#e8f0f8", border: `1px solid ${C.azul}`, borderRadius: 8, padding: 16, marginBottom: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <div style={{ fontWeight: 700, color: C.azul }}>BLOCO 2 — Penhora (parcelas anteriores)</div>
-                      <span style={{ background: C.azul, color: "#fff", borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700 }}>{fmt(resultado.totalPenhora)}</span>
-                    </div>
-                    {resultado.penhora.map((p, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 4 }}>
-                        <span>
-                          {p.label}
-                          {p.pago > 0 && <span style={{ color: C.verde, fontSize: 11 }}> (pago: {fmt(p.pago)})</span>}
-                          {p.creditoAplicado > 0 && <span style={{ color: C.azul, fontSize: 11 }}> (créd: {fmt(p.creditoAplicado)})</span>}
-                          {p.quitado && <span style={{ color: C.verde, fontSize: 11, fontWeight: 700 }}> ✅ QUITADO</span>}
-                        </span>
-                        <span style={{ fontWeight: 600, color: p.quitado ? C.verde : "inherit" }}>
-                          {p.quitado ? "—" : fmt(p.total)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
-                  <div style={{ background: C.verde, borderRadius: 8, padding: "12px 16px", textAlign: "center" }}>
-                    <div style={{ color: "#fff", fontSize: 11, opacity: .8 }}>BLOCO 1 — Prisão Civil</div>
-                    <div style={{ color: "#fff", fontWeight: 800, fontSize: 18 }}>{fmt(resultado.totalPrisao)}</div>
-                  </div>
-                  <div style={{ background: C.azul, borderRadius: 8, padding: "12px 16px", textAlign: "center" }}>
-                    <div style={{ color: "#fff", fontSize: 11, opacity: .8 }}>BLOCO 2 — Penhora</div>
-                    <div style={{ color: "#fff", fontWeight: 800, fontSize: 18 }}>{fmt(resultado.totalPenhora)}</div>
-                  </div>
-                </div>
-                <p style={{ fontSize: 11, color: "#888", marginTop: 10 }}>
-                  Correção por IPCA-E + juros 1% a.m. (art. 406 CC c/c art. 528 CPC) • {resultado.data}
-                </p>
-              </Card>
-            )}
-          </>
-        )}
-
+          )}
+        </>)}
         {tab === "historico" && (
           <Card>
             <h3 style={{ margin: "0 0 16px", color: C.verde }}>📋 Histórico de Cálculos</h3>
@@ -860,21 +745,12 @@ function AppInterno({ usuario, onLogout }) {
               ? <p style={{ color: "#888", textAlign: "center", padding: 32 }}>Nenhum cálculo realizado ainda.</p>
               : historico.map(h => (
                 <div key={h.id} style={{ borderBottom: `1px solid ${C.borda}`, padding: "14px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{h.alimentado || "Alimentado não informado"}</div>
-                    <div style={{ fontSize: 12, color: "#888" }}>{h.processo || "Sem número"} • {h.data}</div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontWeight: 700, color: C.verde, fontSize: 15 }}>{fmt(h.total || 0)}</div>
-                  </div>
+                  <div><div style={{ fontWeight: 600, fontSize: 14 }}>{h.alimentado || "Alimentado não informado"}</div><div style={{ fontSize: 12, color: "#888" }}>{h.processo || "Sem número"} • {h.data}</div></div>
+                  <div style={{ textAlign: "right" }}><div style={{ fontWeight: 700, color: C.verde, fontSize: 15 }}>{fmt(h.total || 0)}</div></div>
                 </div>
               ))
             }
-            {historico.length > 0 && (
-              <div style={{ marginTop: 16 }}>
-                <Btn small outline cor={C.vermelho} onClick={() => { if (confirm("Limpar todo o histórico?")) { setHistorico([]); localStorage.removeItem("dpe_historico"); } }}>🗑 Limpar histórico</Btn>
-              </div>
-            )}
+            {historico.length > 0 && (<div style={{ marginTop: 16 }}><Btn small outline cor={C.vermelho} onClick={() => { if (confirm("Limpar todo o histórico?")) { setHistorico([]); localStorage.removeItem("dpe_historico"); } }}>🗑 Limpar histórico</Btn></div>)}
           </Card>
         )}
       </div>
