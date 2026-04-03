@@ -76,6 +76,7 @@ const DEFENSORES = {
 const SENHA_CORRETA = "JB2027";
 
 let _logoB64 = null;
+let _logoRatio = 1.5; // largura/altura — fallback
 function carregarLogo() {
   if (_logoB64) return Promise.resolve(_logoB64);
   return new Promise((res) => {
@@ -87,6 +88,7 @@ function carregarLogo() {
         cv.width = img.naturalWidth; cv.height = img.naturalHeight;
         cv.getContext("2d").drawImage(img, 0, 0);
         _logoB64 = cv.toDataURL("image/png");
+        _logoRatio = img.naturalWidth / img.naturalHeight;
         res(_logoB64);
       } catch { res(null); }
     };
@@ -452,12 +454,11 @@ function AppInterno({ usuario, onLogout }) {
     doc.setFillColor(26, 107, 58); doc.rect(0, 0, W, 28, "F");
     if (logoData) {
       try {
-        const img = new Image(); img.src = logoData;
-        const ratio = img.naturalWidth / img.naturalHeight || 1.5;
-        const lh = 22, lw = lh * ratio;
+        // Usa ratio real salvo no carregamento inicial
+        const lh = 22, lw = Math.max(lh * _logoRatio, 30);
         // Logo esquerdo
         doc.addImage(logoData, "PNG", 6, 3, lw, lh);
-        // Logo direito (espelhado na posição)
+        // Logo direito
         doc.addImage(logoData, "PNG", W - 6 - lw, 3, lw, lh);
       } catch {}
     }
