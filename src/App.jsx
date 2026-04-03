@@ -167,20 +167,17 @@ const ModalPerfil = ({ perfil, onSave, onClose }) => {
   const [nome, setNome] = useState(perfil.nome || "");
   const [apiKey, setApiKey] = useState(perfil.apiKey || "");
   const [showKey, setShowKey] = useState(false);
-  const [senha, setSenha] = useState("");
-  const [erro, setErro] = useState("");
-  const lotacao = DEFENSORES[nome] || "";
-  const perfilAtualAutenticado = perfil.nome && DEFENSORES[perfil.nome];
+  const [senhaModal, setSenhaModal] = useState("");
+  const [erroModal, setErroModal] = useState("");
+  const lotacaoModal = DEFENSORES[nome] || "";
 
-  const salvar = () => {
-    // Se está tentando trocar para um defensor cadastrado, exige senha
-    if (nome && DEFENSORES[nome]) {
-      if (senha !== SENHA_CORRETA) {
-        setErro("Senha incorreta. Apenas defensores autorizados podem usar este perfil.");
-        return;
-      }
+  const salvarPerfil2 = () => {
+    if (nome && DEFENSORES[nome] && senhaModal !== SENHA_CORRETA) {
+      setErroModal("Senha incorreta. Apenas defensores autorizados podem usar este perfil.");
+      return;
     }
-    onSave({ nome, lotacao, apiKey });
+    setErroModal("");
+    onSave({ nome, lotacao: lotacaoModal, apiKey });
     onClose();
   };
 
@@ -188,39 +185,52 @@ const ModalPerfil = ({ perfil, onSave, onClose }) => {
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ background: C.branco, borderRadius: 12, padding: 32, width: 460, boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
         <h2 style={{ margin: "0 0 20px", color: C.verde }}>⚙ Configurar Perfil</h2>
+
         <div style={{ marginBottom: 14 }}>
           <label style={{ display: "block", fontWeight: 600, marginBottom: 4, color: C.cinza, fontSize: 13 }}>Nome do Defensor</label>
-          <select value={nome} onChange={e => { setNome(e.target.value); setErro(""); setSenha(""); }} style={{ width: "100%", padding: "9px 12px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 14, boxSizing: "border-box" }}>
+          <select value={nome} onChange={e => { setNome(e.target.value); setErroModal(""); setSenhaModal(""); }}
+            style={{ width: "100%", padding: "9px 12px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 14, boxSizing: "border-box" }}>
             <option value="">— Nenhum (visitante) —</option>
             {Object.keys(DEFENSORES).map((d, i) => <option key={i} value={d}>{d}</option>)}
           </select>
         </div>
+
         {nome && DEFENSORES[nome] && (
           <>
             <div style={{ marginBottom: 14 }}>
-              <label style={{ display: "block", fontWeight: 600, marginBottom: 4, color: C.cinza, fontSize: 13 }}>Defensoria (automática)</label>
-              <input value={lotacao} disabled style={{ width: "100%", padding: "9px 12px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 14, boxSizing: "border-box", background: C.cinzaClaro, color: C.cinza }} />
+              <label style={{ display: "block", fontWeight: 600, marginBottom: 4, color: C.cinza, fontSize: 13 }}>Defensoria</label>
+              <input value={lotacaoModal} disabled
+                style={{ width: "100%", padding: "9px 12px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 14, boxSizing: "border-box", background: C.cinzaClaro, color: C.cinza }} />
             </div>
             <div style={{ marginBottom: 14 }}>
-              <label style={{ display: "block", fontWeight: 600, marginBottom: 4, color: C.cinza, fontSize: 13 }}>Senha de acesso</label>
-              <input type="password" value={senha} onChange={e => { setSenha(e.target.value); setErro(""); }} placeholder="Digite a senha do defensor"
-                onKeyDown={e => e.key === "Enter" && salvar()}
-                style={{ width: "100%", padding: "9px 12px", borderRadius: 6, border: `1px solid ${erro ? C.vermelho : C.borda}`, fontSize: 14, boxSizing: "border-box" }} />
-              {erro && <div style={{ fontSize: 12, color: C.vermelho, marginTop: 4 }}>🚫 {erro}</div>}
+              <label style={{ display: "block", fontWeight: 600, marginBottom: 4, color: C.cinza, fontSize: 13 }}>🔒 Senha de acesso (obrigatória)</label>
+              <input type="password" value={senhaModal} onChange={e => { setSenhaModal(e.target.value); setErroModal(""); }}
+                placeholder="Digite a senha para confirmar"
+                onKeyDown={e => e.key === "Enter" && salvarPerfil2()}
+                style={{ width: "100%", padding: "9px 12px", borderRadius: 6, border: `1px solid ${erroModal ? C.vermelho : C.borda}`, fontSize: 14, boxSizing: "border-box" }} />
+              {erroModal && <div style={{ fontSize: 12, color: C.vermelho, marginTop: 4 }}>🚫 {erroModal}</div>}
             </div>
           </>
         )}
+
         <div style={{ marginBottom: 14 }}>
           <label style={{ display: "block", fontWeight: 600, marginBottom: 4, color: C.cinza, fontSize: 13 }}>Chave de API (Anthropic) — opcional</label>
           <div style={{ position: "relative" }}>
             <input type={showKey ? "text" : "password"} value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="sk-ant-..."
               style={{ width: "100%", padding: "9px 40px 9px 12px", borderRadius: 6, border: `1px solid ${C.borda}`, fontSize: 13, boxSizing: "border-box" }} />
-            <button onClick={() => setShowKey(s => !s)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16 }}>{showKey ? "🙈" : "👁"}</button>
+            <button onClick={() => setShowKey(s => !s)}
+              style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16 }}>
+              {showKey ? "🙈" : "👁"}
+            </button>
           </div>
-          <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Para leitura automática de sentença. <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" style={{ color: C.verde }}>console.anthropic.com/settings/keys</a></div>
+          <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
+            Só necessária para a função "Importar com IA" (leitura automática de sentença). A calculadora funciona normalmente sem ela.
+            Caso queira, obtenha em <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" style={{ color: C.verde }}>console.anthropic.com/settings/keys</a> (paga, plano Anthropic).
+          </div>
         </div>
+
         <div style={{ display: "flex", gap: 10 }}>
-          <Btn onClick={salvar}>Salvar</Btn>
+          <Btn onClick={salvarPerfil2}>Salvar</Btn>
           <Btn onClick={onClose} outline cor={C.cinza}>Cancelar</Btn>
         </div>
       </div>
@@ -651,7 +661,7 @@ function AppInterno({ usuario, onLogout }) {
               <input ref={fileRef} type="file" accept=".pdf,image/*" onChange={handleUpload} style={{ display: "none" }} />
               <Btn onClick={() => fileRef.current.click()} disabled={loadingIA} cor={C.azul} small>{loadingIA ? "⏳ Processando…" : "📄 Selecionar PDF ou imagem"}</Btn>
               {msgIA && <div style={{ marginTop: 8, fontSize: 12, color: msgIA.startsWith("✅") ? C.verde : C.vermelho }}>{msgIA}</div>}
-              {!perfil.apiKey && <div style={{ marginTop: 6, fontSize: 11, color: "#999" }}>⚠️ Requer chave de API no perfil.</div>}
+              {!perfil.apiKey && <div style={{ marginTop: 6, fontSize: 11, color: "#999" }}>⚠️ Função opcional e paga. Requer chave de API da Anthropic configurada no perfil (👤). A calculadora funciona normalmente sem isso — use a Opção B.</div>}
             </Card>
             <Card style={{ margin: 0, borderTop: `3px solid ${C.verde}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
