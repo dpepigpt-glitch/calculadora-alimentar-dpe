@@ -67,6 +67,7 @@ const DEFENSORES = {
   "Dra. Andrea Melo de Carvalho": "1ª Defensoria de Família",
   "Dra. Dayana Sampaio Mendes Magalhães": "2ª Defensoria Pública Regional de Altos",
   "Dra. Priscila Gimenes do Nascimento Godói": "2ª Defensoria Regional de União",
+  "DoutorIS Brucha Lalasca": "1º D-INF",
 };
 const SENHA_CORRETA = "JB2027";
 
