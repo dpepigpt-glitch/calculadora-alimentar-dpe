@@ -79,15 +79,14 @@ return corrigirAte(saldo, mesCorr, ano, h.getMonth() + 1, h.getFullYear());
 const MESES = [“Janeiro”,“Fevereiro”,“Março”,“Abril”,“Maio”,“Junho”,“Julho”,“Agosto”,“Setembro”,“Outubro”,“Novembro”,“Dezembro”];
 
 const DEFENSORES = {
-“Dr. Robert Rios Júnior”: “2ª Defensoria Itinerante”,
-“Dra. Andrea Melo de Carvalho”: “1ª Defensoria de Família”,
-“Dra. Dayana Sampaio Mendes Magalhães”: “2ª Defensoria Pública Regional de Altos”,
-“Dr. Eric Leonardo Pires de Melo”: “7ª Defensoria de Família”,
-“Dr. Marcos Martins de Oliveira”: “2ª Defensoria de Floriano”,
-“Dra. Priscila Gimenes do Nascimento Godói”: “2ª Defensoria Regional de União”,
-“Dra. Julyanne Cristine Douglas Leone”: “Assessora - 2ª Defensoria Itinerante”,
+“Dr. Robert Rios Júnior”: { lotacao: “2ª Defensoria Itinerante”, senha: “Robert2027” },
+“Dra. Andrea Melo de Carvalho”: { lotacao: “1ª Defensoria de Família”, senha: “Andrea2027” },
+“Dra. Dayana Sampaio Mendes Magalhães”: { lotacao: “2ª Defensoria Pública Regional de Altos”, senha: “Dayana2027” },
+“Dr. Eric Leonardo Pires de Melo”: { lotacao: “7ª Defensoria de Família”, senha: “Eric2027” },
+“Dr. Marcos Martins de Oliveira”: { lotacao: “2ª Defensoria de Floriano”, senha: “Marcos2027” },
+“Dra. Priscila Gimenes do Nascimento Godói”: { lotacao: “2ª Defensoria Regional de União”, senha: “Priscila2027” },
+“Dra. Julyanne Cristine Douglas Leone”: { lotacao: “Assessora - 2ª Defensoria Itinerante”, senha: “Julyanne2027” },
 };
-const SENHA_CORRETA = “JB2027”;
 
 let _logoB64 = null;
 let _logoRatio = 1.5;
@@ -118,8 +117,9 @@ const [nome, setNome] = useState(””);
 const [senha, setSenha] = useState(””);
 const [erro, setErro] = useState(””);
 const tentar = () => {
-if (!DEFENSORES[nome] || senha !== SENHA_CORRETA) { setErro(“Credenciais inválidas.”); return; }
-onLogin({ nome, lotacao: DEFENSORES[nome], autenticado: true });
+const def = DEFENSORES[nome];
+if (!def || senha !== def.senha) { setErro(“Credenciais inválidas.”); return; }
+onLogin({ nome, lotacao: def.lotacao, autenticado: true });
 };
 return (
 <div style={{ minHeight:“100vh”, background:”#f0f2f0”, display:“flex”, alignItems:“center”, justifyContent:“center” }}>
@@ -135,7 +135,7 @@ return (
 <option value="">— Selecione —</option>
 {Object.keys(DEFENSORES).map((d,i)=><option key={i} value={d}>{d}</option>)}
 </select>
-{nome && <div style={{ fontSize:12, color:C.verde, marginTop:4, paddingLeft:4 }}>📍 {DEFENSORES[nome]}</div>}
+{nome && DEFENSORES[nome] && <div style={{ fontSize:12, color:C.verde, marginTop:4, paddingLeft:4 }}>📍 {DEFENSORES[nome].lotacao}</div>}
 </div>
 <div style={{ marginBottom:20 }}>
 <label style={{ display:“block”, fontWeight:600, marginBottom:6, fontSize:13, color:C.cinza }}>Senha de Acesso</label>
@@ -179,9 +179,9 @@ const [apiKey,setApiKey] = useState(perfil.apiKey||””);
 const [showKey,setShowKey] = useState(false);
 const [senhaModal,setSenhaModal] = useState(””);
 const [erroModal,setErroModal] = useState(””);
-const lotacaoModal = DEFENSORES[nome]||””;
+const lotacaoModal = DEFENSORES[nome]?.lotacao||””;
 const salvar = () => {
-if (nome && DEFENSORES[nome] && senhaModal !== SENHA_CORRETA) { setErroModal(“Senha incorreta.”); return; }
+if (nome && DEFENSORES[nome] && senhaModal !== DEFENSORES[nome].senha) { setErroModal(“Senha incorreta.”); return; }
 onSave({ nome, lotacao:lotacaoModal, apiKey }); onClose();
 };
 return (
