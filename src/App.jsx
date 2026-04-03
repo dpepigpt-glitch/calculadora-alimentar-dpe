@@ -118,7 +118,8 @@ const [senha, setSenha] = useState(””);
 const [erro, setErro] = useState(””);
 const tentar = () => {
 const def = DEFENSORES[nome];
-if (!def || senha !== def.senha) { setErro(“Credenciais inválidas.”); return; }
+if (!nome || !def) { setErro(“Selecione um defensor.”); return; }
+if (senha !== def.senha) { setErro(“Senha incorreta.”); return; }
 onLogin({ nome, lotacao: def.lotacao, autenticado: true });
 };
 return (
@@ -198,7 +199,7 @@ return (
 {nome && DEFENSORES[nome] && (<>
 <div style={{ marginBottom:14 }}>
 <label style={{ display:“block”, fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>Defensoria</label>
-<input value={lotacaoModal} disabled style={{ width:“100%”, padding:“9px 12px”, borderRadius:6, border:`1px solid ${C.borda}`, fontSize:14, boxSizing:“border-box”, background:C.cinzaClaro }} />
+<input value={DEFENSORES[nome].lotacao} disabled style={{ width:“100%”, padding:“9px 12px”, borderRadius:6, border:`1px solid ${C.borda}`, fontSize:14, boxSizing:“border-box”, background:C.cinzaClaro }} />
 </div>
 <div style={{ marginBottom:14 }}>
 <label style={{ display:“block”, fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>🔒 Senha</label>
