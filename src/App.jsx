@@ -590,8 +590,8 @@ function AppInterno(props) {
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:20 }}>
               <Card style={{ margin:0, borderTop:"3px solid "+C.azul }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
-                  <span style={{ fontSize:20 }}>AI</span>
-                  <div><div style={{ fontWeight:700, color:C.azul, fontSize:14 }}>Opcao A - Importar com IA</div><div style={{ fontSize:11, color:"#666" }}>Envie a sentenca e a IA preenche</div></div>
+                  <span style={{ fontSize:20 }}>A</span>
+                  <div><div style={{ fontWeight:700, color:C.azul, fontSize:14 }}>Opção A - Importar com IA</div><div style={{ fontSize:11, color:"#666" }}>Envie a sentença e a IA preenche</div></div>
                 </div>
                 <input ref={fileRef} type="file" accept=".pdf,image/*" onChange={handleUpload} style={{ display:"none" }}/>
                 <Btn onClick={function(){fileRef.current.click()}} disabled={loadingIA} cor={C.azul} small>{loadingIA ? "Processando..." : "Selecionar PDF ou imagem"}</Btn>
@@ -600,7 +600,7 @@ function AppInterno(props) {
               </Card>
               <Card style={{ margin:0, borderTop:"3px solid "+C.verde }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
-                  <span style={{ fontSize:20 }}></span>
+                  <span style={{ fontSize:20 }}>B</span>
                   <div><div style={{ fontWeight:700, color:C.verde, fontSize:14 }}>Cálculo Manual</div><div style={{ fontSize:11, color:"#666" }}>Sempre disponivel</div></div>
                 </div>
                 <div style={{ fontSize:12, color:"#555" }}>Preencha os dados abaixo.</div>
