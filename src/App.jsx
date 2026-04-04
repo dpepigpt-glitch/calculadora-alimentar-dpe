@@ -82,8 +82,9 @@ var DEFENSORES = {
   "Dra. Andrea Melo de Carvalho": { lotacao: "1a Defensoria de Familia", senha: "Andrea2027" },
   "Dra. Dayana Sampaio Mendes Magalhaes": { lotacao: "2a Defensoria Publica Regional de Altos", senha: "Dayana2027" },
   "Dr. Eric Leonardo Pires de Melo": { lotacao: "7a Defensoria de Familia", senha: "Eric2027" },
+  "Dra. Livia de Oliveira Revorêdo": { lotacao: "3a Defensoria Publica Regional de São Raimundo Nonato", senha: "Livia2027" },
   "Dr. Marcos Martins de Oliveira": { lotacao: "2a Defensoria de Floriano", senha: "Marcos2027" },
-  "Dra. Priscila Gimenes do Nascimento Godoi": { lotacao: "2a Defensoria Regional de Uniao", senha: "Priscila2027" },
+  "Dra. Priscila Gimenes do Nascimento Godoi": { lotacao: "2a Defensoria Publica Regional de Uniao", senha: "Priscila2027" },
   "Dra. Julyanne Cristine Douglas Leone": { lotacao: "Assessora - 2a Defensoria Itinerante", senha: "Julyanne2027" }
 };
 
