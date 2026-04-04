@@ -128,8 +128,8 @@ function TelaLogin(props) {
       <div style={{ background:"#fff", borderRadius:12, padding:40, width:400, boxShadow:"0 8px 32px rgba(0,0,0,0.15)" }}>
         <div style={{ textAlign:"center", marginBottom:28 }}>
           <img src="/logo-apidep.png" alt="APIDEP" crossOrigin="anonymous" style={{ height:60, objectFit:"contain", marginBottom:12 }} onError={function(e){e.target.style.display="none"}} />
-          <div style={{ fontWeight:800, fontSize:16, color:C.verde }}>Calculadora de Debitos Alimentares</div>
-          <div style={{ fontSize:12, color:"#888", marginTop:4 }}>Fase teste-Apenas Defensores Legais</div>
+          <div style={{ fontWeight:800, fontSize:16, color:C.verde }}>Calculadora de Débitos Alimentares</div>
+          <div style={{ fontSize:12, color:"#888", marginTop:4 }}>Fase teste -Apenas Defensores Legais</div>
         </div>
         <div style={{ marginBottom:14 }}>
           <label style={{ display:"block", fontWeight:600, marginBottom:6, fontSize:13, color:C.cinza }}>Nome do Defensor</label>
