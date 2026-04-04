@@ -548,7 +548,7 @@ function AppInterno(props) {
       doc.text(fmt(resultado.totalPenhora),x2+bW/2,y+19,{align:"center"});y+=30;
 
       if(y>170){doc.addPage();y=15}
-      doc.setTextColor(40,40,40);doc.setFont("helvetica","bold");doc.setFontSize(8);doc.text("Observacoes:",mg,y);y+=5;
+      doc.setTextColor(40,40,40);doc.setFont("helvetica","bold");doc.setFontSize(8);doc.text("Observações:",mg,y);y+=5;
       doc.setFont("helvetica","normal");doc.setFontSize(7.5);
       var obs=["1. Correção monetária pelo IPCA-E (Res. CJF no 134/2010).","2. Juros de mora 1% a.m. sobre valor corrigido (art. 406 CC c/c art. 161 par. 1º CTN).","3. Data-base: "+resultado.data+". Sujeitos a complementacao ate efetivo pagamento.","4. Creditos (pagamentos excedentes) corrigidos e abatidos das parcelas mais antigas."];
       obs.forEach(function(o){doc.text(o,mg,y);y+=4.5});y+=8;
@@ -639,14 +639,14 @@ function AppInterno(props) {
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16, padding:"12px 16px", background:incluir13?"#fff8e1":"#f9f9f9", border:"1px solid "+(incluir13?"#f0c040":C.borda), borderRadius:8 }}>
                 <input type="checkbox" checked={incluir13} onChange={function(e){setIncluir13(e.target.checked)}} style={{ width:20, height:20, cursor:"pointer" }}/>
                 <div>
-                  <div style={{ fontWeight:700, fontSize:13, color:C.cinza }}>Incluir 13o salario</div>
-                  <div style={{ fontSize:11, color:"#888" }}>Gera parcela de 13o ao final de cada ano (media dos meses). Valor editavel manualmente.</div>
+                  <div style={{ fontWeight:700, fontSize:13, color:C.cinza }}>Incluir 13º salário</div>
+                  <div style={{ fontSize:11, color:"#888" }}>Gera parcela de 13º ao final de cada ano (média dos meses). Valor editável manualmente.</div>
                 </div>
               </div>
               <div>
                 <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>Justificativa / Observacoes (aparece no PDF)</label>
                 <textarea value={justificativa} onChange={function(e){setJustificativa(e.target.value)}} rows={4}
-                  placeholder="Ex.: Calculo elaborado com base na sentenca proferida nos autos..."
+                  placeholder="Ex.: Cálculo elaborado com base na sentença proferida nos autos..."
                   style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:13, boxSizing:"border-box", resize:"vertical", fontFamily:"inherit", lineHeight:1.5 }}/>
               </div>
             </Card>
@@ -695,7 +695,7 @@ function AppInterno(props) {
                   </div>
                 );
               })}
-              <div style={{ marginTop:16 }}><Btn onClick={calcular} disabled={loading||parcelas.every(function(p){return !p.valor})}>{loading ? "Calculando..." : "Calcular Debito"}</Btn></div>
+              <div style={{ marginTop:16 }}><Btn onClick={calcular} disabled={loading||parcelas.every(function(p){return !p.valor})}>{loading ? "Calculando..." : "Calcular Débito"}</Btn></div>
             </Card>
             {resultado && (
               <Card style={{ borderLeft:"4px solid "+C.verde }}>
@@ -739,7 +739,7 @@ function AppInterno(props) {
                 )}
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:8 }}>
                   <div style={{ background:C.verde, borderRadius:8, padding:"12px 16px", textAlign:"center" }}>
-                    <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>BLOCO 1 - Prisao Civil</div>
+                    <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>BLOCO 1 - Prisão Civil</div>
                     <div style={{ color:"#fff", fontWeight:800, fontSize:18 }}>{fmt(resultado.totalPrisao)}</div>
                   </div>
                   <div style={{ background:C.azul, borderRadius:8, padding:"12px 16px", textAlign:"center" }}>
