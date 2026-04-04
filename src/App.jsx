@@ -78,14 +78,14 @@ function corrigir(saldo, mes, ano) {
 var MESES = ["Janeiro","Fevereiro","Marco","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
 var DEFENSORES = {
-  "Dr. Robert Rios Junior": { lotacao: "2ª Defensoria Itinerante", senha: "Robert2027" },
-  "Dra. Andrea Melo de Carvalho": { lotacao: "1a Defensoria de Familia", senha: "Andrea2027" },
-  "Dra. Dayana Sampaio Mendes Magalhaes": { lotacao: "2a Defensoria Publica Regional de Altos", senha: "Dayana2027" },
-  "Dr. Eric Leonardo Pires de Melo": { lotacao: "7a Defensoria de Familia", senha: "Eric2027" },
-  "Dra. Livia de Oliveira Revorêdo": { lotacao: "3a Defensoria Publica Regional de São Raimundo Nonato", senha: "Livia2027" },
-  "Dr. Marcos Martins de Oliveira": { lotacao: "2a Defensoria de Floriano", senha: "Marcos2027" },
-  "Dra. Priscila Gimenes do Nascimento Godoi": { lotacao: "2a Defensoria Publica Regional de Uniao", senha: "Priscila2027" },
-  "Dra. Julyanne Cristine Douglas Leone": { lotacao: "Assessora - 2a Defensoria Itinerante", senha: "Julyanne2027" }
+  "Dr. Robert Rios Júnior": { lotacao: "2ª Defensoria Itinerante", senha: "Robert2027" },
+  "Dra. Andrea Melo de Carvalho": { lotacao: "1ª Defensoria de Família", senha: "Andrea2027" },
+  "Dra. Dayana Sampaio Mendes Magalhães": { lotacao: "2ª Defensoria Pública Regional de Altos", senha: "Dayana2027" },
+  "Dr. Eric Leonardo Pires de Melo": { lotacao: "7ª Defensoria de Família", senha: "Eric2027" },
+  "Dra. Lívia de Oliveira Revorêdo": { lotacao: "3ª Defensoria Pública Regional de São Raimundo Nonato", senha: "Livia2027" },
+  "Dr. Marcos Martins de Oliveira": { lotacao: "2ª Defensoria de Floriano", senha: "Marcos2027" },
+  "Dra. Priscila Gimenes do Nascimento Godoi": { lotacao: "2ª Defensoria Pública Regional de União", senha: "Priscila2027" },
+  "Dra. Julyanne Cristine Douglas Leone": { lotacao: "Assessora - 2ª Defensoria Itinerante", senha: "Julyanne2027" }
 };
 
 var _logoB64 = null;
@@ -460,10 +460,10 @@ function AppInterno(props) {
       doc.setFillColor(26,107,58);doc.rect(0,0,W,28,"F");
       if(logoData){try{var lh=22,lw=Math.max(lh*_logoRatio,30);doc.addImage(logoData,"PNG",6,3,lw,lh);doc.addImage(logoData,"PNG",W-6-lw,3,lw,lh)}catch(e){}}
       doc.setTextColor(255,255,255);doc.setFontSize(14);doc.setFont("helvetica","bold");
-      doc.text("MEMORIAL DE CALCULO",W/2,10,{align:"center"});
+      doc.text("MEMORIAL DE CÁLCULO",W/2,10,{align:"center"});
       doc.setFontSize(9);doc.setFont("helvetica","normal");
-      doc.text("Debito Alimentar - Execucao de Alimentos (art. 528 CPC)",W/2,16,{align:"center"});
-      doc.setFontSize(7.5);doc.text("APIDEP - Associacao Piauiense das Defensoras e Defensores Publicos",W/2,22,{align:"center"});
+      doc.text("Débito Alimentar - Execução de Alimentos (art. 528 CPC)",W/2,16,{align:"center"});
+      doc.setFontSize(7.5);doc.text("APIDEP - Associação Piauiense das Defensoras e Defensores Públicos",W/2,22,{align:"center"});
       y=36;
 
       doc.setFillColor(232,245,238);doc.rect(mg,y,W-mg*2,28,"F");
@@ -482,7 +482,7 @@ function AppInterno(props) {
 
       if(resultado.justificativa){
         doc.setTextColor(26,107,58);doc.setFont("helvetica","bold");doc.setFontSize(8.5);
-        doc.text("JUSTIFICATIVA / OBSERVACOES",mg,y);y+=5;
+        doc.text("JUSTIFICATIVA / OBSERVAÇÕES",mg,y);y+=5;
         doc.setDrawColor(26,107,58);doc.line(mg,y,W-mg,y);y+=4;
         doc.setTextColor(40,40,40);doc.setFont("helvetica","normal");doc.setFontSize(8);
         var linhas=doc.splitTextToSize(resultado.justificativa,W-mg*2);
@@ -537,20 +537,20 @@ function AppInterno(props) {
       var bW=(W-mg*2-4)/2;
       doc.setFillColor(26,107,58);doc.rect(mg,y,bW,22,"F");
       doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(8);
-      doc.text("BLOCO 1 - PRISAO CIVIL",mg+3,y+7);doc.setFontSize(7);doc.setFont("helvetica","normal");
-      doc.text("Ultimas 3 parcelas - art. 528, par. 3o CPC",mg+3,y+12);doc.setFont("helvetica","bold");doc.setFontSize(12);
+      doc.text("BLOCO 1 - PRISÃO CIVIL",mg+3,y+7);doc.setFontSize(7);doc.setFont("helvetica","normal");
+      doc.text("Últimas 3 parcelas - art. 528, par. 3º CPC",mg+3,y+12);doc.setFont("helvetica","bold");doc.setFontSize(12);
       doc.text(fmt(resultado.totalPrisao),mg+bW/2,y+19,{align:"center"});
       var x2=mg+bW+4;
       doc.setFillColor(26,82,118);doc.rect(x2,y,bW,22,"F");
       doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(8);
       doc.text("BLOCO 2 - PENHORA",x2+3,y+7);doc.setFontSize(7);doc.setFont("helvetica","normal");
-      doc.text("Parcelas anteriores - art. 528, par. 8o CPC",x2+3,y+12);doc.setFont("helvetica","bold");doc.setFontSize(12);
+      doc.text("Parcelas anteriores - art. 528, par. 8º CPC",x2+3,y+12);doc.setFont("helvetica","bold");doc.setFontSize(12);
       doc.text(fmt(resultado.totalPenhora),x2+bW/2,y+19,{align:"center"});y+=30;
 
       if(y>170){doc.addPage();y=15}
       doc.setTextColor(40,40,40);doc.setFont("helvetica","bold");doc.setFontSize(8);doc.text("Observacoes:",mg,y);y+=5;
       doc.setFont("helvetica","normal");doc.setFontSize(7.5);
-      var obs=["1. Correcao monetaria pelo IPCA-E (Res. CJF no 134/2010).","2. Juros de mora 1% a.m. sobre valor corrigido (art. 406 CC c/c art. 161 par. 1o CTN).","3. Data-base: "+resultado.data+". Sujeitos a complementacao ate efetivo pagamento.","4. Creditos (pagamentos excedentes) corrigidos e abatidos das parcelas mais antigas."];
+      var obs=["1. Correção monetária pelo IPCA-E (Res. CJF no 134/2010).","2. Juros de mora 1% a.m. sobre valor corrigido (art. 406 CC c/c art. 161 par. 1º CTN).","3. Data-base: "+resultado.data+". Sujeitos a complementacao ate efetivo pagamento.","4. Creditos (pagamentos excedentes) corrigidos e abatidos das parcelas mais antigas."];
       obs.forEach(function(o){doc.text(o,mg,y);y+=4.5});y+=8;
 
       if(y>185){doc.addPage();y=15}
@@ -611,18 +611,18 @@ function AppInterno(props) {
               <h3 style={{ margin:"0 0 16px", color:C.verde, fontSize:15 }}>Dados do Processo</h3>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px" }}>
                 <div style={{ marginBottom:14 }}>
-                  <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>Numero do Processo</label>
+                  <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>Número do Processo</label>
                   <input type="text" inputMode="numeric" value={processo} onChange={function(e){setProcesso(maskProcesso(e.target.value))}} placeholder="0000000-00.0000.8.18.0000"
                     style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box", fontFamily:"monospace", letterSpacing:"0.5px" }}/>
                 </div>
-                <Input label="Vara/Comarca" value={comarca} onChange={setComarca} placeholder="1a Vara - Itaueira/PI"/>
+                <Input label="Vara/Comarca" value={comarca} onChange={setComarca} placeholder=" Vara/Comarca"/>
                 <Input label="Alimentado(a) / Exequente" value={alimentado} onChange={setAlimentado} placeholder="Nome completo"/>
                 <Input label="Alimentante / Executado" value={alimentante} onChange={setAlimentante} placeholder="Nome completo"/>
               </div>
               <div style={{ marginBottom:14 }}>
                 <label style={{ display:"block", fontWeight:600, marginBottom:8, color:C.cinza, fontSize:13 }}>Alimentos fixados em</label>
                 <div style={{ display:"flex", gap:10, marginBottom:10 }}>
-                  {[["sm","% do Salario Minimo"],["fixo","Valor fixo (R$)"]].map(function(item){
+                  {[["sm","% do Salário Mínimo"],["fixo","Valor fixo (R$)"]].map(function(item){
                     var v=item[0], l=item[1];
                     return <button key={v} onClick={function(){setTipoAlimento(v)}} style={{ padding:"7px 16px", borderRadius:6, border:"2px solid "+(tipoAlimento===v?C.verde:C.borda), background:tipoAlimento===v?C.verde:C.branco, color:tipoAlimento===v?"#fff":C.cinza, fontWeight:600, fontSize:13, cursor:"pointer", touchAction:"manipulation" }}>{l}</button>
                   })}
@@ -708,7 +708,7 @@ function AppInterno(props) {
                 {resultado.prisao.length>0 && (
                   <div style={{ background:C.verdePale, border:"1px solid "+C.verde, borderRadius:8, padding:16, marginBottom:12 }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                      <div style={{ fontWeight:700, color:C.verde }}>BLOCO 1 - Prisao Civil</div>
+                      <div style={{ fontWeight:700, color:C.verde }}>BLOCO 1 - Prisão Civil</div>
                       <span style={{ background:C.verde, color:"#fff", borderRadius:20, padding:"3px 12px", fontSize:12, fontWeight:700 }}>{fmt(resultado.totalPrisao)}</span>
                     </div>
                     {resultado.prisao.map(function(p,i){
