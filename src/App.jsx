@@ -78,7 +78,7 @@ function corrigir(saldo, mes, ano) {
 var MESES = ["Janeiro","Fevereiro","Marco","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
 var DEFENSORES = {
-  "Dr. Robert Rios Junior": { lotacao: "2a Defensoria Itinerante", senha: "Robert2027" },
+  "Dr. Robert Rios Junior": { lotacao: "2ª Defensoria Itinerante", senha: "Robert2027" },
   "Dra. Andrea Melo de Carvalho": { lotacao: "1a Defensoria de Familia", senha: "Andrea2027" },
   "Dra. Dayana Sampaio Mendes Magalhaes": { lotacao: "2a Defensoria Publica Regional de Altos", senha: "Dayana2027" },
   "Dr. Eric Leonardo Pires de Melo": { lotacao: "7a Defensoria de Familia", senha: "Eric2027" },
