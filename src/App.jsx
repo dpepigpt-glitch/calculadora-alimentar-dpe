@@ -600,8 +600,8 @@ function AppInterno(props) {
               </Card>
               <Card style={{ margin:0, borderTop:"3px solid "+C.verde }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
-                  <span style={{ fontSize:20 }}>Ed</span>
-                  <div><div style={{ fontWeight:700, color:C.verde, fontSize:14 }}>Opcao B - Manual</div><div style={{ fontSize:11, color:"#666" }}>Sempre disponivel</div></div>
+                  <span style={{ fontSize:20 }}></span>
+                  <div><div style={{ fontWeight:700, color:C.verde, fontSize:14 }}>Cálculo Manual</div><div style={{ fontSize:11, color:"#666" }}>Sempre disponivel</div></div>
                 </div>
                 <div style={{ fontSize:12, color:"#555" }}>Preencha os dados abaixo.</div>
                 <div style={{ marginTop:10 }}><span style={{ background:C.verdePale, color:C.verde, borderRadius:20, padding:"3px 10px", fontSize:11, fontWeight:600 }}>Sem conta necessaria</span></div>
