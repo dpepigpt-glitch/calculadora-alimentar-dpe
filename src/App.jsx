@@ -129,7 +129,7 @@ function TelaLogin(props) {
         <div style={{ textAlign:"center", marginBottom:28 }}>
           <img src="/logo-apidep.png" alt="APIDEP" crossOrigin="anonymous" style={{ height:60, objectFit:"contain", marginBottom:12 }} onError={function(e){e.target.style.display="none"}} />
           <div style={{ fontWeight:800, fontSize:16, color:C.verde }}>Calculadora de Debitos Alimentares</div>
-          <div style={{ fontSize:12, color:"#888", marginTop:4 }}>APIDEP - Acesso restrito</div>
+          <div style={{ fontSize:12, color:"#888", marginTop:4 }}>Fase teste-Apenas Defensores Legais</div>
         </div>
         <div style={{ marginBottom:14 }}>
           <label style={{ display:"block", fontWeight:600, marginBottom:6, fontSize:13, color:C.cinza }}>Nome do Defensor</label>
@@ -347,7 +347,7 @@ function AppInterno(props) {
       fetch("https://api.anthropic.com/v1/messages",{
         method:"POST",
         headers:{"Content-Type":"application/json","x-api-key":perfil.apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:[block,{type:"text",text:"Extraia: numero do processo CNJ, alimentado, alimentante, parcelas. Responda SOMENTE em JSON: {\"processo\":\"\",\"alimentado\":\"\",\"alimentante\":\"\",\"parcelas\":[{\"mes\":1,\"ano\":2024,\"valor\":1500.00}]}"}]}]})
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:[block,{type:"text",text:"Extraia: número do processo CNJ, alimentado, alimentante, parcelas. Responda SOMENTE em JSON: {\"processo\":\"\",\"alimentado\":\"\",\"alimentante\":\"\",\"parcelas\":[{\"mes\":1,\"ano\":2024,\"valor\":1500.00}]}"}]}]})
       }).then(function(resp){return resp.json()}).then(function(data){
         var text=(data.content&&data.content[0]&&data.content[0].text)||"";
         var parsed=JSON.parse(text.replace(/```json|```/g,"").trim());
@@ -474,11 +474,11 @@ function AppInterno(props) {
       var c1=mg+3,c2=mg+100,c3=mg+195;
       doc.setTextColor(40,40,40);doc.setFontSize(8);
       var lb=function(l,v,x,yy){doc.setFont("helvetica","bold");doc.text(l,x,yy);doc.setFont("helvetica","normal");doc.text(v||"-",x+doc.getTextWidth(l)+2,yy)};
-      lb("Processo no:",resultado.processo,c1,y);lb("Vara/Comarca:",resultado.comarca,c2,y);lb("Data-base:",resultado.data,c3,y);y+=6;
+      lb("Processo nº:",resultado.processo,c1,y);lb("Vara/Comarca:",resultado.comarca,c2,y);lb("Data-base:",resultado.data,c3,y);y+=8;
       lb("Exequente:",resultado.alimentado,c1,y);lb("Executado:",resultado.alimentante,c2,y);y+=6;
       var tl=resultado.tipoAlimento==="sm"?resultado.percentualSM+"% do salario minimo federal":fmt(Number(resultado.valorFixoAlimento||0))+" (valor fixo)";
-      lb("Alimentos fixados:",tl,c1,y);lb("Vencimento:","Dia "+resultado.diaVencimento,c2,y);lb("Indice:","IPCA-E",c3,y);y+=6;
-      lb("Juros de mora:","1% ao mes - art. 406 CC c/c art. 161 par. 1o CTN",c1,y);y+=8;
+      lb("Alimentos fixados:",tl,c1,y);lb("Vencimento:","Dia "+resultado.diaVencimento,c2,y);lb("Índice:","IPCA-E",c3,y);y+=6;
+      lb("Juros de mora:","1% ao mes - art. 406 CC c/c art. 161 par. 1º da CTN",c1,y);y+=8;
 
       if(resultado.justificativa){
         doc.setTextColor(26,107,58);doc.setFont("helvetica","bold");doc.setFontSize(8.5);
