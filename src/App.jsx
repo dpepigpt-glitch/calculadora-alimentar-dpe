@@ -129,8 +129,8 @@ function TelaLogin(props) {
       <div style={{ background:"#fff", borderRadius:12, padding:40, width:400, boxShadow:"0 8px 32px rgba(0,0,0,0.15)" }}>
         <div style={{ textAlign:"center", marginBottom:28 }}>
           <img src="/logo-apidep.png" alt="APIDEP" crossOrigin="anonymous" style={{ height:60, objectFit:"contain", marginBottom:12 }} onError={function(e){e.target.style.display="none"}} />
-          <div style={{ fontWeight:800, fontSize:16, color:C.verde }}>Calculadora de D\u00E9bitos Alimentares</div>
-          <div style={{ fontSize:12, color:"#888", marginTop:4 }}>Fase teste \u2014 Apenas Defensores Legais</div>
+          <div style={{ fontWeight:800, fontSize:16, color:C.verde }}>Calculadora de Débitos Alimentares</div>
+          <div style={{ fontSize:12, color:"#888", marginTop:4 }}>Fase teste - Apenas Defensores Legais</div>
         </div>
         <div style={{ marginBottom:14 }}>
           <label style={{ display:"block", fontWeight:600, marginBottom:6, fontSize:13, color:C.cinza }}>Nome do Defensor</label>
@@ -635,10 +635,10 @@ function AppInterno(props) {
       doc.setFillColor(26,107,58);doc.rect(0,0,W,28,"F");
       if(logoData){try{var lh=22,lw=Math.max(lh*_logoRatio,30);doc.addImage(logoData,"PNG",6,3,lw,lh);doc.addImage(logoData,"PNG",W-6-lw,3,lw,lh)}catch(e){}}
       doc.setTextColor(255,255,255);doc.setFontSize(14);doc.setFont("helvetica","bold");
-      doc.text("MEMORIAL DE C\u00C1LCULO",W/2,10,{align:"center"});
+      doc.text("MEMORIAL DE CÁLCULO",W/2,10,{align:"center"});
       doc.setFontSize(9);doc.setFont("helvetica","normal");
-      doc.text("D\u00E9bito Alimentar \u2014 Execu\u00E7\u00E3o de Alimentos (art. 528 CPC)",W/2,16,{align:"center"});
-      doc.setFontSize(7.5);doc.text("APIDEP \u2014 Associa\u00E7\u00E3o Piauiense das Defensoras e Defensores P\u00FAblicos",W/2,22,{align:"center"});
+      doc.text("Débito Alimentar - Execução (cumprimento) de Alimentos (art. 528 CPC)",W/2,16,{align:"center"});
+      doc.setFontSize(7.5);doc.text("APIDEP- Associação Piauiense das Defensoras e Defensores Públicos",W/2,22,{align:"center"});
       y=36;
 
       // === DADOS DO PROCESSO ===
@@ -709,22 +709,22 @@ function AppInterno(props) {
         doc.text("SUBTOTAL: "+fmt(subtotal),W-mg-3,y+4,{align:"right"});y+=10;
       };
 
-      if(resultado.penhora.length>0) desenharTabela("BLOCO 2 \u2014 D\u00C9BITO ANTERIOR (art. 528, \u00A78\u00BA, CPC)",[26,82,118],resultado.penhora,resultado.totalPenhora,1);
-      if(resultado.prisao.length>0) desenharTabela("BLOCO 1 \u2014 \u00DALTIMAS 3 PARCELAS (art. 528, \u00A73\u00BA, CPC)",[26,107,58],resultado.prisao,resultado.totalPrisao,resultado.penhora.length+1);
+      if(resultado.penhora.length>0) desenharTabela("BLOCO 2 - DÉBITO ANTERIOR (art. 528, §8º, CPC)",[26,82,118],resultado.penhora,resultado.totalPenhora,1);
+      if(resultado.prisao.length>0) desenharTabela("BLOCO 1 - Últimas 3 PARCELAS (art. 528, §3º, CPC)",[26,107,58],resultado.prisao,resultado.totalPrisao,resultado.penhora.length+1);
 
       // === TOTALIZADORES ===
       if(y>165){doc.addPage();y=15}
       var bW=(W-mg*2-4)/2;
       doc.setFillColor(26,107,58);doc.rect(mg,y,bW,22,"F");
       doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(8);
-      doc.text("BLOCO 1 \u2014 PRIS\u00C3O CIVIL",mg+3,y+7);doc.setFontSize(7);doc.setFont("helvetica","normal");
-      doc.text("\u00DAltimas 3 parcelas \u2014 art. 528, \u00A73\u00BA, CPC",mg+3,y+12);doc.setFont("helvetica","bold");doc.setFontSize(12);
+      doc.text("BLOCO 1 -  PRISÃO CIVIL",mg+3,y+7);doc.setFontSize(7);doc.setFont("helvetica","normal");
+      doc.text("\Últimas 3 parcelas - art. 528, §3º, CPC",mg+3,y+12);doc.setFont("helvetica","bold");doc.setFontSize(12);
       doc.text(fmt(resultado.totalPrisao),mg+bW/2,y+19,{align:"center"});
       var x2=mg+bW+4;
       doc.setFillColor(26,82,118);doc.rect(x2,y,bW,22,"F");
       doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(8);
-      doc.text("BLOCO 2 \u2014 PENHORA",x2+3,y+7);doc.setFontSize(7);doc.setFont("helvetica","normal");
-      doc.text("Parcelas anteriores \u2014 art. 528, \u00A78\u00BA, CPC",x2+3,y+12);doc.setFont("helvetica","bold");doc.setFontSize(12);
+      doc.text("BLOCO 2 - PENHORA",x2+3,y+7);doc.setFontSize(7);doc.setFont("helvetica","normal");
+      doc.text("Parcelas anteriores - art. 528, §8º, CPC",x2+3,y+12);doc.setFont("helvetica","bold");doc.setFontSize(12);
       doc.text(fmt(resultado.totalPenhora),x2+bW/2,y+19,{align:"center"});y+=30;
 
       // === OBSERVAÇÕES FIXAS ===
@@ -732,13 +732,13 @@ function AppInterno(props) {
       doc.setTextColor(40,40,40);doc.setFont("helvetica","bold");doc.setFontSize(8);doc.text("Observa\u00E7\u00F5es:",mg,y);y+=5;
       doc.setFont("helvetica","normal");doc.setFontSize(7.5);
       var obs=[
-        "1. Corre\u00E7\u00E3o monet\u00E1ria pelo IPCA-E (Res. CJF n\u00BA 134/2010).",
-        "2. Juros de mora de 1% a.m. sobre valor corrigido (art. 406 CC c/c art. 161, \u00A71\u00BA, CTN).",
-        "3. Data-base: "+resultado.data+". Sujeitos a complementa\u00E7\u00E3o at\u00E9 efetivo pagamento.",
-        "4. Imputa\u00E7\u00E3o (art. 354 CC): parcelas corrigidas at\u00E9 a data do pagamento; valor pago imputado da mais antiga para a mais recente.",
-        "5. Saldo nominal remanescente de parcela parcialmente quitada continua sendo corrigido at\u00E9 a data-base.",
-        "6. Coluna \u2018Pago\u2019: m\u00EAs de refer\u00EAncia do pagamento. Coluna \u2018Cr\u00E9d.Apl.\u2019: valor abatido (parcela corrigida at\u00E9 a data do pagamento).",
-        "7. 13\u00BA sal\u00E1rio: vencimento em dezembro do respectivo ano. Valor correspondente \u00E0 m\u00E9dia das parcelas do ano."
+        "1. Correção monetáriaria pelo IPCA-E (Res. CJF nº 134/2010).",
+        "2. Juros de mora de 1% a.m. sobre valor corrigido (art. 406 CC c/c art. 161, CTN).",
+        "3. Data-base: "+resultado.data+". Sujeitos a complementação até efetivo pagamento.",
+        "4. Imputação (art. 354 CC): parcelas corrigidas até a data do pagamento; valor pago imputado da mais antiga para a mais recente.",
+        "5. Saldo nominal remanescente de parcela parcialmente quitada continua sendo corrigido até a data-base.",
+        "6. Coluna \u2018Pago\u2019: mês de referência do pagamento. Coluna \u2018Cr\u00E9d.Apl.\u2019: valor abatido (parcela corrigida até a data do pagamento).",
+        "7. 13º salário: vencimento em dezembro do respectivo ano. Valor correspondente \u00E0 m\u00E9dia das parcelas do ano."
       ];
       obs.forEach(function(o){if(y>190){doc.addPage();y=15}doc.text(o,mg,y);y+=4.5});y+=8;
 
@@ -845,13 +845,13 @@ function AppInterno(props) {
                 <input type="checkbox" checked={incluir13} onChange={function(e){setIncluir13(e.target.checked)}} style={{ width:20, height:20, cursor:"pointer" }}/>
                 <div>
                   <div style={{ fontWeight:700, fontSize:13, color:C.cinza }}>{"Incluir 13\u00BA sal\u00E1rio"}</div>
-                  <div style={{ fontSize:11, color:"#888" }}>{"Gera parcela de 13\u00BA ao final de cada ano (m\u00E9dia dos meses). Vencimento: dezembro. Valor edit\u00E1vel manualmente."}</div>
+                  <div style={{ fontSize:11, color:"#888" }}>{"Gera parcela de 13º ao final de cada ano (m\u00E9dia dos meses). Vencimento: dezembro. Valor edit\u00E1vel manualmente."}</div>
                 </div>
               </div>
               <div>
-                <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Justificativa / Observa\u00E7\u00F5es (aparece no PDF)"}</label>
+                <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Justificativa / Observações (aparece no PDF)"}</label>
                 <textarea value={justificativa} onChange={function(e){setJustificativa(e.target.value)}} rows={4}
-                  placeholder={"Ex.: C\u00E1lculo elaborado com base na senten\u00E7a proferida nos autos..."}
+                  placeholder={"Ex.: Cálculo elaborado com base na sentença proferida nos autos..."}
                   style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:13, boxSizing:"border-box", resize:"vertical", fontFamily:"inherit", lineHeight:1.5 }}/>
               </div>
             </Card>
@@ -893,9 +893,9 @@ function AppInterno(props) {
                 return (
                   <div key={p.id} style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr auto", gap:10, alignItems:"end", marginBottom:10, padding:12, background:p.is13?"#fff8e1":C.cinzaClaro, borderRadius:8, border:p.is13?"1px solid #f0c040":"none" }}>
                     <div>
-                      <label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{p.is13?"13\u00BA Sal\u00E1rio":"M\u00EAs"}</label>
+                      <label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{p.is13?"13º Salário":"Mês"}</label>
                       {p.is13
-                        ? <div style={{ padding:8, fontSize:13, color:C.azul, fontWeight:700 }}>{"13\u00BA/"+p.ano}</div>
+                        ? <div style={{ padding:8, fontSize:13, color:C.azul, fontWeight:700 }}>{"13º"+p.ano}</div>
                         : <select value={p.mes} onChange={function(e){editParcela(p.id,"mes",Number(e.target.value))}} style={inpStyle}>{MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>})}</select>
                       }
                     </div>
@@ -919,10 +919,10 @@ function AppInterno(props) {
 
                 {resultado.obsImputacao && (
                   <div style={{ background:"#fff8e1", border:"1px solid #f0c040", borderRadius:8, padding:"12px 16px", marginBottom:16, fontSize:12, color:"#555", lineHeight:1.6 }}>
-                    <div style={{ fontWeight:700, color:"#b8860b", marginBottom:4, fontSize:13 }}>{"Imputa\u00E7\u00E3o de Pagamentos (art. 354 CC)"}</div>
+                    <div style={{ fontWeight:700, color:"#b8860b", marginBottom:4, fontSize:13 }}>{"Imputação de Pagamentos (art. 354 CC)"}</div>
                     {resultado.obsImputacao}
                     {resultado.creditoRemanescente > 0 && (
-                      <div style={{ marginTop:8, fontWeight:700, color:C.verde }}>{"Cr\u00E9dito remanescente: " + fmt(resultado.creditoRemanescente)}</div>
+                      <div style={{ marginTop:8, fontWeight:700, color:C.verde }}>{"Crédito remanescente: " + fmt(resultado.creditoRemanescente)}</div>
                     )}
                   </div>
                 )}
@@ -930,13 +930,13 @@ function AppInterno(props) {
                 {resultado.prisao.length>0 && (
                   <div style={{ background:C.verdePale, border:"1px solid "+C.verde, borderRadius:8, padding:16, marginBottom:12 }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                      <div style={{ fontWeight:700, color:C.verde }}>{"BLOCO 1 \u2014 Pris\u00E3o Civil"}</div>
+                      <div style={{ fontWeight:700, color:C.verde }}>{"BLOCO 1 - Prisão Civil"}</div>
                       <span style={{ background:C.verde, color:"#fff", borderRadius:20, padding:"3px 12px", fontSize:12, fontWeight:700 }}>{fmt(resultado.totalPrisao)}</span>
                     </div>
                     {resultado.prisao.map(function(p,i){
                       return (
                         <div key={i} style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginTop:4 }}>
-                          <span>{p.label}{p.is13?" [13\u00BA]":""}{p.pagoOriginal>0?(" (pago em ref.: "+fmt(p.pagoOriginal)+")"):""}{p.creditoAplicado>0?(" (cr\u00E9d.apl.: "+fmt(p.creditoAplicado)+")"):""}{p.quitado?" QUITADO":""}</span>
+                          <span>{p.label}{p.is13?" [13º]":""}{p.pagoOriginal>0?(" (pago em ref.: "+fmt(p.pagoOriginal)+")"):""}{p.creditoAplicado>0?(" (cr\u00E9d.apl.: "+fmt(p.creditoAplicado)+")"):""}{p.quitado?" QUITADO":""}</span>
                           <span style={{ fontWeight:600, color:p.quitado?C.verde:"inherit" }}>{p.quitado?"-":fmt(p.total)}</span>
                         </div>
                       );
@@ -946,13 +946,13 @@ function AppInterno(props) {
                 {resultado.penhora.length>0 && (
                   <div style={{ background:"#e8f0f8", border:"1px solid "+C.azul, borderRadius:8, padding:16, marginBottom:12 }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                      <div style={{ fontWeight:700, color:C.azul }}>{"BLOCO 2 \u2014 Penhora"}</div>
+                      <div style={{ fontWeight:700, color:C.azul }}>{"BLOCO 2 - Penhora"}</div>
                       <span style={{ background:C.azul, color:"#fff", borderRadius:20, padding:"3px 12px", fontSize:12, fontWeight:700 }}>{fmt(resultado.totalPenhora)}</span>
                     </div>
                     {resultado.penhora.map(function(p,i){
                       return (
                         <div key={i} style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginTop:4 }}>
-                          <span>{p.label}{p.is13?" [13\u00BA]":""}{p.pagoOriginal>0?(" (pago em ref.: "+fmt(p.pagoOriginal)+")"):""}{p.creditoAplicado>0?(" (cr\u00E9d.apl.: "+fmt(p.creditoAplicado)+")"):""}{p.quitado?" QUITADO":""}</span>
+                          <span>{p.label}{p.is13?" [13º]":""}{p.pagoOriginal>0?(" (pago em ref.: "+fmt(p.pagoOriginal)+")"):""}{p.creditoAplicado>0?(" (cr\u00E9d.apl.: "+fmt(p.creditoAplicado)+")"):""}{p.quitado?" QUITADO":""}</span>
                           <span style={{ fontWeight:600, color:p.quitado?C.verde:"inherit" }}>{p.quitado?"-":fmt(p.total)}</span>
                         </div>
                       );
@@ -961,11 +961,11 @@ function AppInterno(props) {
                 )}
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:8 }}>
                   <div style={{ background:C.verde, borderRadius:8, padding:"12px 16px", textAlign:"center" }}>
-                    <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"BLOCO 1 \u2014 Pris\u00E3o Civil"}</div>
+                    <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"BLOCO 1 - Prisão Civil"}</div>
                     <div style={{ color:"#fff", fontWeight:800, fontSize:18 }}>{fmt(resultado.totalPrisao)}</div>
                   </div>
                   <div style={{ background:C.azul, borderRadius:8, padding:"12px 16px", textAlign:"center" }}>
-                    <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"BLOCO 2 \u2014 Penhora"}</div>
+                    <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"BLOCO 2 - Penhora"}</div>
                     <div style={{ color:"#fff", fontWeight:800, fontSize:18 }}>{fmt(resultado.totalPenhora)}</div>
                   </div>
                 </div>
@@ -976,17 +976,17 @@ function AppInterno(props) {
         {tab==="historico" && (
           <Card>
             <h3 style={{ margin:"0 0 16px", color:C.verde }}>{"Hist\u00F3rico"}</h3>
-            {historico.length===0 ? <p style={{ color:"#888", textAlign:"center", padding:32 }}>{"Nenhum c\u00E1lculo ainda."}</p>
+            {historico.length===0 ? <p style={{ color:"#888", textAlign:"center", padding:32 }}>{"Nenhum cálculo ainda."}</p>
               : historico.map(function(h){
                 return (
                   <div key={h.id} style={{ borderBottom:"1px solid "+C.borda, padding:"14px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                    <div><div style={{ fontWeight:600, fontSize:14 }}>{h.alimentado||"-"}</div><div style={{ fontSize:12, color:"#888" }}>{(h.processo||"Sem n\u00BA")+" \u2014 "+h.data}</div></div>
+                    <div><div style={{ fontWeight:600, fontSize:14 }}>{h.alimentado||"-"}</div><div style={{ fontSize:12, color:"#888" }}>{(h.processo||"Sem número")+" \u2014 "+h.data}</div></div>
                     <div style={{ fontWeight:700, color:C.verde, fontSize:15 }}>{fmt(h.total||0)}</div>
                   </div>
                 );
               })
             }
-            {historico.length>0 && <div style={{ marginTop:16 }}><Btn small outline cor={C.vermelho} onClick={function(){if(confirm("Limpar hist\u00F3rico?")){setHistorico([]);localStorage.removeItem("dpe_historico")}}}>Limpar</Btn></div>}
+            {historico.length>0 && <div style={{ marginTop:16 }}><Btn small outline cor={C.vermelho} onClick={function(){if(confirm("Limpar histórico?")){setHistorico([]);localStorage.removeItem("dpe_historico")}}}>Limpar</Btn></div>}
           </Card>
         )}
       </div>
