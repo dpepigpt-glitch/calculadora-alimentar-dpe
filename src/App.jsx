@@ -822,8 +822,17 @@ function AppInterno(props) {
                 <div style={{ marginBottom:14 }}>
                   <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{`Número do Processo`}</label>
                   <input type="text" inputMode="numeric" value={processo}
-                    onChange={function(e){setProcesso(e.target.value)}}
-                    onBlur={function(e){setProcesso(maskProcesso(e.target.value))}}
+                    onChange={function(e){
+                      var novoVal = e.target.value;
+                      var velhoVal = processo;
+                      // Se o novo é menor que o velho, é backspace — aceitar como está
+                      if(novoVal.length < velhoVal.length){
+                        setProcesso(novoVal);
+                      } else {
+                        // Digitando — aplicar máscara
+                        setProcesso(maskProcesso(novoVal));
+                      }
+                    }}
                     placeholder="0000000-00.0000.8.18.0000"
                     style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box", fontFamily:"monospace", letterSpacing:"0.5px" }}/>
                 </div>
