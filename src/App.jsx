@@ -25,6 +25,10 @@ function maskProcesso(raw) {
   }
   return r;
 }
+// Extrai apenas dígitos para armazenar no estado
+function digitsProcesso(raw) {
+  return raw.replace(/\D/g,"").slice(0,17);
+}
 
 var SALARIO_MINIMO = {
   "2020-01":1045,"2020-02":1045,"2020-03":1045,"2020-04":1045,"2020-05":1045,"2020-06":1045,
@@ -371,7 +375,7 @@ function AppInterno(props) {
       }).then(function(resp){return resp.json()}).then(function(data){
         var text=(data.content&&data.content[0]&&data.content[0].text)||"";
         var parsed=JSON.parse(text.replace(/```json|```/g,"").trim());
-        if(parsed.processo) setProcesso(maskProcesso(parsed.processo.replace(/\D/g,"")));
+        if(parsed.processo) setProcesso(digitsProcesso(parsed.processo));
         if(parsed.alimentado) setAlimentado(parsed.alimentado);
         if(parsed.alimentante) setAlimentante(parsed.alimentante);
         if(parsed.parcelas&&parsed.parcelas.length) setParcelas(parsed.parcelas.map(function(p,i){return {id:Date.now()+i,mes:p.mes,ano:p.ano,valor:String(r2(p.valor)),pago:"",is13:false}}));
@@ -608,7 +612,7 @@ function AppInterno(props) {
       }
 
       var res = {
-        processo:processo, alimentado:alimentado, alimentante:alimentante, comarca:comarca, diaVencimento:diaVencimento,
+        processo:maskProcesso(processo), alimentado:alimentado, alimentante:alimentante, comarca:comarca, diaVencimento:diaVencimento,
         tipoAlimento:tipoAlimento, percentualSM:percentualSM, valorFixoAlimento:valorFixoAlimento,
         justificativa:justFinal,
         prisao:prisaoItems, penhora:penhoraItems, totalPrisao:somaArr(prisaoItems), totalPenhora:somaArr(penhoraItems),
@@ -817,7 +821,7 @@ function AppInterno(props) {
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px" }}>
                 <div style={{ marginBottom:14 }}>
                   <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{`Número do Processo`}</label>
-                  <input type="text" inputMode="numeric" value={processo} onChange={function(e){setProcesso(maskProcesso(e.target.value))}} placeholder="0000000-00.0000.8.18.0000"
+                  <input type="text" inputMode="numeric" value={maskProcesso(processo)} onChange={function(e){setProcesso(digitsProcesso(e.target.value))}} placeholder="0000000-00.0000.8.18.0000"
                     style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box", fontFamily:"monospace", letterSpacing:"0.5px" }}/>
                 </div>
                 <Input label="Vara/Comarca" value={comarca} onChange={setComarca} placeholder="Vara/Comarca"/>
