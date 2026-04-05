@@ -821,7 +821,10 @@ function AppInterno(props) {
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px" }}>
                 <div style={{ marginBottom:14 }}>
                   <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{`Número do Processo`}</label>
-                  <input type="text" inputMode="numeric" value={maskProcesso(processo)} onChange={function(e){setProcesso(digitsProcesso(e.target.value))}} placeholder="0000000-00.0000.8.18.0000"
+                  <input type="text" inputMode="numeric" value={processo}
+                    onChange={function(e){setProcesso(e.target.value)}}
+                    onBlur={function(e){setProcesso(maskProcesso(e.target.value))}}
+                    placeholder="0000000-00.0000.8.18.0000"
                     style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box", fontFamily:"monospace", letterSpacing:"0.5px" }}/>
                 </div>
                 <Input label="Vara/Comarca" value={comarca} onChange={setComarca} placeholder="Vara/Comarca"/>
