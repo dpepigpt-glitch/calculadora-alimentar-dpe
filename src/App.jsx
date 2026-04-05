@@ -129,8 +129,8 @@ function TelaLogin(props) {
       <div style={{ background:"#fff", borderRadius:12, padding:40, width:400, boxShadow:"0 8px 32px rgba(0,0,0,0.15)" }}>
         <div style={{ textAlign:"center", marginBottom:28 }}>
           <img src="/logo-apidep.png" alt="APIDEP" crossOrigin="anonymous" style={{ height:60, objectFit:"contain", marginBottom:12 }} onError={function(e){e.target.style.display="none"}} />
-          <div style={{ fontWeight:800, fontSize:16, color:C.verde }}>Calculadora de Débitos Alimentares</div>
-          <div style={{ fontSize:12, color:"#888", marginTop:4 }}>Fase teste - Apenas Defensores Legais</div>
+          <div style={{ fontWeight:800, fontSize:16, color:C.verde }}>Calculadora de D\u00E9bitos Alimentares</div>
+          <div style={{ fontSize:12, color:"#888", marginTop:4 }}>Fase teste \u2014 Apenas Defensores Legais</div>
         </div>
         <div style={{ marginBottom:14 }}>
           <label style={{ display:"block", fontWeight:600, marginBottom:6, fontSize:13, color:C.cinza }}>Nome do Defensor</label>
@@ -244,7 +244,7 @@ function Header(props) {
     <div style={{ background:C.verde, color:"#fff", padding:"12px 28px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
       <div style={{ display:"flex", alignItems:"center", gap:14 }}>
         <img src="/logo-apidep.png" alt="APIDEP" crossOrigin="anonymous" style={{ height:56, objectFit:"contain" }} onError={function(e){e.target.style.display="none"}} />
-        <div><div style={{ fontWeight:800, fontSize:16 }}>Calculadora de Débitos Alimentares</div><div style={{ fontSize:12, opacity:.8 }}>APIDEP -  Associação Piauiense das Defensoras e Defensores Públicos</div></div>
+        <div><div style={{ fontWeight:800, fontSize:16 }}>Calculadora de D\u00E9bitos Alimentares</div><div style={{ fontSize:12, opacity:.8 }}>APIDEP \u2014 Associa\u00E7\u00E3o Piauiense das Defensoras e Defensores P\u00FAblicos</div></div>
       </div>
       <div style={{ display:"flex", gap:8, alignItems:"center" }}>
         <button onClick={props.onPerfil} style={{ background:"rgba(255,255,255,0.15)", border:"1px solid rgba(255,255,255,0.4)", borderRadius:6, color:"#fff", padding:"7px 14px", cursor:"pointer", fontSize:13, touchAction:"manipulation" }}>{perfil.nome || "Visitante"}</button>
@@ -349,7 +349,6 @@ function AppInterno(props) {
       var existentes={};
       prev.forEach(function(p){ existentes[p.ano+"-"+p.mes]=true; });
       var unicas=novas.filter(function(n){ return !existentes[n.ano+"-"+n.mes]; });
-      if(unicas.length<novas.length) alert((novas.length-unicas.length)+" parcela(s) duplicada(s) ignorada(s).");
       return prev.concat(unicas);
     });
     setIntervalo(function(i){ return Object.assign({}, i, {pago:""}); });
@@ -395,7 +394,7 @@ function AppInterno(props) {
   // - 13º vence em dezembro (não antecipado)
   // =====================================================
   var calcular = function() {
-    if(!usuario.autenticado&&!perfil.nome){alert("Fa\u00E7a login no perfil para continuar.");return;}
+    if(!usuario.autenticado&&!perfil.nome){alert("Essa calculadora \u00E9 somente para defensores legais. Se voc\u00EA n\u00E3o tem senha, voc\u00EA n\u00E3o deve ser legal. \uD83D\uDE04");return;}
     setLoading(true);setResultado(null);
     setTimeout(function(){
       var h = new Date();
@@ -643,19 +642,19 @@ function AppInterno(props) {
       y=36;
 
       // === DADOS DO PROCESSO ===
-      doc.setFillColor(232,245,238);doc.rect(mg,y,W-mg*2,28,"F");
-      doc.setDrawColor(26,107,58);doc.setLineWidth(0.3);doc.rect(mg,y,W-mg*2,28);
+      doc.setFillColor(232,245,238);doc.rect(mg,y,W-mg*2,40,"F");
+      doc.setDrawColor(26,107,58);doc.setLineWidth(0.3);doc.rect(mg,y,W-mg*2,40);
       doc.setFillColor(26,107,58);doc.rect(mg,y,W-mg*2,7,"F");
       doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(8.5);
-      doc.text("DADOS DO PROCESSO",mg+3,y+5);y+=9;
-      var c1=mg+3,c2=mg+100,c3=mg+195;
-      doc.setTextColor(40,40,40);doc.setFontSize(8);
+      doc.text("DADOS DO PROCESSO",mg+3,y+5);y+=10;
+      var c1=mg+4,c2=mg+105,c3=mg+200;
+      doc.setTextColor(40,40,40);doc.setFontSize(9.5);
       var lb=function(l,v,x,yy){doc.setFont("helvetica","bold");doc.text(l,x,yy);doc.setFont("helvetica","normal");doc.text(v||"-",x+doc.getTextWidth(l)+2,yy)};
       lb("Processo n\u00BA:",resultado.processo,c1,y);lb("Vara/Comarca:",resultado.comarca,c2,y);lb("Data-base:",resultado.data,c3,y);y+=8;
-      lb("Exequente:",resultado.alimentado,c1,y);lb("Executado:",resultado.alimentante,c2,y);y+=6;
+      lb("Exequente:",resultado.alimentado,c1,y);lb("Executado:",resultado.alimentante,c2,y);y+=8;
       var tl=resultado.tipoAlimento==="sm"?resultado.percentualSM+"% do sal\u00E1rio m\u00EDnimo federal":fmt(Number(resultado.valorFixoAlimento||0))+" (valor fixo)";
-      lb("Alimentos fixados:",tl,c1,y);lb("Vencimento:","Dia "+resultado.diaVencimento,c2,y);lb("\u00CDndice:","IPCA-E",c3,y);y+=6;
-      lb("Juros de mora:","1% ao m\u00EAs \u2014 art. 406 CC c/c art. 161, \u00A71\u00BA, CTN",c1,y);y+=8;
+      lb("Alimentos fixados:",tl,c1,y);lb("Vencimento:","Dia "+resultado.diaVencimento,c2,y);lb("\u00CDndice:","IPCA-E",c3,y);y+=8;
+      lb("Juros de mora:","1% ao m\u00EAs \u2014 art. 406 CC c/c art. 161, \u00A71\u00BA, CTN",c1,y);y+=10;
 
       // === JUSTIFICATIVA / OBSERVAÇÕES ===
       if(resultado.justificativa){
@@ -752,8 +751,23 @@ function AppInterno(props) {
       if(resultado.lotacao) doc.text(resultado.lotacao,W/2,y,{align:"center"});
 
       var fn="Memorial_Calculo_"+(resultado.processo||"calculo")+"_"+resultado.data.replace(/\//g,"-")+".pdf";
-      if(/iPad|iPhone|iPod/.test(navigator.userAgent)){var w=window.open();if(w)w.document.write("<html><body style='margin:0'><iframe src='"+doc.output("datauristring")+"' style='width:100%;height:100vh;border:none'></iframe></body></html>")}
-      else doc.save(fn);
+      // Mobile: usar blob URL (datauri trunca em Safari/Chrome mobile)
+      try {
+        var blob = doc.output("blob");
+        var blobUrl = URL.createObjectURL(blob);
+        var link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = fn;
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(function(){ document.body.removeChild(link); URL.revokeObjectURL(blobUrl); }, 500);
+      } catch(e) {
+        // Fallback: abrir em nova aba
+        var w = window.open();
+        if(w) { w.location.href = doc.output("bloburl"); }
+        else { doc.save(fn); }
+      }
     });
   };
 
