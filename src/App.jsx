@@ -1,4 +1,4 @@
-// v3.5.1 — IPCA atualizado ate fev/2026 + projecao + mascara processo corrigida
+// v3.5 corrigido — mascara processo fix
 import { useState, useRef } from "react";
 
 const C = {
@@ -40,10 +40,23 @@ function digitsFromDisplay(display) {
   return all.slice(0, 17);
 }
 
+function digitsFromDisplay(display) {
+  var all = (display || "").replace(/\D/g, "");
+  if (all.length > 13) {
+    var antes = all.slice(0, 13);
+    var depois = all.slice(13);
+    var idx = depois.indexOf("818");
+    if (idx >= 0 && idx <= 1) {
+      depois = depois.slice(0, idx) + depois.slice(idx + 3);
+    }
+    return (antes + depois).slice(0, 17);
+  }
+  return all.slice(0, 17);
+}
+
 var SALARIO_MINIMO = {"2020-01":1045,"2020-02":1045,"2020-03":1045,"2020-04":1045,"2020-05":1045,"2020-06":1045,"2020-07":1045,"2020-08":1045,"2020-09":1045,"2020-10":1045,"2020-11":1045,"2020-12":1045,"2021-01":1100,"2021-02":1100,"2021-03":1100,"2021-04":1100,"2021-05":1100,"2021-06":1100,"2021-07":1100,"2021-08":1100,"2021-09":1100,"2021-10":1100,"2021-11":1100,"2021-12":1100,"2022-01":1212,"2022-02":1212,"2022-03":1212,"2022-04":1212,"2022-05":1212,"2022-06":1212,"2022-07":1212,"2022-08":1212,"2022-09":1212,"2022-10":1212,"2022-11":1212,"2022-12":1212,"2023-01":1320,"2023-02":1320,"2023-03":1320,"2023-04":1320,"2023-05":1320,"2023-06":1320,"2023-07":1320,"2023-08":1320,"2023-09":1320,"2023-10":1320,"2023-11":1320,"2023-12":1320,"2024-01":1412,"2024-02":1412,"2024-03":1412,"2024-04":1412,"2024-05":1412,"2024-06":1412,"2024-07":1412,"2024-08":1412,"2024-09":1412,"2024-10":1412,"2024-11":1412,"2024-12":1412,"2025-01":1518,"2025-02":1518,"2025-03":1518,"2025-04":1518,"2025-05":1518,"2025-06":1518,"2025-07":1518,"2025-08":1518,"2025-09":1518,"2025-10":1518,"2025-11":1518,"2025-12":1518,"2026-01":1621,"2026-02":1621,"2026-03":1621,"2026-04":1621,"2026-05":1621,"2026-06":1621,"2026-07":1621,"2026-08":1621,"2026-09":1621,"2026-10":1621,"2026-11":1621,"2026-12":1621};
 var getSM = function(m, a) { return SALARIO_MINIMO[a + "-" + String(m).padStart(2,"0")] || 1621; };
 
-// IPCA oficial IBGE ate fev/2026. Mar/2026+: projecao 0.31% a.m. (media ultimos 6 meses)
 var IPCA_E = {
   "2022-01":0.54,"2022-02":0.58,"2022-03":1.05,"2022-04":1.06,"2022-05":0.81,"2022-06":0.68,
   "2022-07":-0.07,"2022-08":-0.04,"2022-09":0.24,"2022-10":0.40,"2022-11":0.54,"2022-12":0.54,
@@ -66,7 +79,7 @@ function corrigirAte(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo) {
   while (a < anoAlvo || (a === anoAlvo && m < mesAlvo)) {
     var k = a + "-" + String(m).padStart(2,"0");
     if (IPCA_E[k] !== undefined) fator *= (1 + IPCA_E[k] / 100);
-    m++; if (m > 12) { m = 1; a++; }
+    m++; if (m > 12) { m = 1;<input type="text" inputMode="numerica++; }
   }
   var venc = new Date(anoVenc, mesVenc - 1, 1);
   var alvo = new Date(anoAlvo, mesAlvo - 1, 1);
@@ -267,6 +280,7 @@ export default function App() {
   if (!logado) return <TelaLogin onLogin={function(u){setLogado(u)}} onVisitante={function(){setLogado({nome:"",lotacao:"",autenticado:false})}} />;
   return <AppInterno usuario={logado} onLogout={fazerLogout} />;
 }
+
 function AppInterno(props) {
   var usuario = props.usuario;
   var onLogout = props.onLogout;
@@ -293,10 +307,14 @@ function AppInterno(props) {
     var dv = Number(diaVenc) || 5;
     var mAtual = hoje.getMonth() + 1;
     var aAtual = hoje.getFullYear();
-    if (hoje.getDate() >= dv) return { mesFim: mAtual, anoFim: aAtual };
-    var mAnt = mAtual - 1; var aAnt = aAtual;
-    if (mAnt < 1) { mAnt = 12; aAnt--; }
-    return { mesFim: mAnt, anoFim: aAnt };
+    if (hoje.getDate() >= dv) {
+      return { mesFim: mAtual, anoFim: aAtual };
+    } else {
+      var mAnt = mAtual - 1;
+      var aAnt = aAtual;
+      if (mAnt < 1) { mAnt = 12; aAnt--; }
+      return { mesFim: mAnt, anoFim: aAnt };
+    }
   };
 
   var padrao = calcMesFimPadrao(diaVencimento);
@@ -378,6 +396,9 @@ function AppInterno(props) {
     if(!usuario.autenticado&&!perfil.nome){alert("Essa calculadora \u00e9 somente para defensores legais.");return;}
     setLoading(true);setResultado(null);
     setTimeout(function(){
+      var h = new Date();
+      var mH = h.getMonth() + 1;
+      var aH = h.getFullYear();
       var raw = parcelas
         .filter(function(p){return p.valor&&Number(p.valor)>0})
         .sort(function(a,b){return a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes})
@@ -413,7 +434,9 @@ function AppInterno(props) {
 
       var pagamentos = [];
       raw.forEach(function(p) {
-        if (p.pago > 0) pagamentos.push({ valor: p.pago, mesPgto: p.mes === 13 ? 12 : p.mes, anoPgto: p.ano, labelOrigem: p.label });
+        if (p.pago > 0) {
+          pagamentos.push({ valor: p.pago, mesPgto: p.mes === 13 ? 12 : p.mes, anoPgto: p.ano, labelOrigem: p.label });
+        }
       });
 
       var saldosNominais = raw.map(function(p) { return { saldoNominal: p.nominal }; });
@@ -429,17 +452,19 @@ function AppInterno(props) {
           var devidoAtePgto = calcAtePgto.total;
           if (saldoPgto >= devidoAtePgto) {
             saldoPgto = r2(saldoPgto - devidoAtePgto);
-            logImputacao.push({ parcelaDestino: raw[i].label, valorAbatido: devidoAtePgto, pgtoOrigem: pg.labelOrigem, quitada: true });
+            logImputacao.push({ parcelaDestino: raw[i].label, valorAbatido: devidoAtePgto, pgtoOrigem: pg.labelOrigem, quitada: true, saldoNominalAntes: saldosNominais[i].saldoNominal });
             saldosNominais[i].saldoNominal = 0;
           } else {
             var proporcao = saldoPgto / devidoAtePgto;
             var nominalQuitado = r2(saldosNominais[i].saldoNominal * proporcao);
-            logImputacao.push({ parcelaDestino: raw[i].label, valorAbatido: saldoPgto, pgtoOrigem: pg.labelOrigem, quitada: false });
+            logImputacao.push({ parcelaDestino: raw[i].label, valorAbatido: saldoPgto, pgtoOrigem: pg.labelOrigem, quitada: false, saldoNominalAntes: saldosNominais[i].saldoNominal });
             saldosNominais[i].saldoNominal = r2(saldosNominais[i].saldoNominal - nominalQuitado);
             saldoPgto = 0;
           }
         }
-        if (saldoPgto > 0) logImputacao.push({ parcelaDestino: "(cr\u00e9dito excedente)", valorAbatido: saldoPgto, pgtoOrigem: pg.labelOrigem, quitada: false, creditoExcedente: true });
+        if (saldoPgto > 0) {
+          logImputacao.push({ parcelaDestino: "(cr\u00e9dito excedente)", valorAbatido: saldoPgto, pgtoOrigem: pg.labelOrigem, quitada: false, creditoExcedente: true });
+        }
       });
 
       var parcelasCorrigidas = raw.map(function(p, idx) {
@@ -448,11 +473,13 @@ function AppInterno(props) {
         var calc = quitado ? { fator: 1, corrigido: 0, juros: 0, total: 0, mesesAtraso: 0 } : corrigir(saldoNom, p.mes, p.ano);
         var calcIntegral = corrigir(p.nominal, p.mes, p.ano);
         var creditoApl = 0;
-        logImputacao.forEach(function(l) { if (l.parcelaDestino === p.label && !l.creditoExcedente) creditoApl = r2(creditoApl + l.valorAbatido); });
+        logImputacao.forEach(function(l) {
+          if (l.parcelaDestino === p.label && !l.creditoExcedente) { creditoApl = r2(creditoApl + l.valorAbatido); }
+        });
         return Object.assign({}, p, {
           fator: calcIntegral.fator, corrigido: quitado ? 0 : calc.corrigido, juros: quitado ? 0 : calc.juros,
           total: quitado ? 0 : calc.total, mesesAtraso: calcIntegral.mesesAtraso, saldoBruto: saldoNom,
-          creditoAplicado: creditoApl, quitado: quitado, pagoOriginal: p.pago
+          saldoNominalOriginal: p.nominal, creditoAplicado: creditoApl, quitado: quitado, pagoOriginal: p.pago
         });
       });
 
@@ -471,17 +498,19 @@ function AppInterno(props) {
         var parcelasAbatidas = logImputacao.filter(function(l) { return !l.quitada && l.valorAbatido > 0 && !l.creditoExcedente; });
         obsImputacao = "IMPUTA\u00c7\u00c3O DE PAGAMENTOS (art. 354 CC): ";
         obsImputacao += "Pagamento(s) efetuado(s) em " + pgLabels.join(", ") + ". ";
-        obsImputacao += "Cada parcela devida foi corrigida (IPCA + juros de 1% a.m.) at\u00e9 a data do respectivo pagamento, e o valor pago foi imputado nas parcelas mais antigas, conforme ordem cronol\u00f3gica. ";
-        obsImputacao += "O saldo remanescente continua sendo corrigido at\u00e9 a data-base. ";
+        obsImputacao += "Cada parcela devida foi corrigida (IPCA-E + juros de 1% a.m.) at\u00e9 a data do respectivo pagamento, e o valor pago foi imputado nas parcelas mais antigas, conforme ordem cronol\u00f3gica. ";
+        obsImputacao += "O saldo remanescente de cada parcela n\u00e3o integralmente quitada continua sendo corrigido at\u00e9 a data-base do c\u00e1lculo. ";
         if (parcelasQuitadas.length > 0) {
           var nomes = parcelasQuitadas.map(function(l) { return l.parcelaDestino; });
-          obsImputacao += "Parcela(s) quitada(s): " + nomes.join(", ") + ". ";
+          obsImputacao += "Parcela(s) integralmente quitada(s): " + nomes.join(", ") + ". ";
         }
         if (parcelasAbatidas.length > 0) {
           var nomesP = parcelasAbatidas.map(function(l) { return l.parcelaDestino + " (abatido " + fmt(l.valorAbatido) + ")"; });
           obsImputacao += "Parcela(s) parcialmente abatida(s): " + nomesP.join(", ") + ". ";
         }
-        if (creditoExcedente > 0) obsImputacao += "Cr\u00e9dito excedente: " + fmt(creditoExcedente) + ".";
+        if (creditoExcedente > 0) {
+          obsImputacao += "Cr\u00e9dito excedente ap\u00f3s quita\u00e7\u00e3o de todas as parcelas: " + fmt(creditoExcedente) + ".";
+        }
       }
 
       var justFinal = "";
@@ -505,7 +534,7 @@ function AppInterno(props) {
   var gerarPDF = function() {
     if(!resultado)return;
     var jsPDFLib=window.jspdf&&window.jspdf.jsPDF||window.jsPDF;
-    if(!jsPDFLib){alert("PDF n\u00e3o carregou. Recarregue.");return;}
+    if(!jsPDFLib){alert("PDF n\u00e3o carregou. Recarregue a p\u00e1gina.");return;}
     carregarLogo().then(function(logoData){
       var doc=new jsPDFLib({orientation:"landscape",unit:"mm",format:"a4"});
       var W=297,mg=12,y=0;
@@ -601,17 +630,7 @@ function AppInterno(props) {
       if(y>170){doc.addPage();y=15}
       doc.setTextColor(40,40,40);doc.setFont("helvetica","bold");doc.setFontSize(8);doc.text("Observa\u00e7\u00f5es:",mg,y);y+=5;
       doc.setFont("helvetica","normal");doc.setFontSize(7.5);
-      var obs=[
-        "1. Corre\u00e7\u00e3o monet\u00e1ria pelo IPCA (IBGE). \u00cdndices oficiais at\u00e9 fev/2026. A partir de mar/2026: proje\u00e7\u00e3o de 0,31% a.m. (m\u00e9dia dos \u00faltimos 6 meses). Sujeito a revis\u00e3o com \u00edndices definitivos.",
-        "2. Juros de mora de 1% a.m. sobre valor corrigido (art. 406 CC c/c art. 161, \u00a71\u00ba, CTN).",
-        "3. Data-base: "+resultado.data+". Sujeitos a complementa\u00e7\u00e3o at\u00e9 efetivo pagamento.",
-        "4. Imputa\u00e7\u00e3o (art. 354 CC): parcelas corrigidas at\u00e9 a data do pagamento; valor pago imputado da mais antiga para a mais recente.",
-        "5. Saldo nominal remanescente de parcela parcialmente quitada continua sendo corrigido at\u00e9 a data-base.",
-        "6. Coluna Pago: m\u00eas de refer\u00eancia do pagamento. Coluna Cr\u00e9d.Apl.: valor abatido (parcela corrigida at\u00e9 a data do pagamento).",
-        "7. 13\u00ba sal\u00e1rio: vencimento em dezembro do respectivo ano. Valor correspondente \u00e0 m\u00e9dia das parcelas do ano."
-      ];
-      obs.forEach(function(o){if(y>190){doc.addPage();y=15}doc.text(o,mg,y);y+=4.5});y+=8;
-
+      var obs=[ "1. Corre\u00e7\u00e3o monet\u00e1ria pelo IPCA (IBGE). \u00cdndices oficiais at\u00e9 fev/2026. A partir de mar/2026: proje\u00e7\u00e3o de 0,31% a.m. (m\u00e9dia dos \u00faltimos 6 meses oficiais). Sujeito a revis\u00e3o quando publicados os \u00edndices definitivos.",
       if(y>185){doc.addPage();y=15}
       doc.setFont("helvetica","normal");doc.setFontSize(9);doc.text(resultado.data,W/2,y,{align:"center"});y+=16;
       doc.setDrawColor(80,80,80);doc.setLineWidth(0.3);doc.line(W/2-45,y,W/2+45,y);y+=5;
@@ -624,12 +643,16 @@ function AppInterno(props) {
         var blob = doc.output("blob");
         var blobUrl = URL.createObjectURL(blob);
         var link = document.createElement("a");
-        link.href = blobUrl; link.download = fn; link.style.display = "none";
-        document.body.appendChild(link); link.click();
+        link.href = blobUrl;
+        link.download = fn;
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
         setTimeout(function(){ document.body.removeChild(link); URL.revokeObjectURL(blobUrl); }, 500);
       } catch(e) {
         var w = window.open();
-        if(w) { w.location.href = doc.output("bloburl"); } else { doc.save(fn); }
+        if(w) { w.location.href = doc.output("bloburl"); }
+        else { doc.save(fn); }
       }
     });
   };
@@ -690,13 +713,13 @@ function AppInterno(props) {
                 <Input label="Alimentado(a) / Exequente" value={alimentado} onChange={setAlimentado} placeholder="Nome completo"/>
                 <Input label="Alimentante / Executado" value={alimentante} onChange={setAlimentante} placeholder="Nome completo"/>
               </div>
-              <div style={{ marginBottom:14 }}>
-                <label style={{ display:"block", fontWeight:600, marginBottom:8, color:C.cinza, fontSize:13 }}>Alimentos fixados em</label>
-                <div style={{ display:"flex", gap:10, marginBottom:10 }}>
-                  {[["sm","% do Sal\u00e1rio M\u00ednimo"],["fixo","Valor fixo (R$)"]].map(function(item){
-                    var v=item[0], l=item[1];
-                    return <button key={v} onClick={function(){setTipoAlimento(v)}} style={{ padding:"7px 16px", borderRadius:6, border:"2px solid "+(tipoAlimento===v?C.verde:C.borda), background:tipoAlimento===v?C.verde:C.branco, color:tipoAlimento===v?"#fff":C.cinza, fontWeight:600, fontSize:13, cursor:"pointer", touchAction:"manipulation" }}>{l}</button>
-                  })}
+             <div style={{ marginBottom:14 }}>
+                  <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"N\u00famero do Processo"}</label>
+                  <input type="text" inputMode="numeric"
+                    value={maskProcesso(processo)}
+                    onChange={function(e){ setProcesso(digitsFromDisplay(e.target.value)); }}
+                    placeholder="0000000-00.0000.8.18.0000"
+                    style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box", fontFamily:"monospace", letterSpacing:"0.5px" }}/>
                 </div>
                 {tipoAlimento==="sm"
                   ? <div style={{ display:"flex", alignItems:"center", gap:8 }}><input type="text" inputMode="decimal" value={percentualSM} onChange={function(e){setPercentualSM(e.target.value)}} placeholder="ex: 20" style={{ width:100, padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }}/><span style={{ fontSize:14, color:C.cinza }}>{"% do sal\u00e1rio m\u00ednimo federal"}</span></div>
@@ -711,7 +734,7 @@ function AppInterno(props) {
                 <input type="checkbox" checked={incluir13} onChange={function(e){setIncluir13(e.target.checked)}} style={{ width:20, height:20, cursor:"pointer" }}/>
                 <div>
                   <div style={{ fontWeight:700, fontSize:13, color:C.cinza }}>{"Incluir 13\u00ba sal\u00e1rio"}</div>
-                  <div style={{ fontSize:11, color:"#888" }}>{"Gera parcela de 13\u00ba ao final de cada ano (m\u00e9dia dos meses). Vencimento: dezembro."}</div>
+                  <div style={{ fontSize:11, color:"#888" }}>{"Gera parcela de 13\u00ba ao final de cada ano (m\u00e9dia dos meses). Vencimento: dezembro. Valor edit\u00e1vel manualmente."}</div>
                 </div>
               </div>
               <div>
@@ -726,7 +749,10 @@ function AppInterno(props) {
                 <h3 style={{ margin:0, color:C.verde, fontSize:15 }}>Parcelas em Atraso</h3>
                 <div style={{ display:"flex", gap:8 }}>
                   <Btn small onClick={function(){
-                    if(!showIntervalo){ var p2=calcMesFimPadrao(diaVencimento); setIntervalo(function(prev){return Object.assign({},prev,{mesFim:p2.mesFim,anoFim:p2.anoFim})}); }
+                    if(!showIntervalo){
+                      var p2 = calcMesFimPadrao(diaVencimento);
+                      setIntervalo(function(prev){return Object.assign({},prev,{mesFim:p2.mesFim,anoFim:p2.anoFim})});
+                    }
                     setShowIntervalo(!showIntervalo);
                   }} cor={C.azul}>Intervalo</Btn>
                   <Btn small onClick={addParcela} cor={C.verdeClaro}>+ Avulsa</Btn>
@@ -797,7 +823,7 @@ function AppInterno(props) {
                     {resultado.prisao.map(function(p,i){
                       return (
                         <div key={i} style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginTop:4 }}>
-                          <span>{p.label}{p.is13?" [13\u00ba]":""}{p.pagoOriginal>0?(" (pago: "+fmt(p.pagoOriginal)+")"):""}{p.creditoAplicado>0?(" (cr\u00e9d: "+fmt(p.creditoAplicado)+")"):""}{p.quitado?" QUITADO":""}</span>
+                          <span>{p.label}{p.is13?" [13\u00ba]":""}{p.pagoOriginal>0?(" (pago em ref.: "+fmt(p.pagoOriginal)+")"):""}{p.creditoAplicado>0?(" (cr\u00e9d.apl.: "+fmt(p.creditoAplicado)+")"):""}{p.quitado?" QUITADO":""}</span>
                           <span style={{ fontWeight:600, color:p.quitado?C.verde:"inherit" }}>{p.quitado?"-":fmt(p.total)}</span>
                         </div>
                       );
@@ -813,7 +839,7 @@ function AppInterno(props) {
                     {resultado.penhora.map(function(p,i){
                       return (
                         <div key={i} style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginTop:4 }}>
-                          <span>{p.label}{p.is13?" [13\u00ba]":""}{p.pagoOriginal>0?(" (pago: "+fmt(p.pagoOriginal)+")"):""}{p.creditoAplicado>0?(" (cr\u00e9d: "+fmt(p.creditoAplicado)+")"):""}{p.quitado?" QUITADO":""}</span>
+                          <span>{p.label}{p.is13?" [13\u00ba]":""}{p.pagoOriginal>0?(" (pago em ref.: "+fmt(p.pagoOriginal)+")"):""}{p.creditoAplicado>0?(" (cr\u00e9d.apl.: "+fmt(p.creditoAplicado)+")"):""}{p.quitado?" QUITADO":""}</span>
                           <span style={{ fontWeight:600, color:p.quitado?C.verde:"inherit" }}>{p.quitado?"-":fmt(p.total)}</span>
                         </div>
                       );
