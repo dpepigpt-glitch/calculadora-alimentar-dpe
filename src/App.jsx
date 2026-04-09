@@ -491,7 +491,7 @@ function gerarPDFCompleto(resultado, logoData) {
   y += 8;
   var tl = resultado.tipoAlimento==="sm"
     ? resultado.percentualSM+"% do sal\u00e1rio m\u00ednimo federal"
-    : fmt(Number(resultado.valorFixoAlimento||0))+" (valor fixo)";
+    : fmt(parseMoney(resultado.valorFixoAlimento||"0"))+" (valor fixo)";
   lb("Alimentos fixados:", tl, c1, y);
   lb("Vencimento:", "Dia "+resultado.diaVencimento, c2, y);
   lb("\u00cdndice:", resultado.indiceLabel || "IPCA-E (IBGE)", c3, y);
@@ -977,7 +977,7 @@ function TabAtualizacao(props) {
   var addIntervalo = function(){
     var novas=[]; var m=intervalo.mesIni,a=intervalo.anoIni;
     while(a<intervalo.anoFim||(a===intervalo.anoFim&&m<=intervalo.mesFim)){
-      var valor; if(tipoAlimento==="sm") valor=r2(getSM(m,a)*Number(percentualSM)/100).toFixed(2); else valor=Number(valorFixoAlimento).toFixed(2);
+      var valor; if(tipoAlimento==="sm") valor=r2(getSM(m,a)*Number(percentualSM)/100).toFixed(2); else valor=r2(parseMoney(valorFixoAlimento)).toFixed(2);
       novas.push({id:Date.now()+novas.length,mes:m,ano:a,valor:valor,pago:intervalo.pago?Number(intervalo.pago).toFixed(2):"",is13:false});
       m++;if(m>12){m=1;a++;}
     }
@@ -1295,7 +1295,7 @@ function TabAtualizacao(props) {
                 </div>
               : <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <span style={{ fontSize:14, color:C.cinza }}>{"R$"}</span>
-                  <input type="text" inputMode="decimal" value={valorFixoAlimento} onChange={function(e){setValorFixoAlimento(e.target.value);}} placeholder={"0,00"}
+                  <input type="text" inputMode="decimal" value={valorFixoAlimento} onChange={function(e){var raw=e.target.value.replace(/[^0-9]/g,"");setValorFixoAlimento(fmtInput(raw));}} placeholder={"0,00"}
                     style={{ width:150, padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
                 </div>
             }
@@ -1530,7 +1530,7 @@ function AppInterno(props) {
   var addIntervalo=function(){
     var novas=[]; var m=intervalo.mesIni,a=intervalo.anoIni;
     while(a<intervalo.anoFim||(a===intervalo.anoFim&&m<=intervalo.mesFim)){
-      var valor; if(tipoAlimento==="sm") valor=r2(getSM(m,a)*Number(percentualSM)/100).toFixed(2); else valor=Number(valorFixoAlimento).toFixed(2);
+      var valor; if(tipoAlimento==="sm") valor=r2(getSM(m,a)*Number(percentualSM)/100).toFixed(2); else valor=r2(parseMoney(valorFixoAlimento)).toFixed(2);
       novas.push({id:Date.now()+novas.length,mes:m,ano:a,valor:valor,pago:intervalo.pago?Number(intervalo.pago).toFixed(2):"",is13:false});
       m++;if(m>12){m=1;a++;}
     }
@@ -1774,7 +1774,7 @@ function AppInterno(props) {
                     </div>
                   : <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                       <span style={{ fontSize:14, color:C.cinza }}>{"R$"}</span>
-                      <input type="text" inputMode="decimal" value={valorFixoAlimento} onChange={function(e){setValorFixoAlimento(e.target.value);}} placeholder={"0,00"}
+                      <input type="text" inputMode="decimal" value={valorFixoAlimento} onChange={function(e){var raw=e.target.value.replace(/[^0-9]/g,"");setValorFixoAlimento(fmtInput(raw));}} placeholder={"0,00"}
                         style={{ width:150, padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
                     </div>
                 }
