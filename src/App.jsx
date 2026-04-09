@@ -10,6 +10,33 @@ var C = {
 
 var r2 = function(v) { return Math.round((Number(v)||0) * 100) / 100; };
 var fmt = function(v) { return "R$ " + r2(v).toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, "."); };
+// Parse monetary input: handles "1.234,56" or "1234.56" or "1234,56"
+var parseMoney = function(s) {
+  if (!s && s !== 0) return 0;
+  var str = String(s).trim().replace(/R\$\s*/g, "");
+  // If has dot and comma: "1.234,56" -> remove dots, replace comma with dot
+  if (str.indexOf(".") !== -1 && str.indexOf(",") !== -1) {
+    str = str.replace(/\./g, "").replace(",", ".");
+  } else if (str.indexOf(",") !== -1) {
+    // Only comma: "1234,56" -> replace comma with dot
+    str = str.replace(",", ".");
+  }
+  var n = parseFloat(str);
+  return isNaN(n) ? 0 : n;
+};
+// Format monetary input as user types: returns display string
+var fmtInput = function(raw) {
+  // Strip everything except digits and comma/dot
+  var digits = raw.replace(/[^0-9]/g, "");
+  if (!digits) return "";
+  // treat last 2 digits as cents
+  while (digits.length < 3) digits = "0" + digits;
+  var cents = digits.slice(-2);
+  var reais = digits.slice(0, -2).replace(/^0+/, "") || "0";
+  // add thousand separators
+  reais = reais.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return reais + "," + cents;
+};
 var fmtMes = function(mes, ano) {
   var n = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
   return mes === 13 ? "13\u00ba/" + ano : n[mes-1] + "/" + ano;
@@ -964,17 +991,18 @@ function TabAtualizacao(props) {
 
   // C\u00e1lculo penhora simples
   var calcularPenhora = function(){
-    if (!valorRef || Number(valorRef) <= 0) { alert("Informe o valor de refer\u00eancia."); return; }
+    var valorRefNum = parseMoney(valorRef);
+    if (!valorRef || valorRefNum <= 0) { alert("Informe o valor de refer\u00eancia."); return; }
     var hoje = new Date();
     var mHoje = hoje.getMonth()+1, aHoje = hoje.getFullYear();
-    var calc = corrigirAte(Number(valorRef), mesRef, anoRef, mHoje, aHoje, indice);
+    var calc = corrigirAte(valorRefNum, mesRef, anoRef, mHoje, aHoje, indice);
     var labelIndice = indice==="selic" ? "SELIC (acumulada)" : "IPCA-E + Juros 1% a.m.";
     var dataBase = hoje.toLocaleDateString("pt-BR");
     var dataRef = MESES[mesRef-1]+"/"+anoRef;
     var res = {
       processo: maskProcesso(processo), alimentado, alimentante, comarca,
       indice, indiceLabel: labelIndice,
-      valorRef: Number(valorRef),
+      valorRef: valorRefNum,
       dataRef: dataRef,
       dataBase: dataBase,
       mesRef, anoRef,
@@ -1168,8 +1196,11 @@ function TabAtualizacao(props) {
               <div>
                 <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Valor de Refer\u00eancia (R$)"}</label>
                 <input type="text" inputMode="decimal" value={valorRef}
-                  onChange={function(e){setValorRef(e.target.value);}}
-                  placeholder={"Ex.: 5000,00"}
+                  onChange={function(e){
+                    var raw = e.target.value.replace(/[^0-9]/g, "");
+                    setValorRef(fmtInput(raw));
+                  }}
+                  placeholder={"0,00"}
                   style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
               </div>
               <div>
