@@ -201,22 +201,29 @@ var DEFENSORES = {
 var _logoB64 = null;
 var _logoRatio = 4.0; // logo DEFCALC horizontal ~4:1
 
-// Renderiza o PNG transparente sobre fundo colorido (cor do cabeçalho do PDF)
-// para evitar o xadrez/cinza que o jsPDF coloca atrás de PNGs transparentes.
+// Renderiza o PNG transparente sobre fundo colorido para o PDF.
+// Usa canvas com fundo na cor do cabeçalho — elimina xadrez no jsPDF.
 function renderizarLogoComFundo(b64, bgColor) {
   return new Promise(function(res) {
     var img = new Image();
     img.onload = function() {
       try {
+        var w = img.naturalWidth || 800;
+        var h = img.naturalHeight || 200;
         var cv = document.createElement("canvas");
-        cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+        cv.width = w; cv.height = h;
         var ctx = cv.getContext("2d");
-        // Preencher com a cor do cabeçalho antes de desenhar o logo
         ctx.fillStyle = bgColor;
-        ctx.fillRect(0, 0, cv.width, cv.height);
-        ctx.drawImage(img, 0, 0);
-        _logoRatio = img.naturalWidth / img.naturalHeight;
-        res(cv.toDataURL("image/png"));
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        _logoRatio = w / h;
+        var resultado = cv.toDataURL("image/png");
+        // Checar se o canvas retornou algo válido (não bloqueado)
+        if (!resultado || resultado === "data:," || resultado.length < 100) {
+          res(b64); // fallback: usar base64 original
+        } else {
+          res(resultado);
+        }
       } catch(e) { res(b64); }
     };
     img.onerror = function() { res(b64); };
@@ -265,10 +272,10 @@ function TelaLogin(props) {
     <div style={{ minHeight:"100vh", background:"#e8ede8", display:"flex", alignItems:"center", justifyContent:"center", padding:"20px 16px" }}>
       <div style={{ background:"#fff", borderRadius:16, width:"100%", maxWidth:460, boxShadow:"0 12px 40px rgba(0,0,0,0.18)", overflow:"hidden" }}>
 
-        {/* Banner verde com logo — sem xadrez */}
-        <div style={{ background:C.verde, padding:"32px 40px 28px", textAlign:"center" }}>
+        {/* Banner branco com logo — transparência funciona perfeitamente sobre branco */}
+        <div style={{ background:"#ffffff", padding:"32px 40px 24px", textAlign:"center", borderBottom:"3px solid "+C.verde }}>
           <img src="/logo-apidep.png" alt="DEFCALC"
-            style={{ height:80, objectFit:"contain", display:"block", margin:"0 auto 0" }}
+            style={{ height:90, objectFit:"contain", display:"block", margin:"0 auto" }}
             onError={function(e){e.target.style.display="none";}} />
         </div>
 
@@ -461,9 +468,11 @@ function Header(props) {
   return (
     <div style={{ background:C.verde, color:"#fff", padding:"12px 28px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
       <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-        <img src="/logo-apidep.png" alt="DEFCALC"
-          style={{ height:56, objectFit:"contain" }}
-          onError={function(e){e.target.style.display="none";}} />
+        <div style={{ background:"#fff", borderRadius:8, padding:"4px 10px", display:"flex", alignItems:"center" }}>
+          <img src="/logo-apidep.png" alt="DEFCALC"
+            style={{ height:48, objectFit:"contain" }}
+            onError={function(e){e.target.parentNode.style.display="none";}} />
+        </div>
         <div>
           <div style={{ fontWeight:800, fontSize:16 }}>{"Calculadora de Débitos Alimentares"}</div>
           <div style={{ fontSize:12, opacity:.8 }}>{"DEFCALC — AMIGOS DA DEFENSORIA"}</div>
