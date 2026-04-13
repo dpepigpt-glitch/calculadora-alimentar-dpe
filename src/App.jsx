@@ -1176,7 +1176,14 @@ function TabAtualizacao(props) {
               placeholder={"0000000-00.0000.8.18.0000"}
               style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box", fontFamily:"monospace" }} />
           </div>
-          <Input label={"Vara/Comarca"} value={comarca} onChange={setComarca} placeholder={"Vara/Comarca"} />
+          <div style={{ marginBottom:14 }}>
+            <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Vara/Comarca"}</label>
+            <input type="text" value={comarca}
+              onChange={function(e){setComarca(e.target.value);}}
+              onBlur={function(e){setComarca(capitalizarNome(e.target.value));}}
+              placeholder={"Vara/Comarca"}
+              style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
+          </div>
           <div style={{ marginBottom:14 }}>
             <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Alimentado(a) / Exequente"}</label>
             <input type="text" value={alimentado}
@@ -1764,7 +1771,14 @@ function AppInterno(props) {
                     placeholder={"0000000-00.0000.8.18.0000"}
                     style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box", fontFamily:"monospace", letterSpacing:"0.5px" }} />
                 </div>
-                <Input label={"Vara/Comarca"} value={comarca} onChange={setComarca} placeholder={"Vara/Comarca"} />
+                <div style={{ marginBottom:14 }}>
+                  <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Vara/Comarca"}</label>
+                  <input type="text" value={comarca}
+                    onChange={function(e){setComarca(e.target.value);}}
+                    onBlur={function(e){setComarca(capitalizarNome(e.target.value));}}
+                    placeholder={"Vara/Comarca"}
+                    style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
+                </div>
                 <div style={{ marginBottom:14 }}>
                   <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Alimentado(a) / Exequente"}</label>
                   <input type="text" value={alimentado}
