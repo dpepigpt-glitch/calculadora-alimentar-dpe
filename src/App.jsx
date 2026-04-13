@@ -213,7 +213,7 @@ function carregarLogo() {
       } catch(e) { res(null); }
     };
     img.onerror = function() { res(null); };
-    img.src = "/logo-apidep.png";
+    img.src = "/logo-defcalc.png";
   });
 }
 carregarLogo();
@@ -234,7 +234,7 @@ function TelaLogin(props) {
     <div style={{ minHeight:"100vh", background:"#f0f2f0", display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ background:"#fff", borderRadius:12, padding:40, width:400, boxShadow:"0 8px 32px rgba(0,0,0,0.15)" }}>
         <div style={{ textAlign:"center", marginBottom:28 }}>
-          <img src="/logo-apidep.png" alt="APIDEP" crossOrigin="anonymous"
+          <img src="/logo-defcalc.png" alt="DEFCALC" crossOrigin="anonymous"
             style={{ height:60, objectFit:"contain", marginBottom:12 }}
             onError={function(e){e.target.style.display="none";}} />
           <div style={{ fontWeight:800, fontSize:16, color:C.verde }}>{"Calculadora de D\u00e9bitos Alimentares"}</div>
@@ -420,12 +420,12 @@ function Header(props) {
   return (
     <div style={{ background:C.verde, color:"#fff", padding:"12px 28px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
       <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-        <img src="/logo-apidep.png" alt="APIDEP" crossOrigin="anonymous"
+        <img src="/logo-defcalc.png" alt="DEFCALC" crossOrigin="anonymous"
           style={{ height:56, objectFit:"contain" }}
           onError={function(e){e.target.style.display="none";}} />
         <div>
           <div style={{ fontWeight:800, fontSize:16 }}>{"Calculadora de D\u00e9bitos Alimentares"}</div>
-          <div style={{ fontSize:12, opacity:.8 }}>{"APIDEP \u2014 Associa\u00e7\u00e3o Piauiense das Defensoras e Defensores P\u00fablicos"}</div>
+          <div style={{ fontSize:12, opacity:.8 }}>{"DEFCALC \u2014 Amigos da Defensoria"}</div>
         </div>
       </div>
       <div style={{ display:"flex", gap:8, alignItems:"center" }}>
@@ -466,7 +466,7 @@ function gerarPDFCompleto(resultado, logoData) {
   doc.setFontSize(9); doc.setFont("helvetica","normal");
   doc.text("D\u00e9bito Alimentar \u2014 Execu\u00e7\u00e3o de Alimentos (art. 528 CPC)", W/2, 16, {align:"center"});
   doc.setFontSize(7.5);
-  doc.text("APIDEP \u2014 Associa\u00e7\u00e3o Piauiense das Defensoras e Defensores P\u00fablicos", W/2, 22, {align:"center"});
+  doc.text("DEFCALC \u2014 Amigos da Defensoria", W/2, 22, {align:"center"});
   y = 36;
 
   // Dados
@@ -651,7 +651,7 @@ function gerarPDFAtuPenhora(dados, logoData) {
   doc.setFontSize(9); doc.setFont("helvetica","normal");
   doc.text("Execu\u00e7\u00e3o de Alimentos \u2014 art. 528, \u00a78\u00ba, CPC (expropria\u00e7\u00e3o)", W/2, 16, {align:"center"});
   doc.setFontSize(7.5);
-  doc.text("APIDEP \u2014 Associa\u00e7\u00e3o Piauiense das Defensoras e Defensores P\u00fablicos", W/2, 22, {align:"center"});
+  doc.text("DEFCALC \u2014 Amigos da Defensoria", W/2, 22, {align:"center"});
   y = 36;
 
   // Dados do processo
@@ -780,7 +780,7 @@ function gerarPDFAtuPrisao(resultado, logoData) {
   doc.setFontSize(9); doc.setFont("helvetica","normal");
   doc.text("Execu\u00e7\u00e3o de Alimentos \u2014 art. 528, \u00a73\u00ba, CPC (pris\u00e3o civil)", W/2, 16, {align:"center"});
   doc.setFontSize(7.5);
-  doc.text("APIDEP \u2014 Associa\u00e7\u00e3o Piauiense das Defensoras e Defensores P\u00fablicos", W/2, 22, {align:"center"});
+  doc.text("DEFCALC \u2014 Amigos da Defensoria", W/2, 22, {align:"center"});
   y = 36;
 
   // Dados
