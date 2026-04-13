@@ -1,1997 +1,1118 @@
-// v4.0 \u2014 SELIC + Atualiza\u00e7\u00e3o de D\u00e9bito (penhora e pris\u00e3o civil)
-import { useState, useRef } from "react";
-
-var C = {
-  verde: "#1a6b3a", verdeClaro: "#2d8a50", verdePale: "#e8f5ee",
-  cinza: "#4a4a4a", cinzaClaro: "#f5f5f5", branco: "#ffffff",
-  borda: "#d0d0d0", vermelho: "#c0392b", azul: "#1a5276",
-  laranja: "#c0580a",
-};
-
-var r2 = function(v) { return Math.round((Number(v)||0) * 100) / 100; };
-var fmt = function(v) { return "R$ " + r2(v).toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, "."); };
-// Parse monetary input: handles "1.234,56" or "1234.56" or "1234,56"
-var parseMoney = function(s) {
-  if (!s && s !== 0) return 0;
-  var str = String(s).trim().replace(/R\$\s*/g, "");
-  // If has dot and comma: "1.234,56" -> remove dots, replace comma with dot
-  if (str.indexOf(".") !== -1 && str.indexOf(",") !== -1) {
-    str = str.replace(/\./g, "").replace(",", ".");
-  } else if (str.indexOf(",") !== -1) {
-    // Only comma: "1234,56" -> replace comma with dot
-    str = str.replace(",", ".");
-  }
-  var n = parseFloat(str);
-  return isNaN(n) ? 0 : n;
-};
-// Format monetary input as user types: returns display string
-var fmtInput = function(raw) {
-  // Strip everything except digits and comma/dot
-  var digits = raw.replace(/[^0-9]/g, "");
-  if (!digits) return "";
-  // treat last 2 digits as cents
-  while (digits.length < 3) digits = "0" + digits;
-  var cents = digits.slice(-2);
-  var reais = digits.slice(0, -2).replace(/^0+/, "") || "0";
-  // add thousand separators
-  reais = reais.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  return reais + "," + cents;
-};
-var fmtMes = function(mes, ano) {
-  var n = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-  return mes === 13 ? "13\u00ba/" + ano : n[mes-1] + "/" + ano;
-};
-
-function maskProcesso(digits) {
-  var d = (digits || "").replace(/\D/g, "").slice(0, 17);
-  var out = "";
-  for (var i = 0; i < d.length; i++) {
-    if (i === 7) out += "-";
-    if (i === 9) out += ".";
-    if (i === 13) out += ".8.18.";
-    out += d[i];
-  }
-  return out;
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DPE-PI | Diretoria Itinerante</title>
+<style>
+:root{--v:#2E7D32;--v2:#43A047;--v3:#1B5E20;--vc:#F1F8E9;--vm:#C8E6C9;--bg:#f4f6f4;--bd:#ccc;}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif;}
+body{background:var(--bg);color:#222;padding-bottom:80px;line-height:1.5;}
+.wrap{max-width:1040px;margin:0 auto;padding:20px;}
+.card{background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:16px;}
+h2{color:var(--v);border-bottom:2px solid var(--vm);padding-bottom:6px;margin-bottom:14px;font-size:15px;}
+h3{color:var(--v3);font-size:14px;margin-bottom:10px;}
+.row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;}
+.fg{flex:1;min-width:150px;}
+.fg label{display:block;font-size:12px;font-weight:700;margin-bottom:3px;color:var(--v3);}
+.fg input,.fg select,.fg textarea{width:100%;padding:7px 9px;border:1px solid var(--bd);border-radius:5px;font-size:13px;}
+.fg input:focus,.fg select:focus{outline:2px solid var(--v2);}
+.btn{padding:8px 14px;border:none;border-radius:5px;cursor:pointer;font-weight:700;font-size:13px;}
+.bv{background:var(--v);color:#fff;} .bv:hover{background:var(--v3);}
+.bo{background:transparent;border:2px solid var(--v);color:var(--v);}
+.br{background:#c62828;color:#fff;}
+.by{background:#f9a825;color:#fff;}
+.bsm{padding:5px 10px;font-size:12px;}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:7px;}
+.chip{position:relative;}
+.chip input{position:absolute;opacity:0;width:0;height:0;}
+.chip label{display:flex;align-items:center;gap:4px;padding:5px 11px;border:2px solid var(--bd);border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;color:#555;background:#fff;white-space:nowrap;}
+.chip label:hover,.chip input:checked+label{border-color:var(--v);background:var(--v);color:#fff;}
+.divid{height:1px;background:var(--bd);margin:14px 0;}
+.errmsg{color:#c62828;font-size:12px;margin-top:7px;display:none;}
+.pcard{border:2px solid var(--bd);border-radius:8px;padding:10px 13px;cursor:pointer;display:flex;align-items:center;gap:11px;margin-bottom:7px;}
+.pcard:hover,.pcard.sel{border-color:var(--v);background:var(--vc);}
+#loginScreen{display:flex;justify-content:center;align-items:center;min-height:90vh;}
+#dashboard{display:none;}
+.topbar{display:flex;justify-content:space-between;align-items:center;background:#fff;padding:11px 16px;border-radius:8px;margin-bottom:16px;box-shadow:0 2px 6px rgba(0,0,0,.05);flex-wrap:wrap;gap:9px;border-left:5px solid var(--v);}
+.badge{background:var(--vc);border:1px solid var(--vm);padding:4px 10px;border-radius:6px;font-weight:700;color:var(--v3);font-size:13px;}
+.tabs{display:flex;gap:9px;margin-bottom:16px;flex-wrap:wrap;}
+.tab{padding:7px 15px;background:#fff;border:2px solid var(--bd);border-radius:5px;cursor:pointer;font-weight:700;font-size:13px;}
+.tab.on{background:var(--v);color:#fff;border-color:var(--v);}
+.hi{background:var(--vc);border:1px solid var(--vm);padding:11px;margin-bottom:7px;border-radius:6px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:7px;}
+.hi h3{font-size:13px;color:var(--v3);margin-bottom:2px;}
+.hi p{font-size:11px;color:#555;}
+.mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;}
+.mbox{background:#fff;border-radius:8px;padding:24px;max-width:420px;width:90%;}
+.noprint{}
+.iprint{display:none;}
+@media print{
+  body *{visibility:hidden;}
+  .iprint,.iprint *{visibility:visible;}
+  .iprint{position:absolute;left:0;top:0;width:100%;display:block!important;}
+  .noprint{display:none!important;}
+  @page{margin:1.2cm 1.8cm;size:A4 portrait;}
+  .qbra{page-break-after:always;}
+  .qbra:last-child{page-break-after:auto;}
 }
+/* Cartão de ofício no formulário */
+.ofcard{border:2px solid var(--vm);border-radius:8px;padding:14px;margin-bottom:12px;background:#fff;}
+.ofcard-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.ofcard-title{font-weight:700;color:var(--v3);font-size:14px;}
+.ofcard-dest{font-size:12px;color:#555;margin-top:2px;}
+.titular-bloco{border:1px solid var(--bd);border-radius:6px;padding:12px;margin-bottom:10px;background:#f9fbf9;}
+.titular-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.titular-title{font-weight:700;font-size:13px;color:var(--v3);}
+.doc-item{background:#F1F8E9;border:1px solid var(--vm);border-radius:5px;padding:8px 10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;font-size:12px;}
+.doc-item-txt{flex:1;}
+/* PDF styles */
+.fw{font-family:Arial,sans-serif;font-size:8.5pt;}
+.ftp{display:flex;align-items:center;gap:14px;border-bottom:3px solid #4CAF50;padding-bottom:10px;margin-bottom:10px;}
+.ftp img{width:80px;height:auto;display:block;flex-shrink:0;}
+.ftx{flex:1;text-align:center;}
+.ftx .ft1{color:#2E7D32;font-size:12pt;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.ftx .ft2{color:#43A047;font-size:8.5pt;font-weight:700;margin-top:2px;}
+.ftx .ft3{color:#66BB6A;font-size:7.5pt;}
+.ftx .ft4{color:#888;font-size:7pt;margin-top:1px;}
+.fsc{background:#43A047;color:#fff;padding:2px 7px;font-size:7.5pt;font-weight:700;text-transform:uppercase;margin:7px 0 4px;border-radius:2px;}
+.fl{display:flex;border-bottom:1px solid #ccc;padding:2px 0;align-items:flex-end;gap:6px;margin-bottom:2px;}
+.fr{font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;white-space:nowrap;flex-shrink:0;}
+.fv{flex:1;border-bottom:1px dotted #aaa;min-height:12px;font-size:8pt;padding-left:3px;}
+.fop{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;}
+.fo{display:flex;align-items:center;gap:2px;font-size:7.5pt;}
+.fck{width:8px;height:8px;border:1.5px solid #43A047;display:inline-flex;align-items:center;justify-content:center;font-size:6.5pt;flex-shrink:0;}
+.dbox{margin-top:8px;padding:8px;border:1.5px solid #66BB6A;font-size:7.5pt;line-height:1.35;text-align:justify;background:#fafff8;}
+.dtit{font-weight:700;text-transform:uppercase;text-align:center;margin-bottom:6px;font-size:8.5pt;color:#2E7D32;}
+.dp{margin-bottom:6px;}
+.das{margin-top:26px;text-align:center;}
+.dln{border-top:1px solid #000;width:58%;margin:0 auto 3px;}
+.ow{font-family:Arial,sans-serif;font-size:10pt;line-height:1.65;text-align:justify;}
+.otp{display:flex;align-items:center;gap:16px;border-bottom:3px solid #4CAF50;padding-bottom:10px;margin-bottom:16px;}
+.otp img{width:80px;height:auto;display:block;flex-shrink:0;}
+.otx{flex:1;text-align:center;}
+.otx .ot1{color:#2E7D32;font-size:12pt;font-weight:700;text-transform:uppercase;}
+.otx .ot2{color:#43A047;font-size:9pt;font-weight:700;}
+.otx .ot3{color:#66BB6A;font-size:8pt;}
+.onr{display:flex;justify-content:space-between;margin-bottom:14px;border-bottom:1px solid #A5D6A7;padding-bottom:7px;}
+.onl{font-size:9.5pt;font-weight:700;color:#2E7D32;}
+.odt{font-size:9.5pt;font-weight:700;color:#333;}
+.ode{margin-bottom:10px;font-size:9.5pt;}
+.oas{margin-bottom:11px;font-weight:700;font-size:9.5pt;padding:4px 8px;background:#F1F8E9;border-left:3px solid #66BB6A;border-radius:0 3px 3px 0;}
+.op{margin-bottom:9px;text-indent:28px;font-size:9.5pt;}
+.ofu{margin:10px 0;font-size:9.5pt;}
+.ofu ol{padding-left:18px;margin-top:4px;}
+.ofu li{margin-bottom:5px;}
+.oob{font-style:italic;padding:4px 8px;border-left:3px solid #A5D6A7;margin:8px 0;font-size:9.5pt;background:#F9FBE7;}
+.osn{margin-top:38px;text-align:center;}
+.osl{border-top:1px solid #000;width:55%;margin:0 auto 4px;}
+.osn2{font-weight:700;font-size:10pt;}
+.ord{border-top:1px solid #ddd;margin-top:16px;padding-top:5px;font-size:7.5pt;color:#666;}
+.cb{border:1px solid #A5D6A7;border-radius:4px;padding:7px 10px;margin-bottom:8px;background:#F9FBE7;}
+.cbt{font-weight:700;font-size:9pt;color:#2E7D32;margin-bottom:4px;}
+</style>
+</head>
+<body>
 
-function digitsFromDisplay(display) {
-  var all = (display || "").replace(/\D/g, "");
-  if (all.length > 13) {
-    var antes = all.slice(0, 13);
-    var depois = all.slice(13);
-    var idx = depois.indexOf("818");
-    if (idx >= 0 && idx <= 1) {
-      depois = depois.slice(0, idx) + depois.slice(idx + 3);
-    }
-    return (antes + depois).slice(0, 17);
-  }
-  return all.slice(0, 17);
-}
+<!-- TELA INICIAL -->
+<div id="loginScreen" class="noprint">
+<div style="max-width:500px;width:100%;margin:0 auto;padding:20px;">
+  <div style="display:flex;border-radius:8px 8px 0 0;overflow:hidden;">
+    <div id="ltab1" onclick="ltab('login')" style="flex:1;padding:11px;text-align:center;background:var(--v);color:#fff;font-weight:700;font-size:13px;cursor:pointer;">Entrar no Sistema</div>
+    <div id="ltab2" onclick="ltab('busca')" style="flex:1;padding:11px;text-align:center;background:#888;color:#fff;font-weight:700;font-size:13px;cursor:pointer;">Busca de Atendimentos</div>
+    <div id="ltab3" onclick="ltab('relatorios')" style="flex:1;padding:11px;text-align:center;background:#888;color:#fff;font-weight:700;font-size:13px;cursor:pointer;">Relatórios</div>
+  </div>
+  <div id="lPanelLogin" style="background:#fff;padding:22px;border-radius:0 0 8px 8px;box-shadow:0 4px 12px rgba(0,0,0,.12);">
+    <div style="font-size:13px;font-weight:700;color:var(--v3);text-align:center;margin-bottom:14px;">DEFENSORIA PÚBLICA DO ESTADO DO PIAUÍ<br><span style="font-size:11px;font-weight:400;color:#666;">Diretoria Itinerante</span></div>
+    <div style="font-size:12px;font-weight:700;color:var(--v3);margin-bottom:10px;">Selecione o perfil:</div>
+    <div id="pcards"></div>
+    <div class="fg" style="margin-bottom:10px;"><label>Jornada / Defensoria:</label><select id="lgJ"><option value="">Selecione...</option></select></div>
+    <div class="fg" style="margin-bottom:14px;"><label>Senha:</label><input type="password" id="lgS" placeholder="..." onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btn bv" style="width:100%;" onclick="doLogin()">ENTRAR</button>
+    <div class="errmsg" id="lerr" style="text-align:center;">Senha, perfil ou jornada incorretos.</div>
+    <div style="border-top:1px dashed var(--bd);margin-top:16px;padding-top:14px;">
+      <div style="font-size:12px;font-weight:700;color:var(--v3);margin-bottom:8px;">Reabrir Jornada Encerrada:</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="fg"><select id="rlSel"><option value="">Selecione...</option></select></div>
+        <button class="btn bo bsm" onclick="doReabrir()" style="height:38px;">Reabrir</button>
+      </div>
+      <div style="font-size:11px;color:#888;margin-top:5px;">A numeração retoma de onde parou.</div>
+    </div>
+  </div>
+  <div id="lPanelBusca" style="display:none;background:#fff;padding:22px;border-radius:0 0 8px 8px;box-shadow:0 4px 12px rgba(0,0,0,.12);">
+    <div id="lbAuth">
+      <div style="background:#fff8e1;border-left:4px solid #f9a825;padding:10px;margin-bottom:12px;font-size:12px;color:#5d4037;border-radius:0 4px 4px 0;">Acesso restrito. Informe a senha para buscar em todas as jornadas.</div>
+      <div style="display:flex;gap:8px;align-items:flex-end;">
+        <div class="fg"><label>Senha:</label><input type="password" id="lbSe" onkeydown="if(event.key==='Enter')doAutBusca()"></div>
+        <button class="btn bv" style="height:38px;" onclick="doAutBusca()">Acessar</button>
+      </div>
+      <div class="errmsg" id="lbErr">Senha incorreta.</div>
+    </div>
+    <div id="lbPain" style="display:none;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end;">
+        <div class="fg"><label>Nome:</label><input type="text" id="lbNm" placeholder="Requerente ou titular..." oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')doLbuscar()"></div>
+        <div class="fg" style="max-width:190px;"><label>CPF:</label><input type="text" id="lbCP" placeholder="000.000.000-00" maxlength="14" oninput="mcpf(this)" onkeydown="if(event.key==='Enter')doLbuscar()"></div>
+        <button class="btn bv" style="height:38px;padding:0 18px;" onclick="doLbuscar()">Buscar</button>
+        <button class="btn bo" style="height:38px;padding:0 12px;" onclick="doLlimpar()">Limpar</button>
+      </div>
+      <div id="lbInfo" style="font-size:12px;color:#666;margin-bottom:8px;"></div>
+      <div id="lbRes" style="max-height:350px;overflow-y:auto;"></div>
+    </div>
+  </div>
 
-var SALARIO_MINIMO = {
-  "2020-01":1045,"2020-02":1045,"2020-03":1045,"2020-04":1045,"2020-05":1045,"2020-06":1045,
-  "2020-07":1045,"2020-08":1045,"2020-09":1045,"2020-10":1045,"2020-11":1045,"2020-12":1045,
-  "2021-01":1100,"2021-02":1100,"2021-03":1100,"2021-04":1100,"2021-05":1100,"2021-06":1100,
-  "2021-07":1100,"2021-08":1100,"2021-09":1100,"2021-10":1100,"2021-11":1100,"2021-12":1100,
-  "2022-01":1212,"2022-02":1212,"2022-03":1212,"2022-04":1212,"2022-05":1212,"2022-06":1212,
-  "2022-07":1212,"2022-08":1212,"2022-09":1212,"2022-10":1212,"2022-11":1212,"2022-12":1212,
-  "2023-01":1320,"2023-02":1320,"2023-03":1320,"2023-04":1320,"2023-05":1320,"2023-06":1320,
-  "2023-07":1320,"2023-08":1320,"2023-09":1320,"2023-10":1320,"2023-11":1320,"2023-12":1320,
-  "2024-01":1412,"2024-02":1412,"2024-03":1412,"2024-04":1412,"2024-05":1412,"2024-06":1412,
-  "2024-07":1412,"2024-08":1412,"2024-09":1412,"2024-10":1412,"2024-11":1412,"2024-12":1412,
-  "2025-01":1518,"2025-02":1518,"2025-03":1518,"2025-04":1518,"2025-05":1518,"2025-06":1518,
-  "2025-07":1518,"2025-08":1518,"2025-09":1518,"2025-10":1518,"2025-11":1518,"2025-12":1518,
-  "2026-01":1621,"2026-02":1621,"2026-03":1621,"2026-04":1621,"2026-05":1621,"2026-06":1621,
-  "2026-07":1621,"2026-08":1621,"2026-09":1621,"2026-10":1621,"2026-11":1621,"2026-12":1621
-};
+  <!-- PAINEL RELATÓRIOS -->
+  <div id="lPanelRel" style="display:none;background:#fff;padding:22px;border-radius:0 0 8px 8px;box-shadow:0 4px 12px rgba(0,0,0,.12);">
+    <div id="lrAuth">
+      <div style="background:#fff8e1;border-left:4px solid #f9a825;padding:10px;margin-bottom:12px;font-size:12px;color:#5d4037;border-radius:0 4px 4px 0;">Acesso restrito. Informe a senha para visualizar os relatórios.</div>
+      <div style="display:flex;gap:8px;align-items:flex-end;">
+        <div class="fg"><label>Senha:</label><input type="password" id="lrSe" onkeydown="if(event.key==='Enter')doAutRel()"></div>
+        <button class="btn bv" style="height:38px;" onclick="doAutRel()">Acessar</button>
+      </div>
+      <div class="errmsg" id="lrErr">Senha incorreta.</div>
+    </div>
+    <div id="lrPain" style="display:none;">
+      <div style="font-weight:700;font-size:13px;color:var(--v3);margin-bottom:10px;">Relatórios de Jornadas Encerradas</div>
+      <div id="lrLista"></div>
+    </div>
+  </div>
+</div>
+</div>
 
-var getSM = function(m, a) {
-  return SALARIO_MINIMO[a + "-" + String(m).padStart(2,"0")] || 1621;
-};
+<!-- DASHBOARD -->
+<div id="dashboard" class="noprint">
+<div class="wrap">
+  <div class="topbar">
+    <div>
+      <div style="font-weight:700;font-size:15px;color:var(--v3);" id="titPag">Novo Atendimento</div>
+      <div style="font-size:11px;color:#666;" id="infoS"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <div class="badge" id="bdg">Próximo Ofício: 001</div>
+      <button class="btn bv bsm" id="btnNJ" style="display:none;" onclick="abrirModal()">+ Nova Jornada</button>
+      <button class="btn br bsm" onclick="doEncerrar()">Encerrar Jornada</button>
+      <button class="btn bo bsm" onclick="doSair()">Sair</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab on" id="tN" onclick="aba('n')">Atendimento</div>
+    <div class="tab" id="tH" onclick="aba('h')">Histórico</div>
+  </div>
 
-// IPCA-E mensal (%)
-var IPCA_E = {
-  "2022-01":0.54,"2022-02":0.58,"2022-03":1.05,"2022-04":1.06,"2022-05":0.81,"2022-06":0.68,
-  "2022-07":-0.07,"2022-08":-0.04,"2022-09":0.24,"2022-10":0.40,"2022-11":0.54,"2022-12":0.54,
-  "2023-01":0.53,"2023-02":0.39,"2023-03":0.17,"2023-04":0.23,"2023-05":0.22,"2023-06":0.06,
-  "2023-07":0.18,"2023-08":0.37,"2023-09":0.26,"2023-10":0.24,"2023-11":0.33,"2023-12":0.44,
-  "2024-01":0.42,"2024-02":0.40,"2024-03":0.36,"2024-04":0.38,"2024-05":0.40,"2024-06":0.39,
-  "2024-07":0.43,"2024-08":0.44,"2024-09":0.44,"2024-10":0.56,"2024-11":0.39,"2024-12":0.48,
-  "2025-01":0.16,"2025-02":1.31,"2025-03":0.56,"2025-04":0.43,"2025-05":0.26,"2025-06":0.24,
-  "2025-07":0.26,"2025-08":-0.11,"2025-09":0.48,"2025-10":0.09,"2025-11":-0.09,"2025-12":0.33,
-  "2026-01":0.33,"2026-02":0.70,"2026-03":0.31,"2026-04":0.31,"2026-05":0.31,"2026-06":0.31,
-  "2026-07":0.31,"2026-08":0.31,"2026-09":0.31,"2026-10":0.31,"2026-11":0.31,"2026-12":0.31
-};
+  <!-- ABA ATENDIMENTO -->
+  <div id="abaN">
 
-// SELIC mensal efetiva (%) \u2014 taxa acumulada no m\u00eas
-var SELIC = {
-  "2022-01":0.73,"2022-02":0.76,"2022-03":0.93,"2022-04":0.83,"2022-05":1.03,"2022-06":1.03,
-  "2022-07":1.03,"2022-08":1.07,"2022-09":1.07,"2022-10":1.07,"2022-11":1.07,"2022-12":1.07,
-  "2023-01":1.07,"2023-02":0.98,"2023-03":1.07,"2023-04":1.03,"2023-05":1.07,"2023-06":1.03,
-  "2023-07":1.07,"2023-08":1.07,"2023-09":1.00,"2023-10":0.92,"2023-11":0.89,"2023-12":0.89,
-  "2024-01":0.89,"2024-02":0.83,"2024-03":0.83,"2024-04":0.83,"2024-05":0.83,"2024-06":0.83,
-  "2024-07":0.83,"2024-08":0.83,"2024-09":0.83,"2024-10":0.96,"2024-11":1.00,"2024-12":1.07,
-  "2025-01":1.07,"2025-02":1.07,"2025-03":1.16,"2025-04":1.07,"2025-05":1.07,"2025-06":1.07,
-  "2025-07":1.07,"2025-08":1.07,"2025-09":1.07,"2025-10":1.07,"2025-11":1.07,"2025-12":1.07,
-  "2026-01":1.07,"2026-02":1.07,"2026-03":1.07,"2026-04":1.07,"2026-05":1.07,"2026-06":1.07,
-  "2026-07":1.07,"2026-08":1.07,"2026-09":1.07,"2026-10":1.07,"2026-11":1.07,"2026-12":1.07
-};
+    <!-- ETAPA 1: REQUERENTE -->
+    <div class="card" id="secRequerente">
+      <h2>1. Dados do(a) Requerente</h2>
+      <div style="background:var(--vc);border-left:4px solid var(--v);padding:9px 12px;margin-bottom:14px;font-size:12px;color:var(--v3);border-radius:0 4px 4px 0;">
+        Estes dados definem o requerente de todos os ofícios deste atendimento e compõem a Ficha + Declaração de Hipossuficiência.
+      </div>
+      <div class="row">
+        <div class="fg" style="flex:3;"><label>Nome Completo:</label><input id="rN" type="text" oninput="this.value=this.value.toUpperCase()"></div>
+        <div class="fg"><label>CPF:</label><input id="rC" type="text" maxlength="14" placeholder="000.000.000-00" oninput="mcpf(this)"></div>
+      </div>
+      <div class="row">
+        <div class="fg"><label>Data de Nascimento:</label><input id="rD" type="text" maxlength="10" placeholder="DD/MM/AAAA" oninput="mdat(this)"></div>
+        <div class="fg"><label>Telefone:</label><input id="rT" type="text" maxlength="15" placeholder="(00) 00000-0000" oninput="mtel(this)"></div>
+        <div class="fg"><label>Estado Civil:</label><select id="rEC"><option value="">-</option><option>Solteiro(a)</option><option>Casado(a)</option><option>Divorciado(a)</option><option>Viúvo(a)</option><option>União Estável</option></select></div>
+        <div class="fg"><label>Sexo:</label><select id="rSexo"><option value="">-</option><option>Masculino</option><option>Feminino</option><option>Não-binário</option><option>Não declarado</option></select></div>
+      </div>
+      <div class="row">
+        <div class="fg"><label>Nome do Pai:</label><input id="rP" type="text" oninput="this.value=this.value.toUpperCase()"></div>
+        <div class="fg"><label>Nome da Mãe:</label><input id="rM" type="text" oninput="this.value=this.value.toUpperCase()"></div>
+      </div>
+      <div class="row">
+        <div class="fg"><label>Profissão:</label><input id="rPr" type="text" oninput="this.value=ctit(this.value)"></div>
+        <div class="fg"><label>Renda Média Familiar:</label><input id="rR" type="text" placeholder="R$ 0,00" oninput="mrnd(this)" onfocus="irnd(this)"></div>
+        <div class="fg" style="flex:2;"><label>Endereço:</label><input id="rE" type="text" oninput="this.value=ctit(this.value)"></div>
+      </div>
+      <div class="divid"></div>
+      <div>
+        <span style="font-size:12px;font-weight:700;color:var(--v3);">Cor / Raça (IBGE)</span>
+        <div class="chips">
+          <div class="chip"><input type="radio" name="cor" id="cr1" value="Branca"><label for="cr1">Branca</label></div>
+          <div class="chip"><input type="radio" name="cor" id="cr2" value="Parda"><label for="cr2">Parda</label></div>
+          <div class="chip"><input type="radio" name="cor" id="cr3" value="Preta"><label for="cr3">Preta</label></div>
+          <div class="chip"><input type="radio" name="cor" id="cr4" value="Amarela"><label for="cr4">Amarela</label></div>
+          <div class="chip"><input type="radio" name="cor" id="cr5" value="Indígena"><label for="cr5">Indígena</label></div>
+          <div class="chip"><input type="radio" name="cor" id="cr6" value="Não Declarar"><label for="cr6">Não Declarar</label></div>
+        </div>
+      </div>
+      <div class="divid"></div>
+      <div>
+        <span style="font-size:12px;font-weight:700;color:var(--v3);">Ação Pretendida (pode marcar mais de uma)</span>
+        <div class="chips">
+          <div class="chip"><input type="checkbox" name="ac" id="a1" value="Documentos"><label for="a1">Documentos</label></div>
+          <div class="chip"><input type="checkbox" name="ac" id="a2" value="Alimentos"><label for="a2">Alimentos</label></div>
+          <div class="chip"><input type="checkbox" name="ac" id="a3" value="Guarda/Filiação"><label for="a3">Guarda/Filiação</label></div>
+          <div class="chip"><input type="checkbox" name="ac" id="a4" value="Criminal"><label for="a4">Criminal</label></div>
+          <div class="chip"><input type="checkbox" name="ac" id="a5" value="Saúde"><label for="a5">Saúde</label></div>
+          <div class="chip"><input type="checkbox" name="ac" id="a6" value="Interdição/Curatela"><label for="a6">Interdição/Curatela</label></div>
+          <div class="chip"><input type="checkbox" name="ac" id="a7" value="Previdência/INSS"><label for="a7">Previdência/INSS</label></div>
+          <div class="chip"><input type="checkbox" name="ac" id="a8" value="Outras"><label for="a8">Outras</label></div>
+        </div>
+        <input type="text" id="aOu" placeholder="Especifique Outras..." style="display:none;margin-top:8px;width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:4px;font-size:12px;">
+      </div>
+      <div style="margin-top:14px;text-align:right;">
+        <button class="btn bv" onclick="doGerarFicha()">📋 Gerar / Reimprimir Ficha + Hipo</button>
+      </div>
+    </div>
 
-// Corrigir usando IPCA-E + juros 1% a.m.
-function corrigirAteIPCA(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo) {
-  var fator = 1;
-  var m = mesVenc; var a = anoVenc;
-  while (a < anoAlvo || (a === anoAlvo && m < mesAlvo)) {
-    var k = a + "-" + String(m).padStart(2,"0");
-    if (IPCA_E[k] !== undefined) fator *= (1 + IPCA_E[k] / 100);
-    m++; if (m > 12) { m = 1; a++; }
-  }
-  var meses = Math.max(0,
-    (anoAlvo - anoVenc) * 12 + (mesAlvo - mesVenc)
-  );
-  var corrigido = r2(saldo * fator);
-  var juros = r2(corrigido * meses * 0.01);
-  return {
-    fator: r2(fator * 1000000) / 1000000,
-    corrigido: corrigido,
-    juros: juros,
-    total: r2(corrigido + juros),
-    mesesAtraso: meses,
-    indiceLabel: "IPCA-E + Juros 1% a.m."
-  };
-}
+    <!-- ETAPA 2: OFÍCIOS -->
+    <div class="card">
+      <h2>2. Solicitações de Ofício</h2>
+      <div style="background:#fff8e1;border-left:4px solid #f9a825;padding:9px 12px;margin-bottom:14px;font-size:12px;color:#5d4037;border-radius:0 4px 4px 0;">
+        Cada Solicitação = 1 Ofício = 1 Cartório de destino. Adicione quantas solicitações precisar. Cada uma gera um ofício numerado individualmente.
+      </div>
 
-// Corrigir usando SELIC acumulada (subs. corre\u00e7\u00e3o e juros)
-function corrigirAteSELIC(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo) {
-  var fator = 1;
-  var m = mesVenc; var a = anoVenc;
-  while (a < anoAlvo || (a === anoAlvo && m < mesAlvo)) {
-    var k = a + "-" + String(m).padStart(2,"0");
-    var tx = SELIC[k] !== undefined ? SELIC[k] : 1.07;
-    fator *= (1 + tx / 100);
-    m++; if (m > 12) { m = 1; a++; }
-  }
-  var meses = Math.max(0,
-    (anoAlvo - anoVenc) * 12 + (mesAlvo - mesVenc)
-  );
-  var total = r2(saldo * fator);
-  return {
-    fator: r2(fator * 1000000) / 1000000,
-    corrigido: total,
-    juros: 0,
-    total: total,
-    mesesAtraso: meses,
-    indiceLabel: "SELIC (acumulada)"
-  };
-}
+      <!-- Lista de ofícios já criados -->
+      <div id="ofListaView"></div>
 
-// Dispatcher \u2014 usa o indice escolhido
-function corrigirAte(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo, indice) {
-  if (indice === "selic") return corrigirAteSELIC(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo);
-  return corrigirAteIPCA(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo);
-}
+      <!-- Formulário de nova solicitação / ofício em construção -->
+      <div id="ofForm">
+        <div style="border:2px solid var(--v);border-radius:8px;padding:16px;background:#F9FBE7;">
+          <div style="font-weight:700;font-size:14px;color:var(--v3);margin-bottom:12px;" id="ofFormTit">Solicitação #1 — Novo Ofício</div>
 
-function corrigir(saldo, mes, ano, indice) {
-  var mesCorr = mes === 13 ? 12 : mes;
-  var h = new Date();
-  return corrigirAte(saldo, mesCorr, ano, h.getMonth() + 1, h.getFullYear(), indice);
-}
+          <!-- DESTINO DO OFÍCIO -->
+          <div style="background:#E8F5E9;border-radius:6px;padding:12px;margin-bottom:14px;">
+            <div style="font-weight:700;font-size:13px;color:var(--v3);margin-bottom:8px;">Destino do Ofício</div>
+            <div class="row" style="margin-bottom:0;">
+              <div class="fg" style="flex:2;"><label>Cartório / Ofício:</label><input id="ofCartorio" type="text" placeholder="Ex: 1º Ofício de Registro Civil" oninput="this.value=ctit(this.value)"></div>
+              <div class="fg"><label>Cidade / Comarca:</label><input id="ofCidade" type="text" placeholder="Ex: Canto do Buriti/PI" oninput="this.value=ctit(this.value)"></div>
+            </div>
+          </div>
 
-var MESES = [
-  "Janeiro","Fevereiro","Mar\u00e7o","Abril","Maio","Junho",
-  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
+          <!-- TITULARES E DOCUMENTOS -->
+          <div id="titularesBloco">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <div style="font-weight:700;font-size:13px;color:var(--v3);">Titulares e Documentos</div>
+            </div>
+            <!-- Titulares salvos neste ofício em construção -->
+            <div id="titSalvosList"></div>
+
+            <!-- Formulário do titular atual -->
+            <div id="titForm" style="border:1px solid var(--bd);border-radius:6px;padding:12px;background:#fff;margin-bottom:10px;">
+              <div style="font-weight:700;font-size:13px;color:var(--v3);margin-bottom:8px;" id="titFormTit">Titular #1</div>
+              <div class="row">
+                <div class="fg" style="flex:3;"><label>Nome do Titular:</label><input id="tNome" type="text" placeholder="Em branco se for o próprio requerente" oninput="this.value=this.value.toUpperCase()"></div>
+                <div class="fg"><label>CPF do Titular:</label><input id="tCPF" type="text" maxlength="14" placeholder="000.000.000-00" oninput="mcpf(this)"></div>
+              </div>
+              <div class="row">
+                <div class="fg"><label>Data de Nascimento:</label><input id="tNasc" type="text" maxlength="10" placeholder="DD/MM/AAAA" oninput="mdat(this)"></div>
+                <div class="fg"><label>Parentesco do Req. com Titular:</label>
+                  <select id="tPar">
+                    <option value="">-</option>
+                    <option>Próprio(a)</option><option>Genitor(a)</option><option>Avô/Avó</option>
+                    <option>Esposo(a)</option><option>Tio(a)</option><option>Tutor(a)/Curador(a)</option>
+                    <option>Filho(a)</option><option>Convivente</option><option>Outro(a)</option>
+                  </select>
+                </div>
+              </div>
+              <div style="text-align:right;margin-top:6px;">
+                <button class="btn bv bsm" onclick="salvarTitular()">Salvar dados do titular →</button>
+              </div>
+            </div>
+
+            <!-- Documentos do titular salvo (aparece após salvar titular) -->
+            <div id="docForm" style="display:none;border:1px solid var(--vm);border-radius:6px;padding:12px;background:#F1F8E9;margin-bottom:10px;">
+              <div style="font-weight:700;font-size:13px;color:var(--v3);margin-bottom:8px;" id="docFormTit">Documentos para este titular</div>
+              <div id="docSalvosList"></div>
+              <div id="docNovoForm" style="border:1px dashed var(--bd);border-radius:5px;padding:10px;background:#fff;margin-bottom:8px;">
+                <div class="row">
+                  <div class="fg" style="flex:2;"><label>Tipo de Documento:</label>
+                    <select id="dTipo">
+                      <option value="">Selecione...</option>
+                      <option value="nasc">2ª Via da Certidão de Nascimento</option>
+                      <option value="cas">2ª Via da Certidão de Casamento</option>
+                      <option value="obi">2ª Via da Certidão de Óbito</option>
+                      <option value="int">Certidão de Inteiro Teor</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="fg"><label>N.º Registro / Termo:</label><input id="dNR" type="text"></div>
+                  <div class="fg"><label>Livro:</label><input id="dLivro" type="text" oninput="this.value=this.value.toUpperCase()"></div>
+                  <div class="fg"><label>Folha:</label><input id="dFolha" type="text"></div>
+                  <div class="fg" style="flex:2;"><label>Matrícula (opcional):</label><input id="dMat" type="text"></div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+                  <button class="btn bv bsm" onclick="salvarDoc(false)">+ Salvar e adicionar outro documento para este titular</button>
+                  <button class="btn bo bsm" onclick="salvarDoc(true)">✓ Concluir documentos deste titular</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botão novo titular (aparece após concluir titular) -->
+            <div id="btnNovoTitular" style="display:none;margin-bottom:10px;">
+              <button class="btn by bsm" onclick="iniciarNovoTitular()">+ Adicionar outro titular neste ofício</button>
+            </div>
+          </div>
+
+          <!-- Observação -->
+          <div class="fg" style="margin-bottom:12px;">
+            <label>Observação para este Ofício (opcional):</label>
+            <textarea id="ofObs" rows="2" style="width:100%;padding:7px 9px;border:1px solid var(--bd);border-radius:5px;font-size:13px;" placeholder="Ex: Pedido também encaminhado pelo CRC JUD..."></textarea>
+          </div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn bv" onclick="salvarOficio(false)">💾 Salvar Solicitação e criar nova</button>
+            <button class="btn bo" onclick="salvarOficio(true)">✅ Salvar e concluir todas as solicitações</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Área de geração após concluir -->
+      <div id="ofConcluido" style="display:none;padding:16px;background:var(--vc);border-radius:8px;border:1px solid var(--vm);">
+        <div style="font-weight:700;color:var(--v3);margin-bottom:12px;" id="ofConcluidoMsg"></div>
+        <div id="ofBotoesGerar"></div>
+        <div style="margin-top:10px;">
+          <button class="btn bo bsm" onclick="reabrirOficios()">✏️ Editar solicitações</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;padding-top:8px;padding-bottom:20px;">
+      <button class="btn bo bsm" onclick="doLimpar()">🔄 Novo Atendimento (limpar tudo)</button>
+    </div>
+  </div>
+
+  <!-- ABA HISTÓRICO -->
+  <div id="abaH" style="display:none;"><div class="card"><h2>Histórico da Jornada</h2><div id="lHist"></div></div></div>
+</div>
+</div>
+
+<!-- MODAL JORNADA -->
+<div class="mbg" id="mJor">
+<div class="mbox">
+  <h2 style="margin-bottom:14px;">Nova Jornada</h2>
+  <div class="fg" style="margin-bottom:12px;"><label>Nome:</label><input type="text" id="nJN" placeholder="Ex: Jornada de Oeiras" oninput="this.value=ctit(this.value)"></div>
+  <div style="display:flex;gap:10px;margin-bottom:14px;">
+    <button class="btn bv" style="flex:1;" onclick="doCriarJ()">Criar</button>
+    <button class="btn bo" style="flex:1;" onclick="fecharModal()">Cancelar</button>
+  </div>
+  <div style="font-size:12px;font-weight:700;color:var(--v3);margin-bottom:8px;">Jornadas existentes:</div>
+  <div id="lJA"></div>
+</div>
+</div>
+
+<!-- BOTÃO FICHA MANUAL -->
+<div class="noprint" style="position:fixed;bottom:18px;right:18px;z-index:998;">
+  <button onclick="doFichaManual()" style="background:#1B5E20;color:#fff;border:none;border-radius:8px;padding:10px 14px;font-size:11px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.25);line-height:1.3;text-align:center;">Ficha Manual<br>(caneta)</button>
+</div>
+
+<!-- ÁREA DE IMPRESSÃO -->
+<div class="iprint">
+  <!-- FICHA + HIPO -->
+  <div id="pF" class="qbra">
+  <div class="fw">
+    <div class="ftp">
+      <img id="lgF" alt="DPE-PI" style="width:80px;height:auto;display:block;flex-shrink:0;">
+      <div class="ftx">
+        <div class="ft1">Ficha de Atendimento</div>
+        <div class="ft2">Defensoria Pública do Estado do Piauí</div>
+        <div class="ft3">Diretoria Itinerante</div>
+        <div class="ft4">Uso exclusivo do serviço · Tratamento sigiloso</div>
+      </div>
+    </div>
+    <div class="fsc">Identificação do(a) Requerente</div>
+    <div class="fl"><span class="fr">Nome:</span><span class="fv" id="pRN"></span></div>
+    <div style="display:flex;gap:8px;">
+      <div style="flex:1;"><div class="fl"><span class="fr">CPF:</span><span class="fv" id="pRC"></span></div></div>
+      <div style="flex:1;"><div class="fl"><span class="fr">Nascimento:</span><span class="fv" id="pRD"></span></div></div>
+      <div style="flex:1;"><div class="fl"><span class="fr">Telefone:</span><span class="fv" id="pRT"></span></div></div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <div style="flex:1;"><div class="fl"><span class="fr">Pai:</span><span class="fv" id="pRP"></span></div></div>
+      <div style="flex:1;"><div class="fl"><span class="fr">Mãe:</span><span class="fv" id="pRM"></span></div></div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <div style="flex:1;"><div class="fl"><span class="fr">Est. Civil:</span><span class="fv" id="pREC"></span></div></div>
+      <div style="flex:1;"><div class="fl"><span class="fr">Profissão:</span><span class="fv" id="pRPr"></span></div></div>
+      <div style="flex:2;"><div class="fl"><span class="fr">Renda:</span><span class="fv" id="pRR"></span></div></div>
+    </div>
+    <div class="fl"><span class="fr">Endereço:</span><span class="fv" id="pRE"></span></div>
+    <div style="display:flex;gap:0;margin-top:8px;border:1px solid #A5D6A7;border-radius:3px;overflow:hidden;">
+      <div style="flex:1;padding:5px 8px;border-right:2px solid #A5D6A7;">
+        <div style="background:#43A047;color:#fff;padding:2px 6px;font-size:7pt;font-weight:700;text-transform:uppercase;border-radius:2px;margin-bottom:4px;">Cor / Raça (IBGE)</div>
+        <div class="fop" id="pCor"></div>
+      </div>
+      <div style="flex:2;padding:5px 8px;">
+        <div style="background:#2E7D32;color:#fff;padding:2px 6px;font-size:7pt;font-weight:700;text-transform:uppercase;border-radius:2px;margin-bottom:4px;">Ação Pretendida</div>
+        <div class="fop" id="pAc"></div>
+        <div id="pOu" style="font-size:7pt;font-style:italic;margin-top:2px;"></div>
+      </div>
+    </div>
+    <div class="dbox">
+      <div class="dtit">Declaração de Hipossuficiência</div>
+      <div class="dp" id="pDecl"></div>
+      <div class="dp">Outrossim, declaro estar ciente de que a prestação de informações falsas perante funcionário público poderá tipificar o crime de falsidade ideológica, previsto no art. 299 do Código Penal Brasileiro, cuja pena é de reclusão de 1 a 5 anos e multa.</div>
+      <div class="dp"><strong>AUTORIZAÇÃO LGPD</strong> — Conforme a Lei n.º 13.709/2018, AUTORIZO a Defensoria Pública do Estado do Piauí a incluir meus dados pessoais nas peças processuais relacionadas à assistência jurídica prestada, para fins exclusivamente legais e processuais.</div>
+      <div class="das"><div style="height:28px;"></div><div class="dln"></div><div style="font-size:8pt;margin-top:2px;" id="pNAs"></div><div style="font-size:7.5pt;color:#555;">Requerente</div></div>
+      <div style="text-align:right;margin-top:5px;font-size:7.5pt;" id="pDtF"></div>
+    </div>
+  </div>
+  </div>
+  <!-- OFÍCIOS (gerados dinamicamente) -->
+  <div id="pOficios"></div>
+  <!-- FICHA MANUAL -->
+  <div id="pM" style="display:none;" class="qbra">
+  <div style="font-family:Arial,sans-serif;font-size:8.5pt;">
+    <div style="display:flex;align-items:center;gap:14px;border-bottom:3px solid #4CAF50;padding-bottom:10px;margin-bottom:10px;">
+      <img id="lgM" alt="DPE-PI" style="width:80px;height:auto;display:block;flex-shrink:0;">
+      <div style="flex:1;text-align:center;">
+        <div style="color:#2E7D32;font-size:12pt;font-weight:700;text-transform:uppercase;">Ficha de Atendimento</div>
+        <div style="color:#43A047;font-size:8.5pt;font-weight:700;margin-top:2px;">Defensoria Pública do Estado do Piauí</div>
+        <div style="color:#66BB6A;font-size:7.5pt;">Diretoria Itinerante</div>
+        <div style="color:#888;font-size:7pt;margin-top:1px;">Uso exclusivo do serviço · Tratamento sigiloso</div>
+      </div>
+    </div>
+    <div style="background:#43A047;color:#fff;padding:2px 7px;font-size:7.5pt;font-weight:700;text-transform:uppercase;border-radius:2px;margin-bottom:6px;">Identificação do(a) Requerente</div>
+    <div style="margin-bottom:7px;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">Nome Completo:</div><div style="border-bottom:1px solid #aaa;min-height:20px;"></div></div>
+    <div style="display:flex;gap:10px;margin-bottom:7px;">
+      <div style="flex:1;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">CPF:</div><div style="border-bottom:1px solid #aaa;min-height:20px;"></div></div>
+      <div style="flex:1;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">Data de Nascimento:</div><div style="border-bottom:1px solid #aaa;min-height:20px;"></div></div>
+      <div style="flex:1;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">Telefone:</div><div style="border-bottom:1px solid #aaa;min-height:20px;"></div></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:7px;">
+      <div style="flex:1;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">Nome do Pai:</div><div style="border-bottom:1px solid #aaa;min-height:20px;"></div></div>
+      <div style="flex:1;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">Nome da Mãe:</div><div style="border-bottom:1px solid #aaa;min-height:20px;"></div></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:7px;">
+      <div style="flex:1;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">Estado Civil:</div><div style="border-bottom:1px solid #aaa;min-height:20px;"></div></div>
+      <div style="flex:1;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">Profissão:</div><div style="border-bottom:1px solid #aaa;min-height:20px;"></div></div>
+      <div style="flex:1;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">Renda Familiar:</div><div style="border-bottom:1px solid #aaa;min-height:20px;"></div></div>
+    </div>
+    <div style="margin-bottom:8px;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">Endereço:</div><div style="border-bottom:1px solid #aaa;min-height:20px;"></div></div>
+    <div style="display:flex;gap:0;margin-bottom:8px;border:1px solid #A5D6A7;border-radius:3px;overflow:hidden;">
+      <div style="flex:1;padding:5px 8px;border-right:2px solid #A5D6A7;">
+        <div style="background:#43A047;color:#fff;padding:2px 6px;font-size:7pt;font-weight:700;text-transform:uppercase;border-radius:2px;margin-bottom:4px;">Cor / Raça (IBGE)</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;">
+          <span style="display:flex;align-items:center;gap:2px;font-size:7.5pt;"><span style="width:8px;height:8px;border:1.5px solid #43A047;display:inline-block;"></span> Branca</span>
+          <span style="display:flex;align-items:center;gap:2px;font-size:7.5pt;"><span style="width:8px;height:8px;border:1.5px solid #43A047;display:inline-block;"></span> Parda</span>
+          <span style="display:flex;align-items:center;gap:2px;font-size:7.5pt;"><span style="width:8px;height:8px;border:1.5px solid #43A047;display:inline-block;"></span> Preta</span>
+          <span style="display:flex;align-items:center;gap:2px;font-size:7.5pt;"><span style="width:8px;height:8px;border:1.5px solid #43A047;display:inline-block;"></span> Amarela</span>
+          <span style="display:flex;align-items:center;gap:2px;font-size:7.5pt;"><span style="width:8px;height:8px;border:1.5px solid #43A047;display:inline-block;"></span> Indígena</span>
+          <span style="display:flex;align-items:center;gap:2px;font-size:7.5pt;"><span style="width:8px;height:8px;border:1.5px solid #43A047;display:inline-block;"></span> Não Declarar</span>
+        </div>
+      </div>
+      <div style="flex:2;padding:5px 8px;">
+        <div style="background:#2E7D32;color:#fff;padding:2px 6px;font-size:7pt;font-weight:700;text-transform:uppercase;border-radius:2px;margin-bottom:4px;">Ação Pretendida</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;">
+          <span style="display:flex;align-items:center;gap:2px;font-size:7.5pt;"><span style="width:8px;height:8px;border:1.5px solid #43A047;display:inline-block;"></span> Documentos</span>
+          <span style="display:flex;align-items:center;gap:2px;font-size:7.5pt;"><span style="width:8px;height:8px;border:1.5px solid #43A047;display:inline-block;"></span> Alimentos</span>
+          <span style="display:flex;align-items:center;gap:2px;font-size:7.5pt;"><span style="width:8px;height:8px;border:1.5px solid #43A047;display:inline-block;"></span> Guarda/Filiação</span>
+          <span style="display:flex;align-items:center;gap:2px;font-size:7.5pt;"><span style="width:8px;height:8px;border:1.5px solid #43A047;display:inline-block;"></span> Criminal</span>
+          <span style="display:flex;align-items:center;gap:2px;font-size:7.5pt;"><span style="width:8px;height:8px;border:1.5px solid #43A047;display:inline-block;"></span> Saúde</span>
+          <span style="display:flex;align-items:center;gap:2px;font-size:7.5pt;"><span style="width:8px;height:8px;border:1.5px solid #43A047;display:inline-block;"></span> Interdição/Curatela</span>
+          <span style="display:flex;align-items:center;gap:2px;font-size:7.5pt;"><span style="width:8px;height:8px;border:1.5px solid #43A047;display:inline-block;"></span> Previdência/INSS</span>
+          <span style="display:flex;align-items:center;gap:2px;font-size:7.5pt;"><span style="width:8px;height:8px;border:1.5px solid #43A047;display:inline-block;"></span> Outras: <span style="border-bottom:1px dotted #999;display:inline-block;width:50px;">&nbsp;</span></span>
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:8px;background:#F1F8E9;border:1px solid #A5D6A7;border-radius:3px;padding:6px 8px;">
+      <div style="background:#2E7D32;color:#fff;padding:2px 6px;font-size:7pt;font-weight:700;text-transform:uppercase;border-radius:2px;margin-bottom:4px;">Tipo de Certidão Solicitada</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <span style="display:flex;align-items:center;gap:2px;font-size:7.5pt;"><span style="width:8px;height:8px;border:1.5px solid #43A047;display:inline-block;"></span> 2ª Via Certidão de Nascimento</span>
+        <span style="display:flex;align-items:center;gap:2px;font-size:7.5pt;"><span style="width:8px;height:8px;border:1.5px solid #43A047;display:inline-block;"></span> 2ª Via Certidão de Casamento</span>
+        <span style="display:flex;align-items:center;gap:2px;font-size:7.5pt;"><span style="width:8px;height:8px;border:1.5px solid #43A047;display:inline-block;"></span> 2ª Via Certidão de Óbito</span>
+        <span style="display:flex;align-items:center;gap:2px;font-size:7.5pt;"><span style="width:8px;height:8px;border:1.5px solid #43A047;display:inline-block;"></span> Certidão de Inteiro Teor</span>
+      </div>
+    </div>
+    <div style="padding:8px;border:1.5px solid #66BB6A;font-size:7.5pt;line-height:1.35;text-align:justify;background:#fafff8;">
+      <div style="font-weight:700;text-transform:uppercase;text-align:center;margin-bottom:6px;font-size:8.5pt;color:#2E7D32;">Declaração de Hipossuficiência</div>
+      <div style="margin-bottom:6px;"><strong>DECLARO</strong>, para fins de obtenção de <strong>ASSISTÊNCIA JURÍDICA</strong> pela <strong>DEFENSORIA PÚBLICA DO ESTADO DO PIAUÍ</strong>, que sou pessoa pobre na forma da lei. O(A) Requerente atua como <span style="border-bottom:1px solid #555;display:inline-block;width:110px;vertical-align:bottom;">&nbsp;</span>, auferindo renda média de R$<span style="border-bottom:1px solid #555;display:inline-block;width:130px;vertical-align:bottom;">&nbsp;</span>.</div>
+      <div style="margin-bottom:6px;">Outrossim, declaro estar ciente que informações falsas poderão tipificar o crime de falsidade ideológica (art. 299 CP).</div>
+      <div style="margin-bottom:6px;"><strong>AUTORIZAÇÃO LGPD</strong> — Autorizo a DPE-PI a incluir meus dados pessoais nas peças processuais para fins exclusivamente legais.</div>
+      <div style="margin-top:28px;text-align:center;"><div style="border-top:1px solid #000;width:58%;margin:0 auto 3px;"></div><div style="font-size:7.5pt;color:#555;">Assinatura do(a) Requerente</div></div>
+      <div style="text-align:right;margin-top:8px;font-size:7.5pt;"><span style="border-bottom:1px dotted #555;display:inline-block;width:110px;">&nbsp;</span>, <span style="border-bottom:1px dotted #555;display:inline-block;width:16px;">&nbsp;</span> de <span style="border-bottom:1px dotted #555;display:inline-block;width:70px;">&nbsp;</span> de <span style="border-bottom:1px dotted #555;display:inline-block;width:34px;">&nbsp;</span>.</div>
+      <div style="margin-top:10px;border-top:1px dashed #66BB6A;padding-top:7px;">
+        <div style="background:#2E7D32;color:#fff;padding:2px 6px;font-size:7pt;font-weight:700;text-transform:uppercase;border-radius:2px;margin-bottom:6px;display:inline-block;">Dados do Registro Civil — preenchimento posterior</div>
+        <div style="margin-bottom:6px;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">Titular:</div><div style="border-bottom:1px solid #aaa;min-height:17px;"></div></div>
+        <div style="display:flex;gap:8px;margin-bottom:6px;">
+          <div style="flex:1;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">CPF:</div><div style="border-bottom:1px solid #aaa;min-height:17px;"></div></div>
+          <div style="flex:1;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">Data Nasc.:</div><div style="border-bottom:1px solid #aaa;min-height:17px;"></div></div>
+          <div style="flex:1;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">Parentesco:</div><div style="border-bottom:1px solid #aaa;min-height:17px;"></div></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:6px;">
+          <div style="flex:2;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">Cartório / Ofício:</div><div style="border-bottom:1px solid #aaa;min-height:17px;"></div></div>
+          <div style="flex:1;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">Cidade / Comarca:</div><div style="border-bottom:1px solid #aaa;min-height:17px;"></div></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <div style="flex:2;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">N.º Registro / Termo:</div><div style="border-bottom:1px solid #aaa;min-height:17px;"></div></div>
+          <div style="flex:1;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">Livro:</div><div style="border-bottom:1px solid #aaa;min-height:17px;"></div></div>
+          <div style="flex:1;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;color:#2E7D32;margin-bottom:1px;">Folha:</div><div style="border-bottom:1px solid #aaa;min-height:17px;"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<script>
+(function(){
+var PW='DITI2027';
+var LURL='https://raw.githubusercontent.com/dpepigpt-glitch/rr/main/logo-dpe.png';
+var LB='';
+var MSS=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+var PF=[
+  {id:'robert',nm:'Dr. Robert Rios Júnior',un:'2ª Defensoria Pública Itinerante',adm:true},
+  {id:'adriano',nm:'Dr. Adriano Moreti Batista',un:'1ª Defensoria Pública Itinerante',adm:false},
+  {id:'alessandro',nm:'Dr. Alessandro Andrade Spíndola',un:'Diretor da Defensoria Itinerante',adm:false}
+];
+var JD=[
+  {id:'cantodoburiti',nm:'Jornada de Canto do Buriti',fix:false,pw:PW,perfil:null},
+  {id:'saojosedopeixe',nm:'Jornada de São José do Peixe',fix:false,pw:PW,perfil:null},
+  {id:'def1',nm:'1ª Defensoria Pública Itinerante',fix:true,pw:'MO2027',perfil:'adriano'},
+  {id:'def2',nm:'2ª Defensoria Pública Itinerante',fix:true,pw:'RR2027',perfil:'robert'}
 ];
 
-var DEFENSORES = {
-  "Dr. Robert Rios J\u00fanior": { lotacao: "2\u00aa Defensoria Itinerante", senha: "Robert2027" },
-  "Dra. Andrea Melo de Carvalho": { lotacao: "1\u00aa Defensoria de Fam\u00edlia", senha: "Andrea2027" },
-  "Dra. Dayana Sampaio Mendes Magalh\u00e3es": { lotacao: "2\u00aa Defensoria P\u00fablica Regional de Altos", senha: "Dayana2027" },
-  "Dr. Eric Leonardo Pires de Melo": { lotacao: "7\u00aa Defensoria de Fam\u00edlia", senha: "Eric2027" },
-  "Dra. L\u00edvia de Oliveira Revor\u00eado": { lotacao: "3\u00aa Defensoria P\u00fablica Regional de S\u00e3o Raimundo Nonato", senha: "Livia2027" },
-  "Dr. Marcos Martins de Oliveira": { lotacao: "2\u00aa Defensoria de Floriano", senha: "Marcos2027" },
-  "Dra. Priscila Gimenes do Nascimento Godoi": { lotacao: "2\u00aa Defensoria P\u00fablica Regional de Uni\u00e3o", senha: "Priscila2027" },
-  "Dra. Julyanne Cristine Douglas Leone": { lotacao: "Assessora \u2014 2\u00aa Defensoria Itinerante", senha: "Julyanne2027" },
-  "Dra. Giulia Mazza": { lotacao: "Assessora \u2014 2\u00aa Defensoria Regional de Piripiri", senha: "Giulia2027" }
+/* Estado do atendimento atual */
+var SS=null;           /* sessão */
+var CA=null;           /* atendimento atual (salvo) */
+var oficiosSalvos=[];  /* lista de ofícios finalizados neste atendimento */
+var titularesDOF=[];   /* titulares do ofício em construção */
+var docsTIT=[];        /* docs do titular em construção */
+var titAtual=null;     /* titular já salvo mas aguardando docs */
+var LBAU=false;
+
+/* ===== UTIL ===== */
+function mcpf(e){var v=e.value.replace(/\D/g,'');if(v.length>11)v=v.slice(0,11);v=v.replace(/(\d{3})(\d)/,'$1.$2');v=v.replace(/(\d{3})(\d)/,'$1.$2');v=v.replace(/(\d{3})(\d{1,2})$/,'$1-$2');e.value=v;}
+function mdat(e){var v=e.value.replace(/\D/g,'');if(v.length>8)v=v.slice(0,8);v=v.replace(/(\d{2})(\d)/,'$1/$2');v=v.replace(/(\d{2})(\d)/,'$1/$2');e.value=v;}
+function mtel(e){var v=e.value.replace(/\D/g,'');if(v.length>11)v=v.slice(0,11);if(v.length<=10){v=v.replace(/(\d{2})(\d)/,'($1) $2');v=v.replace(/(\d{4})(\d)/,'$1-$2');}else{v=v.replace(/(\d{2})(\d)/,'($1) $2');v=v.replace(/(\d{5})(\d)/,'$1-$2');}e.value=v;}
+function irnd(e){if(!e.value)e.value='R$ ';}
+function mrnd(e){var r=e.value.replace(/[^\d]/g,'');if(!r){e.value='R$ ';return;}var n=parseInt(r,10),rs=Math.floor(n/100),cs=n%100;e.value='R$ '+rs.toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.')+(','+(cs<10?'0':'')+cs);}
+function ctit(s){return s.replace(/(?:^|[\s\-])\S/g,function(c){return c.toUpperCase();});}
+function rnum(s){if(!s||s==='R$ ')return 0;return parseFloat(s.replace('R$ ','').replace(/\./g,'').replace(',','.'))||0;}
+function tlbl(t){var m={nasc:'2ª Via da Certidão de Nascimento',cas:'2ª Via da Certidão de Casamento',obi:'2ª Via da Certidão de Óbito',int:'Certidão de Inteiro Teor'};return m[t]||t;}
+function ext(n){
+  var u=['zero','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
+  var d=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+  var c=['','cem','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+  function g(x){if(x<=19)return u[x];if(x<100)return d[Math.floor(x/10)]+(x%10?' e '+u[x%10]:'');var ct=Math.floor(x/100),rx=x%100;if(rx===0)return c[ct];if(ct===1)return'cento e '+g(rx);return c[ct]+' e '+g(rx);}
+  var rs=Math.floor(n),cs=Math.round((n-rs)*100),p=[];
+  if(rs>0){if(rs<1000)p.push(g(rs)+(rs===1?' real':' reais'));else{var m=Math.floor(rs/1000),rx=rs%1000;var ms=m===1?'mil':g(m)+' mil';p.push((rx===0?ms:ms+(rx<100?' e ':' ')+g(rx))+(rs===1?' real':' reais'));}}
+  if(cs>0)p.push(g(cs)+(cs===1?' centavo':' centavos'));
+  return p.join(' e ')||'zero reais';
+}
+function gJ(){
+  var j=JSON.parse(localStorage.getItem('dpe_j')||'null');
+  if(!j){j=JD;localStorage.setItem('dpe_j',JSON.stringify(j));}
+  j.forEach(function(jorn){var def=JD.find(function(d){return d.id===jorn.id;});if(def&&def.fix){jorn.pw=def.pw;jorn.perfil=def.perfil;jorn.nm=def.nm;}});
+  return j;
+}
+function kA(id){return 'dpe_a_'+id;}
+function kS(id){return 'dpe_s_'+id;}
+function proxSeq(){return parseInt(localStorage.getItem(kS(SS.jid))||'0',10)+1;}
+function consumirSeq(){var n=proxSeq();localStorage.setItem(kS(SS.jid),String(n));return n;}
+function fmtNum(n){var s=String(n);while(s.length<3)s='0'+s;return s;}
+
+/* ===== LOGO ===== */
+function carregarLogo(){
+  var img=new Image();img.crossOrigin='anonymous';
+  img.onload=function(){try{var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);LB=cv.toDataURL('image/png');}catch(e){LB=LURL;}alogos();};
+  img.onerror=function(){LB=LURL;alogos();};
+  img.src=LURL+'?t='+Date.now();
+}
+function alogos(){
+  var src=LB||LURL;
+  ['lgF','lgM'].forEach(function(id){var el=document.getElementById(id);if(el){el.src=src;el.style.width='80px';el.style.height='auto';el.style.display='block';}});
+  document.querySelectorAll('.lgOf').forEach(function(el){el.src=src;el.style.width='80px';el.style.height='auto';el.style.display='block';});
+}
+
+window.onload=function(){
+  carregarLogo();
+  window.addEventListener('beforeprint',alogos);
+  rperfis();rjornadas();carregarRlSel();
+  try{var s=JSON.parse(localStorage.getItem('dpe_ss')||'null');if(s&&s.pid){var jj2=gJ();var j2=jj2.find(function(j){return j.id===s.jid;});if(j2){s.jnm=j2.nm;if(j2.fix)s.un=j2.nm;}SS=s;init();}}catch(e){}
+  var a8=document.getElementById('a8');if(a8)a8.addEventListener('change',function(){var el=document.getElementById('aOu');if(el)el.style.display=this.checked?'block':'none';});
 };
 
-var _logoB64 = null;
-var _logoRatio = 1.5;
+/* ===== LOGIN ===== */
+window.ltab=function(t){
+  document.getElementById('ltab1').style.background=t==='login'?'var(--v)':'#888';
+  document.getElementById('ltab2').style.background=t==='busca'?'var(--v)':'#888';
+  document.getElementById('lPanelLogin').style.display=t==='login'?'block':'none';
+  document.getElementById('lPanelBusca').style.display=t==='busca'?'block':'none';
+  if(t==='busca')carregarRelsLogin();
+};
+function rperfis(){var c=document.getElementById('pcards');if(!c)return;c.innerHTML='';PF.forEach(function(p){var d=document.createElement('div');d.className='pcard';d.id='pc_'+p.id;d.innerHTML='<span style="font-size:22px;">👤</span><div><div style="font-weight:700;font-size:13px;color:var(--v3);">'+p.nm+(p.adm?' ★':'')+'</div><div style="font-size:11px;color:#666;">'+p.un+'</div></div>';d.onclick=function(){document.querySelectorAll('.pcard').forEach(function(x){x.classList.remove('sel');});d.classList.add('sel');};c.appendChild(d);});}
+function rjornadas(){var sel=document.getElementById('lgJ');if(!sel)return;var jj=gJ();sel.innerHTML='<option value="">Selecione...</option>';var campo=jj.filter(function(j){return !j.fix;}),fixas=jj.filter(function(j){return j.fix;});if(campo.length){var g1=document.createElement('optgroup');g1.label='Jornadas Itinerantes';campo.forEach(function(j){var o=document.createElement('option');o.value=j.id;o.textContent=j.nm;g1.appendChild(o);});sel.appendChild(g1);}if(fixas.length){var g2=document.createElement('optgroup');g2.label='Defensorias (atendimento diário)';fixas.forEach(function(j){var o=document.createElement('option');o.value=j.id;o.textContent=j.nm;g2.appendChild(o);});sel.appendChild(g2);}}
+window.doLogin=function(){
+  var sel=document.querySelector('.pcard.sel');if(!sel){mostrarErro('Selecione um perfil.');return;}
+  var pid=sel.id.replace('pc_','');var pf=PF.find(function(p){return p.id===pid;});
+  var jid=document.getElementById('lgJ').value;var pw=document.getElementById('lgS').value;
+  if(!jid||!pw){mostrarErro('Preencha todos os campos.');return;}
+  var jj=gJ();var jorn=jj.find(function(j){return j.id===jid;});if(!jorn){mostrarErro('Jornada não encontrada.');return;}
+  if(pw!==(jorn.pw||PW)){mostrarErro('Senha incorreta.');return;}
+  if(jorn.fix&&jorn.perfil&&pid!==jorn.perfil){mostrarErro('Este perfil não tem acesso a esta defensoria.');return;}
+  limparErro();
+  SS={pid:pid,nm:pf.nm,un:jorn.fix?jorn.nm:pf.un,adm:pf.adm,jid:jid,jnm:jorn.nm};
+  try{localStorage.setItem('dpe_ss',JSON.stringify(SS));}catch(e){}
+  init();
+};
+function mostrarErro(m){var el=document.getElementById('lerr');el.innerText=m;el.style.display='block';}
+function limparErro(){document.getElementById('lerr').style.display='none';}
+window.doReabrir=function(){
+  var sel=document.getElementById('rlSel');if(!sel||!sel.value){alert('Selecione uma jornada encerrada.');return;}
+  var pw=document.getElementById('lgS').value;var parts=sel.value.split('|');var jid=parts[0];
+  var jj=gJ();var jorn=jj.find(function(j){return j.id===jid;});if(!jorn){alert('Jornada não encontrada.');return;}
+  if(pw!==(jorn.pw||PW)){alert('Senha incorreta.');return;}
+  var sel2=document.querySelector('.pcard.sel');if(!sel2){alert('Selecione um perfil.');return;}
+  var pid=sel2.id.replace('pc_','');var pf=PF.find(function(p){return p.id===pid;});
+  if(jorn.fix&&jorn.perfil&&pid!==jorn.perfil){alert('Este perfil não tem acesso a esta defensoria.');return;}
+  SS={pid:pid,nm:pf.nm,un:jorn.fix?jorn.nm:pf.un,adm:pf.adm,jid:jid,jnm:jorn.nm};
+  try{localStorage.setItem('dpe_ss',JSON.stringify(SS));}catch(e){}
+  var rl=JSON.parse(localStorage.getItem('dpe_rl')||'[]');var relJ=rl.filter(function(r){return r.jid===jid;});
+  if(relJ.length){var ult=relJ[relJ.length-1];var ex=JSON.parse(localStorage.getItem(kA(jid))||'[]');if(!ex.length&&ult.ats&&ult.ats.length){localStorage.setItem(kA(jid),JSON.stringify(ult.ats));localStorage.setItem(kS(jid),String(ult.seqFinal||0));}}
+  init();
+};
+function init(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  document.getElementById('infoS').innerText=SS.nm+' | '+SS.jnm;
+  var bn=document.getElementById('btnNJ');if(bn)bn.style.display=SS.adm?'inline-block':'none';
+  updBdg();renderOfListaView();
+}
+window.doSair=function(){if(confirm('Sair?')){localStorage.removeItem('dpe_ss');location.reload();}};
+function updBdg(){var n=fmtNum(proxSeq());document.getElementById('bdg').innerText='Próximo Ofício: '+n;}
 
-function carregarLogo() {
-  if (_logoB64) return Promise.resolve(_logoB64);
-  return new Promise(function(res) {
-    var img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = function() {
-      try {
-        var cv = document.createElement("canvas");
-        cv.width = img.naturalWidth; cv.height = img.naturalHeight;
-        cv.getContext("2d").drawImage(img, 0, 0);
-        _logoB64 = cv.toDataURL("image/png");
-        _logoRatio = img.naturalWidth / img.naturalHeight;
-        res(_logoB64);
-      } catch(e) { res(null); }
-    };
-    img.onerror = function() { res(null); };
-    img.src = "/logo-apidep.png";
+/* ===== ABAS ===== */
+window.aba=function(nm){
+  ['abaN','abaH'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
+  ['tN','tH'].forEach(function(id){var el=document.getElementById(id);if(el)el.classList.remove('on');});
+  var ae=document.getElementById(nm==='n'?'abaN':'abaH'),te=document.getElementById(nm==='n'?'tN':'tH');
+  if(ae)ae.style.display='block';if(te)te.classList.add('on');
+  document.getElementById('titPag').innerText=nm==='n'?'Atendimento':'Histórico';
+  if(nm==='h')rhist();
+};
+
+/* ===== OFÍCIOS — lógica principal ===== */
+
+/* Renderiza a lista de ofícios já salvos neste atendimento */
+function renderOfListaView(){
+  var d=document.getElementById('ofListaView');if(!d)return;d.innerHTML='';
+  oficiosSalvos.forEach(function(of,i){
+    var div=document.createElement('div');
+    div.style.cssText='border:1px solid var(--vm);border-radius:6px;padding:12px;margin-bottom:10px;background:#F9FBE7;';
+    var titResume=of.titulares.map(function(t){
+      var nm=t.nome||'(Próprio Requerente)';
+      var docs=t.docs.map(function(d){return tlbl(d.tipo);}).join(', ');
+      return nm+': '+docs;
+    }).join(' | ');
+    div.innerHTML='<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
+      +'<div><div style="font-weight:700;color:var(--v3);font-size:13px;">Ofício '+(i+1)+' — '+of.cartorio+', '+of.cidade+'</div>'
+      +'<div style="font-size:11px;color:#555;margin-top:3px;">'+titResume+'</div></div>'
+      +'<div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px;">'
+      +'<button class="btn bv bsm" onclick="gerarOficioPDF('+i+')">🖨 Gerar Ofício</button>'
+      +'<button class="btn br bsm" onclick="removerOficio('+i+')">✕</button>'
+      +'</div></div>';
+    d.appendChild(div);
+  });
+  var ft=document.getElementById('ofFormTit');
+  if(ft)ft.innerText='Solicitação #'+(oficiosSalvos.length+1)+' — Novo Ofício';
+}
+
+/* Salvar titular atual com seus docs e adicioná-lo ao ofício em construção */
+function concluirTitularComDocs(){
+  if(!titAtual)return;
+  if(docsTIT.length===0){alert('Adicione ao menos um documento para este titular.');return false;}
+  titAtual.docs=JSON.parse(JSON.stringify(docsTIT));
+  titularesDOF.push(JSON.parse(JSON.stringify(titAtual)));
+  titAtual=null;docsTIT=[];
+  return true;
+}
+
+/* Salvar titular (sem docs ainda) */
+window.salvarTitular=function(){
+  var nome=(document.getElementById('tNome').value||'').trim();
+  var cpf=(document.getElementById('tCPF').value||'').trim();
+  var nasc=(document.getElementById('tNasc').value||'').trim();
+  var par=(document.getElementById('tPar').value||'').trim();
+  titAtual={nome:nome,cpf:cpf,nasc:nasc,par:par,docs:[]};
+  docsTIT=[];
+  /* Mostra formulário de documentos */
+  document.getElementById('titForm').style.display='none';
+  document.getElementById('docForm').style.display='block';
+  document.getElementById('btnNovoTitular').style.display='none';
+  var nomeExib=nome||'(Próprio Requerente)';
+  document.getElementById('docFormTit').innerText='Documentos para: '+nomeExib;
+  document.getElementById('docSalvosList').innerHTML='';
+  limpDocForm();
+};
+
+/* Salvar documento para o titular atual */
+window.salvarDoc=function(concluir){
+  var tipo=(document.getElementById('dTipo').value||'').trim();
+  if(!tipo){alert('Selecione o tipo de documento.');return;}
+  var doc={tipo:tipo,nr:(document.getElementById('dNR').value||'').trim(),livro:(document.getElementById('dLivro').value||'').trim(),folha:(document.getElementById('dFolha').value||'').trim(),mat:(document.getElementById('dMat').value||'').trim()};
+  docsTIT.push(doc);
+  /* Renderiza doc salvo */
+  var d=document.getElementById('docSalvosList');
+  var it=document.createElement('div');it.className='doc-item';
+  it.innerHTML='<span class="doc-item-txt">'+tlbl(doc.tipo)+(doc.nr?' | Reg.: '+doc.nr:'')+(doc.livro?' | Livro: '+doc.livro:'')+(doc.folha?' | Folha: '+doc.folha:'')+'</span>'
+    +'<button class="btn br bsm" onclick="removerDoc('+( docsTIT.length-1)+')">✕</button>';
+  d.appendChild(it);
+  limpDocForm();
+  if(concluir){
+    /* Conclui titular */
+    if(!concluirTitularComDocs())return;
+    /* Mostra opção de novo titular */
+    document.getElementById('docForm').style.display='none';
+    document.getElementById('titForm').style.display='none';
+    document.getElementById('btnNovoTitular').style.display='block';
+    /* Renderiza titulares salvos */
+    renderTitSalvos();
+  }
+};
+
+window.removerDoc=function(i){docsTIT.splice(i,1);var d=document.getElementById('docSalvosList');d.innerHTML='';docsTIT.forEach(function(doc,idx){var it=document.createElement('div');it.className='doc-item';it.innerHTML='<span class="doc-item-txt">'+tlbl(doc.tipo)+(doc.nr?' | Reg.: '+doc.nr:'')+(doc.livro?' | Livro: '+doc.livro:'')+(doc.folha?' | Folha: '+doc.folha:'')+'</span><button class="btn br bsm" onclick="removerDoc('+idx+')">✕</button>';d.appendChild(it);});};
+
+function renderTitSalvos(){
+  var d=document.getElementById('titSalvosList');d.innerHTML='';
+  titularesDOF.forEach(function(t,i){
+    var div=document.createElement('div');div.className='titular-bloco';
+    var docsStr=t.docs.map(function(d){return tlbl(d.tipo);}).join(', ');
+    div.innerHTML='<div class="titular-header"><span class="titular-title">Titular '+(i+1)+': '+(t.nome||'(Próprio Requerente)')+'</span>'
+      +'<button class="btn br bsm" onclick="removerTitular('+i+')">✕</button></div>'
+      +'<div style="font-size:12px;color:#555;">Documentos: '+docsStr+'</div>';
+    d.appendChild(div);
   });
 }
-carregarLogo();
 
-// ===================== COMPONENTES BASE =====================
+window.removerTitular=function(i){titularesDOF.splice(i,1);renderTitSalvos();};
 
-function TelaLogin(props) {
-  var _s1 = useState(""); var nome = _s1[0]; var setNome = _s1[1];
-  var _s2 = useState(""); var senha = _s2[0]; var setSenha = _s2[1];
-  var _s3 = useState(""); var erro = _s3[0]; var setErro = _s3[1];
-  var tentar = function() {
-    var def = DEFENSORES[nome];
-    if (!nome || !def) { setErro("Selecione um defensor."); return; }
-    if (senha !== def.senha) { setErro("Senha incorreta."); return; }
-    props.onLogin({ nome: nome, lotacao: def.lotacao, autenticado: true });
-  };
-  return (
-    <div style={{ minHeight:"100vh", background:"#f0f2f0", display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ background:"#fff", borderRadius:12, padding:40, width:400, boxShadow:"0 8px 32px rgba(0,0,0,0.15)" }}>
-        <div style={{ textAlign:"center", marginBottom:28 }}>
-          <img src="/logo-apidep.png" alt="APIDEP" crossOrigin="anonymous"
-            style={{ height:60, objectFit:"contain", marginBottom:12 }}
-            onError={function(e){e.target.style.display="none";}} />
-          <div style={{ fontWeight:800, fontSize:16, color:C.verde }}>{"Calculadora de D\u00e9bitos Alimentares"}</div>
-          <div style={{ fontSize:12, color:"#888", marginTop:4 }}>{"Fase teste \u2014 Apenas Defensores Legais"}</div>
-        </div>
-        <div style={{ marginBottom:14 }}>
-          <label style={{ display:"block", fontWeight:600, marginBottom:6, fontSize:13, color:C.cinza }}>{"Nome do Defensor"}</label>
-          <select value={nome} onChange={function(e){setNome(e.target.value);}}
-            style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid #d0d0d0", fontSize:14, boxSizing:"border-box" }}>
-            <option value="">{"-- Selecione --"}</option>
-            {Object.keys(DEFENSORES).map(function(d,i){ return <option key={i} value={d}>{d}</option>; })}
-          </select>
-          {nome && DEFENSORES[nome] && (
-            <div style={{ fontSize:12, color:C.verde, marginTop:4, paddingLeft:4 }}>{"\u00bb "}{DEFENSORES[nome].lotacao}</div>
-          )}
-        </div>
-        <div style={{ marginBottom:20 }}>
-          <label style={{ display:"block", fontWeight:600, marginBottom:6, fontSize:13, color:C.cinza }}>{"Senha de Acesso"}</label>
-          <input type="password" value={senha}
-            onChange={function(e){setSenha(e.target.value);}}
-            onKeyDown={function(e){if(e.key==="Enter")tentar();}}
-            placeholder={"Digite a senha"}
-            style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid #d0d0d0", fontSize:14, boxSizing:"border-box" }} />
-        </div>
-        {erro && (
-          <div style={{ background:"#fdecea", border:"1px solid #e57373", borderRadius:6, padding:"10px 12px", fontSize:12, color:C.vermelho, marginBottom:16 }}>{erro}</div>
-        )}
-        <button onClick={tentar}
-          style={{ width:"100%", background:C.verde, color:"#fff", border:"none", borderRadius:6, padding:12, fontSize:15, fontWeight:700, cursor:"pointer", marginBottom:10 }}>
-          {"Entrar"}
-        </button>
-        <button onClick={props.onVisitante}
-          style={{ width:"100%", background:"transparent", color:C.cinza, border:"1px solid "+C.borda, borderRadius:6, padding:10, fontSize:13, cursor:"pointer" }}>
-          {"Entrar sem login (visitante)"}
-        </button>
-      </div>
-    </div>
-  );
-}
+window.iniciarNovoTitular=function(){
+  var nTit=titularesDOF.length+1;
+  document.getElementById('titFormTit').innerText='Titular #'+nTit;
+  limpTitForm();
+  document.getElementById('titForm').style.display='block';
+  document.getElementById('docForm').style.display='none';
+  document.getElementById('btnNovoTitular').style.display='none';
+};
 
-function Btn(props) {
-  var cor = props.cor || C.verde;
-  return (
-    <button onClick={props.onClick} disabled={props.disabled} style={{
-      background: props.outline ? "transparent" : cor,
-      color: props.outline ? cor : "#fff",
-      border: "2px solid " + cor,
-      borderRadius: 6,
-      padding: props.small ? "6px 14px" : "10px 22px",
-      cursor: props.disabled ? "not-allowed" : "pointer",
-      fontWeight: 600, fontSize: props.small ? 13 : 15,
-      opacity: props.disabled ? 0.5 : 1, touchAction: "manipulation"
-    }}>{props.children}</button>
-  );
-}
+function limpDocForm(){document.getElementById('dTipo').value='';document.getElementById('dNR').value='';document.getElementById('dLivro').value='';document.getElementById('dFolha').value='';document.getElementById('dMat').value='';}
+function limpTitForm(){document.getElementById('tNome').value='';document.getElementById('tCPF').value='';document.getElementById('tNasc').value='';document.getElementById('tPar').value='';}
 
-function Input(props) {
-  return (
-    <div style={{ marginBottom:14 }}>
-      {props.label && <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{props.label}</label>}
-      <input type={props.type||"text"} value={props.value}
-        onChange={function(e){props.onChange(e.target.value);}}
-        placeholder={props.placeholder} disabled={props.disabled}
-        style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box", background: props.disabled ? C.cinzaClaro : C.branco }} />
-    </div>
-  );
-}
-
-function Card(props) {
-  return (
-    <div style={Object.assign({ background:C.branco, borderRadius:10, border:"1px solid "+C.borda, padding:24, marginBottom:20 }, props.style||{})}>
-      {props.children}
-    </div>
-  );
-}
-
-// Seletor de \u00edndice de corre\u00e7\u00e3o \u2014 reutiliz\u00e1vel
-function SeletorIndice(props) {
-  var indice = props.indice;
-  var setIndice = props.setIndice;
-  return (
-    <div style={{ marginBottom:16 }}>
-      <label style={{ display:"block", fontWeight:700, marginBottom:8, color:C.cinza, fontSize:13 }}>
-        {"\u00cdndice de Corre\u00e7\u00e3o e Juros"}
-      </label>
-      <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-        {[
-          ["ipca", "IPCA-E + Juros 1% a.m.", "Corre\u00e7\u00e3o monet\u00e1ria (IPCA) + juros de mora 1% a.m."],
-          ["selic", "SELIC", "Taxa SELIC acumulada \u2014 substitui corre\u00e7\u00e3o e juros"]
-        ].map(function(item){
-          var v=item[0], l=item[1], desc=item[2];
-          var ativo = indice === v;
-          return (
-            <button key={v} onClick={function(){setIndice(v);}} style={{
-              padding:"10px 18px", borderRadius:8,
-              border:"2px solid "+(ativo?C.verde:C.borda),
-              background: ativo ? C.verdePale : C.branco,
-              color: ativo ? C.verde : C.cinza,
-              fontWeight: ativo ? 700 : 500, fontSize:13, cursor:"pointer",
-              textAlign:"left", touchAction:"manipulation"
-            }}>
-              <div style={{ fontWeight:700, fontSize:13 }}>{l}</div>
-              <div style={{ fontSize:11, color:"#888", marginTop:2 }}>{desc}</div>
-            </button>
-          );
-        })}
-      </div>
-      {indice === "selic" && (
-        <div style={{ marginTop:8, background:"#fff8e1", border:"1px solid #f0c040", borderRadius:6, padding:"8px 12px", fontSize:11, color:"#7a6000" }}>
-          {"SELIC: \u00edndices oficiais at\u00e9 mar/2026. A partir de abr/2026: proje\u00e7\u00e3o de 1,07% a.m. Sujeito a revis\u00e3o quando publicados os valores definitivos."}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ModalPerfil(props) {
-  var perfil = props.perfil;
-  var _s1 = useState(perfil.nome || ""); var nome = _s1[0]; var setNome = _s1[1];
-  var _s2 = useState(perfil.apiKey || ""); var apiKey = _s2[0]; var setApiKey = _s2[1];
-  var _s3 = useState(false); var showKey = _s3[0]; var setShowKey = _s3[1];
-  var _s4 = useState(""); var senhaModal = _s4[0]; var setSenhaModal = _s4[1];
-  var _s5 = useState(""); var erroModal = _s5[0]; var setErroModal = _s5[1];
-  var def = DEFENSORES[nome];
-  var salvar = function() {
-    if (nome && def && senhaModal !== def.senha) { setErroModal("Senha incorreta."); return; }
-    props.onSave({ nome: nome, lotacao: def ? def.lotacao : "", apiKey: apiKey });
-    props.onClose();
-  };
-  return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ background:C.branco, borderRadius:12, padding:32, width:460, maxWidth:"90vw", boxShadow:"0 8px 32px rgba(0,0,0,0.2)" }}>
-        <h2 style={{ margin:"0 0 20px", color:C.verde }}>{"Configurar Perfil"}</h2>
-        <div style={{ marginBottom:14 }}>
-          <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Nome do Defensor"}</label>
-          <select value={nome} onChange={function(e){setNome(e.target.value);setErroModal("");setSenhaModal("");}}
-            style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }}>
-            <option value="">{"-- Nenhum (visitante) --"}</option>
-            {Object.keys(DEFENSORES).map(function(d,i){ return <option key={i} value={d}>{d}</option>; })}
-          </select>
-        </div>
-        {nome && def && (
-          <div>
-            <div style={{ marginBottom:14 }}>
-              <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Defensoria"}</label>
-              <input value={def.lotacao} disabled style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box", background:C.cinzaClaro }} />
-            </div>
-            <div style={{ marginBottom:14 }}>
-              <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Senha"}</label>
-              <input type="password" value={senhaModal}
-                onChange={function(e){setSenhaModal(e.target.value);setErroModal("");}}
-                onKeyDown={function(e){if(e.key==="Enter")salvar();}}
-                placeholder={"Senha"}
-                style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+(erroModal?C.vermelho:C.borda), fontSize:14, boxSizing:"border-box" }} />
-              {erroModal && <div style={{ fontSize:12, color:C.vermelho, marginTop:4 }}>{erroModal}</div>}
-            </div>
-          </div>
-        )}
-        <div style={{ marginBottom:14 }}>
-          <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Chave API (opcional)"}</label>
-          <div style={{ position:"relative" }}>
-            <input type={showKey?"text":"password"} value={apiKey}
-              onChange={function(e){setApiKey(e.target.value);}}
-              placeholder={"sk-ant-..."}
-              style={{ width:"100%", padding:"9px 40px 9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:13, boxSizing:"border-box" }} />
-            <button onClick={function(){setShowKey(!showKey);}}
-              style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", fontSize:16 }}>
-              {showKey?"\u2715":"\u25cb"}
-            </button>
-          </div>
-        </div>
-        <div style={{ display:"flex", gap:10 }}>
-          <Btn onClick={salvar}>{"Salvar"}</Btn>
-          <Btn onClick={props.onClose} outline cor={C.cinza}>{"Cancelar"}</Btn>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Header(props) {
-  var perfil = props.perfil;
-  return (
-    <div style={{ background:C.verde, color:"#fff", padding:"12px 28px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-        <img src="/logo-apidep.png" alt="APIDEP" crossOrigin="anonymous"
-          style={{ height:56, objectFit:"contain" }}
-          onError={function(e){e.target.style.display="none";}} />
-        <div>
-          <div style={{ fontWeight:800, fontSize:16 }}>{"Calculadora de D\u00e9bitos Alimentares"}</div>
-          <div style={{ fontSize:12, opacity:.8 }}>{"APIDEP \u2014 Associa\u00e7\u00e3o Piauiense das Defensoras e Defensores P\u00fablicos"}</div>
-        </div>
-      </div>
-      <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-        <button onClick={props.onPerfil}
-          style={{ background:"rgba(255,255,255,0.15)", border:"1px solid rgba(255,255,255,0.4)", borderRadius:6, color:"#fff", padding:"7px 14px", cursor:"pointer", fontSize:13 }}>
-          {perfil.nome || "Visitante"}
-        </button>
-        <button onClick={props.onLogout}
-          style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.3)", borderRadius:6, color:"#fff", padding:"7px 12px", cursor:"pointer", fontSize:12 }}>
-          {"Sair"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function novaParcela() {
-  var h = new Date();
-  return { id: Date.now(), mes: h.getMonth()+1, ano: h.getFullYear(), valor: "", pago: "", is13: false };
-}
-
-// ===================== GERADOR PDF COMPLETO (Novo C\u00e1lculo) =====================
-
-function gerarPDFCompleto(resultado, logoData) {
-  var jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
-  if (!jsPDFLib) { alert("PDF n\u00e3o carregou. Recarregue a p\u00e1gina."); return; }
-  var doc = new jsPDFLib({ orientation:"landscape", unit:"mm", format:"a4" });
-  var W=297, mg=12, y=0;
-
-  // Cabe\u00e7alho
-  doc.setFillColor(26,107,58); doc.rect(0,0,W,28,"F");
-  if (logoData) {
-    try { var lh=22, lw=Math.max(lh*_logoRatio,30); doc.addImage(logoData,"PNG",6,3,lw,lh); doc.addImage(logoData,"PNG",W-6-lw,3,lw,lh); } catch(e){}
-  }
-  doc.setTextColor(255,255,255);
-  doc.setFontSize(14); doc.setFont("helvetica","bold");
-  doc.text("MEMORIAL DE C\u00c1LCULO", W/2, 10, {align:"center"});
-  doc.setFontSize(9); doc.setFont("helvetica","normal");
-  doc.text("D\u00e9bito Alimentar \u2014 Execu\u00e7\u00e3o de Alimentos (art. 528 CPC)", W/2, 16, {align:"center"});
-  doc.setFontSize(7.5);
-  doc.text("APIDEP \u2014 Associa\u00e7\u00e3o Piauiense das Defensoras e Defensores P\u00fablicos", W/2, 22, {align:"center"});
-  y = 36;
-
-  // Dados
-  doc.setFillColor(232,245,238); doc.rect(mg,y,W-mg*2,40,"F");
-  doc.setDrawColor(26,107,58); doc.setLineWidth(0.3); doc.rect(mg,y,W-mg*2,40);
-  doc.setFillColor(26,107,58); doc.rect(mg,y,W-mg*2,7,"F");
-  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
-  doc.text("DADOS DO PROCESSO", mg+3, y+5);
-  y += 10;
-  var c1=mg+4, c2=mg+105, c3=mg+200;
-  doc.setTextColor(40,40,40); doc.setFontSize(9.5);
-  var lb = function(l,v,x,yy){
-    doc.setFont("helvetica","bold"); doc.text(l,x,yy);
-    doc.setFont("helvetica","normal"); doc.text(v||"-", x+doc.getTextWidth(l)+2, yy);
-  };
-  lb("Processo n\u00ba:", resultado.processo, c1, y);
-  lb("Vara/Comarca:", resultado.comarca, c2, y);
-  lb("Data-base:", resultado.data, c3, y);
-  y += 8;
-  lb("Exequente:", resultado.alimentado, c1, y);
-  lb("Executado:", resultado.alimentante, c2, y);
-  y += 8;
-  var tl = resultado.tipoAlimento==="sm"
-    ? resultado.percentualSM+"% do sal\u00e1rio m\u00ednimo federal"
-    : fmt(parseMoney(resultado.valorFixoAlimento||"0"))+" (valor fixo)";
-  lb("Alimentos fixados:", tl, c1, y);
-  lb("Vencimento:", "Dia "+resultado.diaVencimento, c2, y);
-  lb("\u00cdndice:", resultado.indiceLabel || "IPCA-E (IBGE)", c3, y);
-  y += 8;
-  if (resultado.indice === "ipca") {
-    lb("Juros de mora:", "1% ao m\u00eas \u2014 art. 406 CC c/c art. 161, \u00a71\u00ba, CTN", c1, y);
+/* Salvar ofício inteiro */
+window.salvarOficio=function(concluir){
+  /* Se ainda há titular em edição de docs, tenta concluir */
+  if(titAtual){if(!concluirTitularComDocs())return;}
+  var cartorio=(document.getElementById('ofCartorio').value||'').trim();
+  var cidade=(document.getElementById('ofCidade').value||'').trim();
+  if(!cartorio||!cidade){alert('Informe o Cartório e a Cidade de destino do ofício.');return;}
+  if(titularesDOF.length===0){alert('Adicione ao menos um titular com documentos neste ofício.');return;}
+  var obs=(document.getElementById('ofObs').value||'').trim();
+  var of={cartorio:cartorio,cidade:cidade,titulares:JSON.parse(JSON.stringify(titularesDOF)),obs:obs};
+  oficiosSalvos.push(of);
+  /* Limpa estado do ofício em construção */
+  titularesDOF=[];titAtual=null;docsTIT=[];
+  document.getElementById('ofCartorio').value='';document.getElementById('ofCidade').value='';document.getElementById('ofObs').value='';
+  document.getElementById('titSalvosList').innerHTML='';document.getElementById('docSalvosList').innerHTML='';
+  limpTitForm();limpDocForm();
+  document.getElementById('titForm').style.display='block';
+  document.getElementById('docForm').style.display='none';
+  document.getElementById('btnNovoTitular').style.display='none';
+  renderOfListaView();
+  if(concluir){
+    /* Exibe área de geração */
+    document.getElementById('ofForm').style.display='none';
+    document.getElementById('ofConcluido').style.display='block';
+    var msg=oficiosSalvos.length+' solicitação(ões) prontas para gerar ofício(s).';
+    document.getElementById('ofConcluidoMsg').innerText=msg;
+    var botoes=document.getElementById('ofBotoesGerar');botoes.innerHTML='';
+    botoes.innerHTML+='<button class="btn bv" style="margin-bottom:8px;width:100%;" onclick="doGerarFicha()">📋 Gerar Ficha + Hipo</button>';
+    oficiosSalvos.forEach(function(of,i){
+      var b=document.createElement('button');b.className='btn bv';b.style.cssText='width:100%;margin-bottom:8px;';
+      b.innerText='🖨 Gerar Ofício '+(i+1)+' — '+of.cartorio+', '+of.cidade;
+      b.onclick=function(){gerarOficioPDF(i);};
+      botoes.appendChild(b);
+    });
+    botoes.innerHTML+='<button class="btn by" style="width:100%;margin-top:6px;" onclick="salvarAtendimento()">💾 Salvar no Histórico</button>';
   } else {
-    lb("SELIC:", "Taxa acumulada mensal (substitui corre\u00e7\u00e3o e juros)", c1, y);
+    document.getElementById('ofFormTit').innerText='Solicitação #'+(oficiosSalvos.length+1)+' — Novo Ofício';
   }
-  y += 10;
+};
 
-  // Justificativa
-  if (resultado.justificativa) {
-    doc.setTextColor(26,107,58); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
-    doc.text("JUSTIFICATIVA / OBSERVA\u00c7\u00d5ES", mg, y);
-    y += 5;
-    doc.setDrawColor(26,107,58); doc.line(mg,y,W-mg,y); y += 4;
-    doc.setTextColor(40,40,40); doc.setFont("helvetica","normal"); doc.setFontSize(8);
-    var linhas = doc.splitTextToSize(resultado.justificativa, W-mg*2);
-    linhas.forEach(function(l){ if(y>185){doc.addPage();y=15;} doc.text(l,mg,y); y+=4.5; });
-    y += 4;
-  }
+window.reabrirOficios=function(){document.getElementById('ofForm').style.display='block';document.getElementById('ofConcluido').style.display='none';renderOfListaView();};
+window.removerOficio=function(i){if(confirm('Remover esta solicitação?')){oficiosSalvos.splice(i,1);renderOfListaView();}};
 
-  var desenharTabela = function(titulo, corRGB, items, subtotal, numI) {
-    if (y > 150) { doc.addPage(); y=15; }
-    doc.setFillColor(corRGB[0],corRGB[1],corRGB[2]); doc.rect(mg,y,W-mg*2,7,"F");
-    doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
-    doc.text(titulo, mg+3, y+5); y += 9;
-    var cw=[8,18,20,20,20,18,18,18,20,20,10,18,20];
-    var cx=[mg];
-    cw.forEach(function(w,i){cx.push(cx[i]+w+1);});
-    var hd=["#","Compet.","Vcto.","SM Vig.","Nominal","Pago","Cr\u00e9d.Apl.","Saldo","Fator","Corrigido","M.","Juros","Total"];
-    doc.setFillColor(230,230,230); doc.rect(mg,y-2,W-mg*2,6,"F");
-    doc.setTextColor(40,40,40); doc.setFont("helvetica","bold"); doc.setFontSize(6);
-    hd.forEach(function(h,i){doc.text(h,cx[i],y+2);});
-    y += 7;
-    items.forEach(function(p,i){
-      if(y>182){doc.addPage();y=15;}
-      if(p.is13){doc.setFillColor(255,248,225);doc.rect(mg,y-2,W-mg*2,5.5,"F");}
-      else if(i%2===0){doc.setFillColor(248,250,248);doc.rect(mg,y-2,W-mg*2,5.5,"F");}
-      var mesCorr=p.mes===13?12:p.mes;
-      var vcto=String(resultado.diaVencimento).padStart(2,"0")+"/"+String(mesCorr).padStart(2,"0")+"/"+p.ano;
-      doc.setTextColor(40,40,40); doc.setFont("helvetica","normal"); doc.setFontSize(6);
-      doc.text(String(numI+i),cx[0],y+2);
-      doc.text(p.label,cx[1],y+2);
-      doc.text(vcto,cx[2],y+2);
-      doc.text(fmt(p.smVig),cx[3],y+2);
-      doc.text(fmt(p.nominal),cx[4],y+2);
-      if(p.pagoOriginal>0){doc.setTextColor(26,107,58);doc.setFont("helvetica","bold");}
-      doc.text(p.pagoOriginal>0?fmt(p.pagoOriginal):"-",cx[5],y+2);
-      doc.setTextColor(40,40,40); doc.setFont("helvetica","normal");
-      if(p.creditoAplicado>0){doc.setTextColor(26,82,118);doc.setFont("helvetica","bold");doc.text(fmt(p.creditoAplicado),cx[6],y+2);doc.setTextColor(40,40,40);doc.setFont("helvetica","normal");}
-      else{doc.text("-",cx[6],y+2);}
-      doc.setFont("helvetica","bold");
-      if(p.quitado){doc.setTextColor(26,107,58);doc.text("QUITADO",cx[7],y+2);}
-      else{doc.setTextColor(40,40,40);doc.text(fmt(r2(p.saldoBruto)),cx[7],y+2);}
-      doc.setTextColor(40,40,40); doc.setFont("helvetica","normal");
-      doc.text(p.fator.toFixed(6),cx[8],y+2);
-      doc.text(p.quitado?"-":fmt(p.corrigido),cx[9],y+2);
-      doc.text(String(p.mesesAtraso),cx[10],y+2);
-      // Juros: apenas IPCA; SELIC mostra "-"
-      doc.text((p.quitado||resultado.indice==="selic")?"-":fmt(p.juros),cx[11],y+2);
-      doc.setFont("helvetica","bold");
-      if(p.quitado){doc.setTextColor(26,107,58);doc.text("-",cx[12],y+2);}
-      else{doc.setTextColor(40,40,40);doc.text(fmt(p.total),cx[12],y+2);}
-      y += 5.5;
+/* ===== SALVAR ATENDIMENTO NO HISTÓRICO ===== */
+window.salvarAtendimento=function(){
+  var req=greq();
+  if(!req.nm){alert('Informe o nome do requerente.');return;}
+  if(oficiosSalvos.length===0){alert('Nenhuma solicitação cadastrada.');return;}
+  /* Aloca números de ofício sequencialmente */
+  var numeros=[];
+  for(var i=0;i<oficiosSalvos.length;i++){var sq=consumirSeq();numeros.push(sq);}
+  var ano=new Date().getFullYear();
+  var ofComNums=oficiosSalvos.map(function(of,i){return Object.assign({},of,{sq:numeros[i],no:fmtNum(numeros[i])+'/'+ano+'-DITI'});});
+  var lst=JSON.parse(localStorage.getItem(kA(SS.jid))||'[]');
+  var at={id:CA?CA.id:Date.now(),dt:new Date().toLocaleDateString('pt-BR'),ss:SS,rq:req,oficios:ofComNums,seqFinal:numeros[numeros.length-1]};
+  if(CA){var ix=lst.findIndex(function(a){return a.id===CA.id;});if(ix>=0)lst[ix]=at;else lst.push(at);}
+  else lst.push(at);
+  try{localStorage.setItem(kA(SS.jid),JSON.stringify(lst));}catch(e){}
+  CA=at;
+  /* Atualiza officiosSalvos com os números */
+  oficiosSalvos=ofComNums;
+  renderOfListaView();
+  updBdg();
+  alert('Atendimento salvo no histórico!');
+};
+
+function greq(){
+  var ac=[];document.querySelectorAll('input[name="ac"]:checked').forEach(function(c){ac.push(c.value);});
+  var cr=document.querySelector('input[name="cor"]:checked');
+  return{nm:(document.getElementById('rN').value||'').trim(),cp:(document.getElementById('rC').value||'').trim(),dn:(document.getElementById('rD').value||'').trim(),tel:(document.getElementById('rT').value||'').trim(),ec:(document.getElementById('rEC').value||'').trim(),pa:(document.getElementById('rP').value||'').trim(),ma:(document.getElementById('rM').value||'').trim(),pr:(document.getElementById('rPr').value||'').trim(),rd:(document.getElementById('rR').value||'').trim(),en:(document.getElementById('rE').value||'').trim(),cr:cr?cr.value:'',ac:ac,ou:(document.getElementById('aOu').value||'').trim()};
+}
+
+/* ===== GERAR FICHA PDF ===== */
+window.doGerarFicha=function(){
+  var req=greq();if(!req.nm){alert('Preencha o nome do requerente.');return;}
+  preencherFicha(req);alogos();
+  /* Oculta ofícios e ficha manual */
+  document.getElementById('pOficios').innerHTML='';document.getElementById('pM').style.display='none';
+  var to=document.title;document.title='Ficha_'+req.nm.split(' ')[0]+'.pdf';
+  setTimeout(function(){window.print();setTimeout(function(){document.title=to;},2000);},400);
+};
+
+/* ===== GERAR OFÍCIO PDF (individual) ===== */
+window.gerarOficioPDF=function(idx){
+  var of=oficiosSalvos[idx];if(!of){alert('Ofício não encontrado.');return;}
+  var req=CA?CA.rq:greq();
+  if(!req.nm){alert('Preencha o nome do requerente primeiro.');return;}
+  /* Limpa área de impressão de ofícios */
+  document.getElementById('pF').style.display='none';
+  document.getElementById('pM').style.display='none';
+  /* Constrói HTML do ofício */
+  var html=buildOficioPDF(of,req,SS);
+  document.getElementById('pOficios').innerHTML=html;
+  alogos();
+  var no=of.no||'XXX';
+  var to=document.title;document.title='OF'+no.replace(/\//g,'-')+'.pdf';
+  setTimeout(function(){window.print();setTimeout(function(){document.getElementById('pF').style.display='';document.getElementById('pOficios').innerHTML='';document.title=to;},2000);},400);
+};
+
+function buildOficioPDF(of,req,s){
+  var hoje=new Date();
+  var dd=String(hoje.getDate()).padStart(2,'0');var mm=String(hoje.getMonth()+1).padStart(2,'0');
+  var cb=of.cidade?of.cidade.split('/')[0].trim():'';
+  var dataNum=(cb?cb+', ':'')+dd+'-'+mm+'-'+hoje.getFullYear()+'.';
+  var dataExt=(cb?cb+', ':'')+hoje.getDate()+' de '+MSS[hoje.getMonth()]+' de '+hoje.getFullYear()+'.';
+  var no=of.no||'---';
+  var nR=req.nm.toUpperCase();
+  var nr=rnum(req.rd);
+  /* Blocos dos titulares */
+  var blocos='';
+  of.titulares.forEach(function(t,i){
+    var nomeT=t.nome?t.nome.toUpperCase():nR;
+    blocos+='<div class="cb">';
+    blocos+='<div class="cbt">Titular '+(i+1)+': <strong>'+nomeT+'</strong>';
+    if(t.nasc)blocos+=', nascido(a) em '+t.nasc;
+    if(t.cpf)blocos+=', CPF '+t.cpf;
+    if(t.par&&t.par!=='Próprio(a)')blocos+=' ('+t.par.toLowerCase()+' do(a) requerente)';
+    blocos+='</div>';
+    t.docs.forEach(function(d,j){
+      blocos+='<div style="font-size:9pt;margin-bottom:4px;padding-left:10px;">';
+      blocos+=(j+1)+'. <strong>'+tlbl(d.tipo)+'</strong>';
+      var rg=[];if(d.nr)rg.push('Registro n.º '+d.nr);if(d.livro)rg.push('Livro '+d.livro);if(d.folha)rg.push('Folha '+d.folha);
+      if(rg.length)blocos+=' — '+rg.join(', ');
+      if(d.mat)blocos+=', Matrícula: '+d.mat;
+      blocos+=' — Cartório: '+of.cartorio+', Comarca de '+of.cidade+'.';
+      blocos+='</div>';
     });
-    doc.setFillColor(corRGB[0],corRGB[1],corRGB[2]); doc.rect(mg,y,W-mg*2,6,"F");
-    doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8);
-    doc.text("SUBTOTAL: "+fmt(subtotal), W-mg-3, y+4, {align:"right"});
-    y += 10;
-  };
-
-  if (resultado.penhora.length > 0)
-    desenharTabela("BLOCO 2 \u2014 D\u00c9BITO ANTERIOR (art. 528, \u00a78\u00ba, CPC)", [26,82,118], resultado.penhora, resultado.totalPenhora, 1);
-  if (resultado.prisao.length > 0)
-    desenharTabela("BLOCO 1 \u2014 \u00daLTIMAS 3 PARCELAS (art. 528, \u00a73\u00ba, CPC)", [26,107,58], resultado.prisao, resultado.totalPrisao, resultado.penhora.length+1);
-
-  // Resumo blocos
-  if(y>165){doc.addPage();y=15;}
-  var bW=(W-mg*2-4)/2;
-  doc.setFillColor(26,107,58); doc.rect(mg,y,bW,22,"F");
-  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8);
-  doc.text("BLOCO 1 \u2014 PRIS\u00c3O CIVIL", mg+3, y+7);
-  doc.setFontSize(7); doc.setFont("helvetica","normal");
-  doc.text("\u00daltimas 3 parcelas \u2014 art. 528, \u00a73\u00ba, CPC", mg+3, y+12);
-  doc.setFont("helvetica","bold"); doc.setFontSize(12);
-  doc.text(fmt(resultado.totalPrisao), mg+bW/2, y+19, {align:"center"});
-  var x2=mg+bW+4;
-  doc.setFillColor(26,82,118); doc.rect(x2,y,bW,22,"F");
-  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8);
-  doc.text("BLOCO 2 \u2014 PENHORA", x2+3, y+7);
-  doc.setFontSize(7); doc.setFont("helvetica","normal");
-  doc.text("Parcelas anteriores \u2014 art. 528, \u00a78\u00ba, CPC", x2+3, y+12);
-  doc.setFont("helvetica","bold"); doc.setFontSize(12);
-  doc.text(fmt(resultado.totalPenhora), x2+bW/2, y+19, {align:"center"});
-  y += 30;
-
-  // Obs
-  if(y>170){doc.addPage();y=15;}
-  doc.setTextColor(40,40,40); doc.setFont("helvetica","bold"); doc.setFontSize(8);
-  doc.text("Observa\u00e7\u00f5es:", mg, y); y += 5;
-  doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
-  var obsLines = resultado.indice === "selic" ? [
-    "1. Atualiza\u00e7\u00e3o pela taxa SELIC acumulada mensal (substitui corre\u00e7\u00e3o monet\u00e1ria e juros de mora). \u00cdndices oficiais at\u00e9 mar/2026. A partir de abr/2026: proje\u00e7\u00e3o de 1,07% a.m. Sujeito a revis\u00e3o.",
-    "2. SELIC como fator \u00fanico de atualiza\u00e7\u00e3o do d\u00e9bito alimentar (art. 406 CC c/c Lei 9.250/95).",
-    "3. Bloco 1 (art. 528, \u00a73\u00ba, CPC): \u00faltimas 3 parcelas \u2014 execu\u00e7\u00e3o pelo rito da pris\u00e3o civil.",
-    "4. Bloco 2 (art. 528, \u00a78\u00ba, CPC): parcelas anteriores \u2014 execu\u00e7\u00e3o pelo rito da penhora.",
-    "5. Imputa\u00e7\u00e3o de pagamentos nos d\u00e9bitos mais antigos (art. 354 CC)."
-  ] : [
-    "1. Corre\u00e7\u00e3o monet\u00e1ria pelo IPCA (IBGE). \u00cdndices oficiais at\u00e9 fev/2026. A partir de mar/2026: proje\u00e7\u00e3o de 0,31% a.m. Sujeito a revis\u00e3o quando publicados os \u00edndices definitivos.",
-    "2. Juros de mora: 1% ao m\u00eas, pro rata die, sobre o valor corrigido (art. 406 CC c/c art. 161, \u00a71\u00ba, CTN).",
-    "3. Bloco 1 (art. 528, \u00a73\u00ba, CPC): \u00faltimas 3 parcelas \u2014 execu\u00e7\u00e3o pelo rito da pris\u00e3o civil.",
-    "4. Bloco 2 (art. 528, \u00a78\u00ba, CPC): parcelas anteriores \u2014 execu\u00e7\u00e3o pelo rito da penhora.",
-    "5. Imputa\u00e7\u00e3o de pagamentos nos d\u00e9bitos mais antigos (art. 354 CC)."
-  ];
-  obsLines.forEach(function(o){ if(y>190){doc.addPage();y=15;} doc.text(o,mg,y); y+=4.5; });
-  y += 8;
-
-  // Assinatura
-  if(y>185){doc.addPage();y=15;}
-  doc.setFont("helvetica","normal"); doc.setFontSize(9);
-  doc.text(resultado.data, W/2, y, {align:"center"}); y+=16;
-  doc.setDrawColor(80,80,80); doc.setLineWidth(0.3); doc.line(W/2-45,y,W/2+45,y); y+=5;
-  doc.setFont("helvetica","bold"); doc.setFontSize(9.5);
-  doc.text(resultado.defensor||"", W/2, y, {align:"center"}); y+=5;
-  doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
-  doc.text("Defensor(a) P\u00fablico(a)", W/2, y, {align:"center"}); y+=4;
-  if(resultado.lotacao) doc.text(resultado.lotacao, W/2, y, {align:"center"});
-
-  var fn = "Memorial_Calculo_"+(resultado.processo||"calculo")+"_"+resultado.data.replace(/\//g,"-")+".pdf";
-  try {
-    var blob=doc.output("blob"); var blobUrl=URL.createObjectURL(blob);
-    var link=document.createElement("a"); link.href=blobUrl; link.download=fn;
-    link.style.display="none"; document.body.appendChild(link); link.click();
-    setTimeout(function(){document.body.removeChild(link);URL.revokeObjectURL(blobUrl);},500);
-  } catch(e) {
-    var w=window.open(); if(w){w.location.href=doc.output("bloburl");}else{doc.save(fn);}
-  }
-}
-
-// ===================== GERADOR PDF ATUALIZA\u00c7\u00c3O PENHORA =====================
-
-function gerarPDFAtuPenhora(dados, logoData) {
-  var jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
-  if (!jsPDFLib) { alert("PDF n\u00e3o carregou."); return; }
-  var doc = new jsPDFLib({ orientation:"landscape", unit:"mm", format:"a4" });
-  var W=297, mg=12, y=0;
-
-  doc.setFillColor(26,82,118); doc.rect(0,0,W,28,"F");
-  if (logoData) {
-    try { var lh=22, lw=Math.max(lh*_logoRatio,30); doc.addImage(logoData,"PNG",6,3,lw,lh); doc.addImage(logoData,"PNG",W-6-lw,3,lw,lh); } catch(e){}
-  }
-  doc.setTextColor(255,255,255);
-  doc.setFontSize(14); doc.setFont("helvetica","bold");
-  doc.text("ATUALIZA\u00c7\u00c3O DE D\u00c9BITO \u2014 RITO DA PENHORA", W/2, 10, {align:"center"});
-  doc.setFontSize(9); doc.setFont("helvetica","normal");
-  doc.text("Execu\u00e7\u00e3o de Alimentos \u2014 art. 528, \u00a78\u00ba, CPC (expropria\u00e7\u00e3o)", W/2, 16, {align:"center"});
-  doc.setFontSize(7.5);
-  doc.text("APIDEP \u2014 Associa\u00e7\u00e3o Piauiense das Defensoras e Defensores P\u00fablicos", W/2, 22, {align:"center"});
-  y = 36;
-
-  // Dados do processo
-  doc.setFillColor(232,240,250); doc.rect(mg,y,W-mg*2,32,"F");
-  doc.setDrawColor(26,82,118); doc.setLineWidth(0.3); doc.rect(mg,y,W-mg*2,32);
-  doc.setFillColor(26,82,118); doc.rect(mg,y,W-mg*2,7,"F");
-  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
-  doc.text("DADOS DO PROCESSO", mg+3, y+5);
-  y += 10;
-  var c1=mg+4, c2=mg+105, c3=mg+200;
-  doc.setTextColor(40,40,40); doc.setFontSize(9.5);
-  var lb = function(l,v,x,yy){
-    doc.setFont("helvetica","bold"); doc.text(l,x,yy);
-    doc.setFont("helvetica","normal"); doc.text(v||"-", x+doc.getTextWidth(l)+2, yy);
-  };
-  lb("Processo n\u00ba:", dados.processo, c1, y);
-  lb("Vara/Comarca:", dados.comarca, c2, y);
-  lb("Data-base:", dados.dataBase, c3, y);
-  y += 8;
-  lb("Exequente:", dados.alimentado, c1, y);
-  lb("Executado:", dados.alimentante, c2, y);
-  y += 8;
-  lb("\u00cdndice:", dados.indiceLabel, c1, y);
-  y += 12;
-
-  // Tabela de atualiza\u00e7\u00e3o
-  doc.setFillColor(26,82,118); doc.rect(mg,y,W-mg*2,7,"F");
-  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
-  doc.text("ATUALIZA\u00c7\u00c3O DO SALDO DEVEDOR", mg+3, y+5);
-  y += 10;
-
-  // Cabe\u00e7alho da tabela
-  var colsP=[55,40,40,40,40,40];
-  var cxP=[mg];
-  colsP.forEach(function(w,i){cxP.push(cxP[i]+w+2);});
-  var hdP=["Descri\u00e7\u00e3o","Data de Ref.","Valor de Ref. (R$)","Fator","Atualizado (R$)","Juros (R$)","Total Atualizado (R$)"];
-  doc.setFillColor(230,230,230); doc.rect(mg,y-2,W-mg*2,7,"F");
-  doc.setTextColor(40,40,40); doc.setFont("helvetica","bold"); doc.setFontSize(8);
-  hdP.forEach(function(h,i){ if(cxP[i]<W-mg) doc.text(h,cxP[i],y+3); });
-  y += 8;
-
-  // Linha de dados
-  doc.setFillColor(248,250,248); doc.rect(mg,y-2,W-mg*2,7,"F");
-  doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
-  doc.text("Saldo atualizado", cxP[0], y+3);
-  doc.text(dados.dataRef, cxP[1], y+3);
-  doc.text(fmt(dados.valorRef), cxP[2], y+3);
-  doc.text(dados.fator.toFixed(6), cxP[3], y+3);
-  doc.text(fmt(dados.corrigido), cxP[4], y+3);
-  doc.text(dados.indice==="selic" ? "-" : fmt(dados.juros), cxP[5], y+3);
-  doc.setFont("helvetica","bold");
-  doc.text(fmt(dados.total), cxP[6], y+3);
-  y += 12;
-
-  // Total
-  doc.setFillColor(26,82,118); doc.rect(mg,y,W-mg*2,14,"F");
-  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(9);
-  doc.text("TOTAL ATUALIZADO (PENHORA) \u2014 art. 528, \u00a78\u00ba, CPC", mg+4, y+6);
-  doc.setFontSize(14);
-  doc.text(fmt(dados.total), W-mg-4, y+10, {align:"right"});
-  y += 22;
-
-  // Obs
-  doc.setTextColor(40,40,40); doc.setFont("helvetica","bold"); doc.setFontSize(8);
-  doc.text("Observa\u00e7\u00f5es:", mg, y); y += 5;
-  doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
-  var obs = dados.indice === "selic" ? [
-    "1. Atualiza\u00e7\u00e3o pela taxa SELIC acumulada mensal, contada a partir da data de refer\u00eancia at\u00e9 a data-base do c\u00e1lculo.",
-    "2. A SELIC substitui a corre\u00e7\u00e3o monet\u00e1ria e os juros de mora (art. 406 CC c/c Lei 9.250/95).",
-    "3. \u00cdndices SELIC oficiais at\u00e9 mar/2026. A partir de abr/2026: proje\u00e7\u00e3o de 1,07% a.m. Sujeito a revis\u00e3o.",
-    "4. Rito da penhora (expropria\u00e7\u00e3o) \u2014 art. 528, \u00a78\u00ba, CPC."
-  ] : [
-    "1. Corre\u00e7\u00e3o monet\u00e1ria pelo IPCA-E (IBGE), contada a partir da data de refer\u00eancia at\u00e9 a data-base do c\u00e1lculo.",
-    "2. Juros de mora: 1% ao m\u00eas sobre o valor corrigido (art. 406 CC c/c art. 161, \u00a71\u00ba, CTN).",
-    "3. \u00cdndices oficiais at\u00e9 fev/2026. A partir de mar/2026: proje\u00e7\u00e3o de 0,31% a.m. Sujeito a revis\u00e3o.",
-    "4. Rito da penhora (expropria\u00e7\u00e3o) \u2014 art. 528, \u00a78\u00ba, CPC."
-  ];
-  obs.forEach(function(o){ doc.text(o,mg,y); y+=4.5; });
-  if (dados.justificativa) {
-    y += 4;
-    doc.setFont("helvetica","bold"); doc.setFontSize(8);
-    doc.text("Justificativa / Observa\u00e7\u00f5es adicionais:", mg, y); y += 5;
-    doc.setFont("helvetica","normal"); doc.setFontSize(8);
-    var linhas=doc.splitTextToSize(dados.justificativa, W-mg*2);
-    linhas.forEach(function(l){if(y>190){doc.addPage();y=15;} doc.text(l,mg,y); y+=4.5;});
-  }
-  y += 10;
-
-  // Assinatura
-  if(y>185){doc.addPage();y=15;}
-  doc.setFont("helvetica","normal"); doc.setFontSize(9);
-  doc.text(dados.dataBase, W/2, y, {align:"center"}); y+=16;
-  doc.setDrawColor(80,80,80); doc.setLineWidth(0.3); doc.line(W/2-45,y,W/2+45,y); y+=5;
-  doc.setFont("helvetica","bold"); doc.setFontSize(9.5);
-  doc.text(dados.defensor||"", W/2, y, {align:"center"}); y+=5;
-  doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
-  doc.text("Defensor(a) P\u00fablico(a)", W/2, y, {align:"center"}); y+=4;
-  if(dados.lotacao) doc.text(dados.lotacao, W/2, y, {align:"center"});
-
-  var fn="Atualizacao_Penhora_"+(dados.processo||"calculo")+"_"+dados.dataBase.replace(/\//g,"-")+".pdf";
-  try {
-    var blob=doc.output("blob"); var blobUrl=URL.createObjectURL(blob);
-    var link=document.createElement("a"); link.href=blobUrl; link.download=fn;
-    link.style.display="none"; document.body.appendChild(link); link.click();
-    setTimeout(function(){document.body.removeChild(link);URL.revokeObjectURL(blobUrl);},500);
-  } catch(e) {
-    var w=window.open(); if(w){w.location.href=doc.output("bloburl");}else{doc.save(fn);}
-  }
-}
-
-// ===================== GERADOR PDF ATUALIZA\u00c7\u00c3O PRIS\u00c3O =====================
-
-function gerarPDFAtuPrisao(resultado, logoData) {
-  var jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
-  if (!jsPDFLib) { alert("PDF n\u00e3o carregou."); return; }
-  var doc = new jsPDFLib({ orientation:"landscape", unit:"mm", format:"a4" });
-  var W=297, mg=12, y=0;
-
-  doc.setFillColor(26,107,58); doc.rect(0,0,W,28,"F");
-  if (logoData) {
-    try { var lh=22, lw=Math.max(lh*_logoRatio,30); doc.addImage(logoData,"PNG",6,3,lw,lh); doc.addImage(logoData,"PNG",W-6-lw,3,lw,lh); } catch(e){}
-  }
-  doc.setTextColor(255,255,255);
-  doc.setFontSize(14); doc.setFont("helvetica","bold");
-  doc.text("ATUALIZA\u00c7\u00c3O DE D\u00c9BITO \u2014 RITO DA PRIS\u00c3O CIVIL", W/2, 10, {align:"center"});
-  doc.setFontSize(9); doc.setFont("helvetica","normal");
-  doc.text("Execu\u00e7\u00e3o de Alimentos \u2014 art. 528, \u00a73\u00ba, CPC (pris\u00e3o civil)", W/2, 16, {align:"center"});
-  doc.setFontSize(7.5);
-  doc.text("APIDEP \u2014 Associa\u00e7\u00e3o Piauiense das Defensoras e Defensores P\u00fablicos", W/2, 22, {align:"center"});
-  y = 36;
-
-  // Dados
-  doc.setFillColor(232,245,238); doc.rect(mg,y,W-mg*2,32,"F");
-  doc.setDrawColor(26,107,58); doc.setLineWidth(0.3); doc.rect(mg,y,W-mg*2,32);
-  doc.setFillColor(26,107,58); doc.rect(mg,y,W-mg*2,7,"F");
-  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
-  doc.text("DADOS DO PROCESSO", mg+3, y+5);
-  y += 10;
-  var c1=mg+4, c2=mg+105, c3=mg+200;
-  doc.setTextColor(40,40,40); doc.setFontSize(9.5);
-  var lb=function(l,v,x,yy){doc.setFont("helvetica","bold");doc.text(l,x,yy);doc.setFont("helvetica","normal");doc.text(v||"-",x+doc.getTextWidth(l)+2,yy);};
-  lb("Processo n\u00ba:", resultado.processo, c1, y);
-  lb("Vara/Comarca:", resultado.comarca, c2, y);
-  lb("Data-base:", resultado.data, c3, y);
-  y += 8;
-  lb("Exequente:", resultado.alimentado, c1, y);
-  lb("Executado:", resultado.alimentante, c2, y);
-  y += 8;
-  lb("\u00cdndice:", resultado.indiceLabel||"IPCA-E (IBGE)", c1, y);
-  lb("Vencimento:", "Dia "+resultado.diaVencimento, c2, y);
-  y += 12;
-
-  // Justificativa
-  if (resultado.justificativa) {
-    doc.setTextColor(26,107,58); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
-    doc.text("JUSTIFICATIVA / OBSERVA\u00c7\u00d5ES", mg, y);
-    y += 5; doc.setDrawColor(26,107,58); doc.line(mg,y,W-mg,y); y+=4;
-    doc.setTextColor(40,40,40); doc.setFont("helvetica","normal"); doc.setFontSize(8);
-    var linhas=doc.splitTextToSize(resultado.justificativa, W-mg*2);
-    linhas.forEach(function(l){if(y>185){doc.addPage();y=15;}doc.text(l,mg,y);y+=4.5;});
-    y+=4;
-  }
-
-  // Tabela \u00fanica (tudo pris\u00e3o)
-  if(y>150){doc.addPage();y=15;}
-  doc.setFillColor(26,107,58); doc.rect(mg,y,W-mg*2,7,"F");
-  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
-  doc.text("PARCELAS EM ABERTO \u2014 RITO DA PRIS\u00c3O CIVIL (art. 528, \u00a73\u00ba, CPC)", mg+3, y+5);
-  y += 9;
-  var cw=[8,18,20,20,20,18,18,18,20,20,10,18,20];
-  var cx=[mg];
-  cw.forEach(function(w,i){cx.push(cx[i]+w+1);});
-  var hd=["#","Compet.","Vcto.","SM Vig.","Nominal","Pago","Cr\u00e9d.Apl.","Saldo","Fator","Corrigido","M.","Juros","Total"];
-  doc.setFillColor(230,230,230); doc.rect(mg,y-2,W-mg*2,6,"F");
-  doc.setTextColor(40,40,40); doc.setFont("helvetica","bold"); doc.setFontSize(6);
-  hd.forEach(function(h,i){doc.text(h,cx[i],y+2);});
-  y+=7;
-
-  resultado.parcelas.forEach(function(p,i){
-    if(y>182){doc.addPage();y=15;}
-    if(p.is13){doc.setFillColor(255,248,225);doc.rect(mg,y-2,W-mg*2,5.5,"F");}
-    else if(i%2===0){doc.setFillColor(248,250,248);doc.rect(mg,y-2,W-mg*2,5.5,"F");}
-    var mesCorr=p.mes===13?12:p.mes;
-    var vcto=String(resultado.diaVencimento).padStart(2,"0")+"/"+String(mesCorr).padStart(2,"0")+"/"+p.ano;
-    doc.setTextColor(40,40,40); doc.setFont("helvetica","normal"); doc.setFontSize(6);
-    doc.text(String(i+1),cx[0],y+2);
-    doc.text(p.label,cx[1],y+2);
-    doc.text(vcto,cx[2],y+2);
-    doc.text(fmt(p.smVig),cx[3],y+2);
-    doc.text(fmt(p.nominal),cx[4],y+2);
-    if(p.pagoOriginal>0){doc.setTextColor(26,107,58);doc.setFont("helvetica","bold");}
-    doc.text(p.pagoOriginal>0?fmt(p.pagoOriginal):"-",cx[5],y+2);
-    doc.setTextColor(40,40,40); doc.setFont("helvetica","normal");
-    if(p.creditoAplicado>0){doc.setTextColor(26,82,118);doc.setFont("helvetica","bold");doc.text(fmt(p.creditoAplicado),cx[6],y+2);doc.setTextColor(40,40,40);doc.setFont("helvetica","normal");}
-    else{doc.text("-",cx[6],y+2);}
-    doc.setFont("helvetica","bold");
-    if(p.quitado){doc.setTextColor(26,107,58);doc.text("QUITADO",cx[7],y+2);}
-    else{doc.setTextColor(40,40,40);doc.text(fmt(r2(p.saldoBruto)),cx[7],y+2);}
-    doc.setTextColor(40,40,40); doc.setFont("helvetica","normal");
-    doc.text(p.fator.toFixed(6),cx[8],y+2);
-    doc.text(p.quitado?"-":fmt(p.corrigido),cx[9],y+2);
-    doc.text(String(p.mesesAtraso),cx[10],y+2);
-    doc.text((p.quitado||resultado.indice==="selic")?"-":fmt(p.juros),cx[11],y+2);
-    doc.setFont("helvetica","bold");
-    if(p.quitado){doc.setTextColor(26,107,58);doc.text("-",cx[12],y+2);}
-    else{doc.setTextColor(40,40,40);doc.text(fmt(p.total),cx[12],y+2);}
-    y+=5.5;
+    blocos+='</div>';
   });
+  var totalDocs=of.titulares.reduce(function(s,t){return s+t.docs.length;},0);
+  var assunto=of.titulares.length===1&&totalDocs===1?tlbl(of.titulares[0].docs[0].tipo):'Requisição de certidão(ões) gratuita(s) — '+totalDocs+' documento(s)';
+  var sitEcon='';
+  if(req.pr||nr>0){sitEcon='<div class="op">O(A) requerente, <strong>'+nR+'</strong>';if(req.pr)sitEcon+=', atua como <strong>'+req.pr+'</strong>';if(nr>0)sitEcon+=', auferindo renda média de <strong>'+req.rd+' ('+ext(nr)+')</strong>';sitEcon+='.</div>';}
+  var obsHtml=of.obs?'<div class="oob">* '+of.obs+'</div>':'';
+  return '<div class="qbra"><div class="ow">'
+    +'<div class="otp"><img class="lgOf" src="'+(LB||LURL)+'" alt="DPE-PI" style="width:80px;height:auto;display:block;flex-shrink:0;"><div class="otx"><div class="ot1">Defensoria Pública do Estado do Piauí</div><div class="ot2">'+(s.un||'')+'</div><div class="ot3">Diretoria Itinerante</div></div></div>'
+    +'<div class="onr"><span class="onl">OFÍCIO N.º '+no+'</span><span class="odt">'+dataNum+'</span></div>'
+    +'<div class="ode">Ao(À) Senhor(a) Oficial(a) do <strong>'+of.cartorio+'</strong> da Comarca de <strong>'+of.cidade+'</strong></div>'
+    +'<div class="oas">Assunto: '+assunto+'</div>'
+    +'<div class="op">A Defensoria Pública do Estado do Piauí, no exercício de suas atribuições constitucionais e legais, vem, respeitosamente, <strong>REQUISITAR</strong> a emissão gratuita do(s) documento(s) abaixo especificado(s), em favor de <strong>'+nR+'</strong>, em razão da hipossuficiência econômica do(a) requerente, conforme declaração de hipossuficiência anexa, <strong>ISENTA(S) DE CUSTAS E EMOLUMENTOS</strong>.</div>'
+    +sitEcon
+    +blocos
+    +'<div class="ofu"><strong>FUNDAMENTAÇÃO LEGAL:</strong><ol>'
+    +'<li><strong>Lei n.º 9.534/1997:</strong> Garante a gratuidade das certidões para os reconhecidamente pobres.</li>'
+    +'<li><strong>Lei n.º 1.060/1950:</strong> Assegura o acesso à justiça a pessoas em situação de vulnerabilidade econômica.</li>'
+    +'<li><strong>LC n.º 80/1994, art. 4.º, VII:</strong> Atribui à Defensoria Pública o poder de requisitar documentos necessários à defesa dos assistidos.</li>'
+    +'</ol></div>'
+    +'<div class="op">Diante do exposto, <strong>REQUISITA-SE</strong> a emissão gratuita do(s) documento(s) acima especificado(s), com entrega ao(à) requerente <strong>'+nR+'</strong>, para fins de regularização dos interesses do(a) assistido(a).</div>'
+    +obsHtml
+    +'<div class="osn"><div style="font-size:9.5pt;margin-bottom:26px;">'+dataExt+'</div><div class="osl"></div><div class="osn2">'+ctit((s.nm||'').toLowerCase())+'</div><div style="font-size:9.5pt;">Defensor(a) Público(a)</div><div style="font-size:9.5pt;">'+(s.un||'')+'</div></div>'
+    +'<div class="ord"><strong>'+(s.un||'')+'</strong> — Diretoria Itinerante — '+(s.jnm||'')+'<br>Gerado em: '+hoje.toLocaleDateString('pt-BR')+' — Ofício n.º '+no+'</div>'
+    +'</div></div>';
+}
 
-  // Rodap\u00e9 subtotal
-  doc.setFillColor(26,107,58); doc.rect(mg,y,W-mg*2,6,"F");
-  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8);
-  doc.text("TOTAL (PRIS\u00c3O CIVIL): "+fmt(resultado.total), W-mg-3, y+4, {align:"right"});
-  y+=14;
+function preencherFicha(r){
+  document.getElementById('pRN').innerText=r.nm||'';document.getElementById('pRC').innerText=r.cp||'';
+  document.getElementById('pRD').innerText=r.dn||'';document.getElementById('pRT').innerText=r.tel||'';
+  document.getElementById('pREC').innerText=r.ec||'';document.getElementById('pRP').innerText=r.pa||'';
+  document.getElementById('pRM').innerText=r.ma||'';document.getElementById('pRPr').innerText=r.pr||'';
+  document.getElementById('pRR').innerText=r.rd||'';document.getElementById('pRE').innerText=r.en||'';
+  var cores=['Branca','Parda','Preta','Amarela','Indígena','Não Declarar'];
+  var cd=document.getElementById('pCor');cd.innerHTML='';
+  cores.forEach(function(c){var sp=document.createElement('span');sp.className='fo';sp.innerHTML='<span class="fck">'+(r.cr===c?'✓':'')+'</span> '+c;cd.appendChild(sp);});
+  var acs=['Documentos','Alimentos','Guarda/Filiação','Criminal','Saúde','Interdição/Curatela','Previdência/INSS','Outras'];
+  var ad=document.getElementById('pAc');ad.innerHTML='';
+  acs.forEach(function(a){var sp=document.createElement('span');sp.className='fo';var ok=r.ac&&r.ac.indexOf(a)>=0;sp.innerHTML='<span class="fck">'+(ok?'✓':'')+'</span> '+a;ad.appendChild(sp);});
+  document.getElementById('pOu').innerText=(r.ou&&r.ac&&r.ac.indexOf('Outras')>=0)?'Outras: '+r.ou:'';
+  var nr=rnum(r.rd),rs=nr>0?r.rd:'R$\u00a0____________',ex2=nr>0?ext(nr):'____________';
+  var decl='DECLARO, para fins de obtenção de ASSISTÊNCIA JURÍDICA pela DEFENSORIA PÚBLICA DO ESTADO DO PIAUÍ, que sou pessoa pobre na forma da lei, não podendo arcar com as custas processuais e honorários advocatícios sem prejuízo do próprio sustento e de minha família, nos termos do art. 5.º, LXXIV, da Constituição Federal c.c. os arts. 1.º a 4.º da Lei n.º 1.060/1950 e art. 1.º da Lei n.º 7.115/1983.';
+  if(r.pr||nr>0){decl+=' O(A) Requerente';if(r.pr)decl+=' atua como '+r.pr+',';decl+=' auferindo renda média de '+rs+' ('+ex2+').';}
+  document.getElementById('pDecl').innerText=decl;
+  document.getElementById('pNAs').innerText=ctit((r.nm||'').toLowerCase());
+  var hj=new Date();document.getElementById('pDtF').innerText=hj.getDate()+' de '+MSS[hj.getMonth()]+' de '+hj.getFullYear()+'.';
+}
 
-  // Box total
-  if(y>175){doc.addPage();y=15;}
-  var bW=W-mg*2;
-  doc.setFillColor(26,107,58); doc.rect(mg,y,bW,18,"F");
-  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(9);
-  doc.text("TOTAL \u2014 PRIS\u00c3O CIVIL \u2014 art. 528, \u00a73\u00ba, CPC", mg+4, y+7);
-  doc.setFontSize(14);
-  doc.text(fmt(resultado.total), W-mg-4, y+13, {align:"right"});
-  y+=26;
-
-  // Obs
-  if(y>170){doc.addPage();y=15;}
-  doc.setTextColor(40,40,40); doc.setFont("helvetica","bold"); doc.setFontSize(8);
-  doc.text("Observa\u00e7\u00f5es:", mg, y); y+=5;
-  doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
-  var obsP = resultado.indice==="selic" ? [
-    "1. Atualiza\u00e7\u00e3o pela taxa SELIC acumulada mensal (\u00edndices oficiais at\u00e9 mar/2026; proje\u00e7\u00e3o 1,07% a.m. a partir de abr/2026).",
-    "2. A SELIC substitui a corre\u00e7\u00e3o monet\u00e1ria e os juros de mora (art. 406 CC c/c Lei 9.250/95).",
-    "3. Todas as parcelas est\u00e3o no rito da pris\u00e3o civil \u2014 art. 528, \u00a73\u00ba, CPC.",
-    "4. Imputa\u00e7\u00e3o de pagamentos nos d\u00e9bitos mais antigos (art. 354 CC)."
-  ] : [
-    "1. Corre\u00e7\u00e3o monet\u00e1ria pelo IPCA-E (IBGE). \u00cdndices oficiais at\u00e9 fev/2026. A partir de mar/2026: proje\u00e7\u00e3o de 0,31% a.m.",
-    "2. Juros de mora: 1% ao m\u00eas, pro rata die, sobre o valor corrigido (art. 406 CC c/c art. 161, \u00a71\u00ba, CTN).",
-    "3. Todas as parcelas est\u00e3o no rito da pris\u00e3o civil \u2014 art. 528, \u00a73\u00ba, CPC.",
-    "4. Imputa\u00e7\u00e3o de pagamentos nos d\u00e9bitos mais antigos (art. 354 CC)."
-  ];
-  obsP.forEach(function(o){if(y>190){doc.addPage();y=15;}doc.text(o,mg,y);y+=4.5;});
-  y+=8;
-
-  // Assinatura
-  if(y>185){doc.addPage();y=15;}
-  doc.setFont("helvetica","normal"); doc.setFontSize(9);
-  doc.text(resultado.data, W/2, y, {align:"center"}); y+=16;
-  doc.setDrawColor(80,80,80); doc.setLineWidth(0.3); doc.line(W/2-45,y,W/2+45,y); y+=5;
-  doc.setFont("helvetica","bold"); doc.setFontSize(9.5);
-  doc.text(resultado.defensor||"", W/2, y, {align:"center"}); y+=5;
-  doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
-  doc.text("Defensor(a) P\u00fablico(a)", W/2, y, {align:"center"}); y+=4;
-  if(resultado.lotacao) doc.text(resultado.lotacao, W/2, y, {align:"center"});
-
-  var fn="Atualizacao_Prisao_"+(resultado.processo||"calculo")+"_"+resultado.data.replace(/\//g,"-")+".pdf";
-  try {
-    var blob=doc.output("blob"); var blobUrl=URL.createObjectURL(blob);
-    var link=document.createElement("a"); link.href=blobUrl; link.download=fn;
-    link.style.display="none"; document.body.appendChild(link); link.click();
-    setTimeout(function(){document.body.removeChild(link);URL.revokeObjectURL(blobUrl);},500);
-  } catch(e) {
-    var w=window.open(); if(w){w.location.href=doc.output("bloburl");}else{doc.save(fn);}
+/* ===== HISTÓRICO ===== */
+function rhist(){
+  var lst=JSON.parse(localStorage.getItem(kA(SS.jid))||'[]'),d=document.getElementById('lHist');
+  if(!lst.length){d.innerHTML='<p style="color:#888;font-style:italic;">Nenhum atendimento nesta jornada.</p>';return;}
+  d.innerHTML='';
+  for(var i=lst.length-1;i>=0;i--){
+    (function(at){
+      var of=at.oficios||[];
+      var ofDesc=of.map(function(o){return 'Ofício '+o.no+' → '+o.cartorio+', '+o.cidade;}).join(' | ');
+      var titDesc=of.map(function(o){return o.titulares.map(function(t){return t.nome||'(Próprio)'}).join(', ');}).join(' | ');
+      var it=document.createElement('div');it.className='hi';
+      it.innerHTML='<div style="flex:1;">'
+        +'<h3>'+at.dt+' — '+(at.rq.nm||'')+'</h3>'
+        +'<p>'+of.length+' ofício(s): '+ofDesc+'</p>'
+        +'<p style="margin-top:2px;">Titulares: '+titDesc+'</p>'
+        +'</div>'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;">'
+        +'<button class="btn bv bsm" onclick="abrirAtend('+at.id+')">✏️ Editar</button>'
+        +'<button class="btn bv bsm" onclick="gerarFichaHist('+at.id+')">📋 Ficha</button>'
+        +'<button class="btn br bsm" onclick="exclAtend('+at.id+')">✕</button>'
+        +'</div>';
+      d.appendChild(it);
+    })(lst[i]);
   }
 }
 
-// ===================== ABA: ATUALIZA\u00c7\u00c3O DE D\u00c9BITO =====================
+window.abrirAtend=function(id){
+  var lst=JSON.parse(localStorage.getItem(kA(SS.jid))||'[]'),at=lst.find(function(a){return a.id===id;});if(!at)return;
+  CA=at;var r=at.rq;
+  document.getElementById('rN').value=r.nm||'';document.getElementById('rC').value=r.cp||'';document.getElementById('rD').value=r.dn||'';document.getElementById('rT').value=r.tel||'';document.getElementById('rEC').value=r.ec||'';document.getElementById('rP').value=r.pa||'';document.getElementById('rM').value=r.ma||'';document.getElementById('rPr').value=r.pr||'';document.getElementById('rR').value=r.rd||'';document.getElementById('rE').value=r.en||'';
+  document.querySelectorAll('input[name="cor"]').forEach(function(x){x.checked=(x.value===r.cr);});
+  document.querySelectorAll('input[name="ac"]').forEach(function(x){x.checked=(r.ac&&r.ac.indexOf(x.value)>=0);});
+  var ao=document.getElementById('aOu');if(ao){ao.value=r.ou||'';ao.style.display=(r.ac&&r.ac.indexOf('Outras')>=0)?'block':'none';}
+  oficiosSalvos=JSON.parse(JSON.stringify(at.oficios||[]));
+  renderOfListaView();
+  /* Mostra área concluída */
+  document.getElementById('ofForm').style.display='none';
+  document.getElementById('ofConcluido').style.display='block';
+  var botoes=document.getElementById('ofBotoesGerar');botoes.innerHTML='';
+  botoes.innerHTML+='<button class="btn bv" style="margin-bottom:8px;width:100%;" onclick="doGerarFicha()">📋 Gerar Ficha + Hipo</button>';
+  oficiosSalvos.forEach(function(of,i){var b=document.createElement('button');b.className='btn bv';b.style.cssText='width:100%;margin-bottom:8px;';b.innerText='🖨 Gerar Ofício '+(i+1)+' — '+of.cartorio+', '+of.cidade;b.onclick=function(){gerarOficioPDF(i);};botoes.appendChild(b);});
+  document.getElementById('ofConcluidoMsg').innerText=oficiosSalvos.length+' ofício(s) neste atendimento.';
+  aba('n');document.getElementById('titPag').innerText='Editando atendimento de '+at.dt;
+};
 
-function TabAtualizacao(props) {
-  var perfil = props.perfil;
-  var usuario = props.usuario;
-  var onSalvarHistorico = props.onSalvarHistorico;
+window.gerarFichaHist=function(id){
+  var lst=JSON.parse(localStorage.getItem(kA(SS.jid))||'[]'),at=lst.find(function(a){return a.id===id;});if(!at)return;
+  preencherFicha(at.rq);alogos();document.getElementById('pOficios').innerHTML='';document.getElementById('pM').style.display='none';
+  var to=document.title;document.title='Ficha.pdf';setTimeout(function(){window.print();setTimeout(function(){document.getElementById('pF').style.display='';document.title=to;},2000);},400);
+};
 
-  var _sm = useState("penhora"); var subModo = _sm[0]; var setSubModo = _sm[1];
+window.exclAtend=function(id){
+  if(!confirm('Excluir permanentemente?'))return;
+  var lst=JSON.parse(localStorage.getItem(kA(SS.jid))||'[]').filter(function(a){return a.id!==id;});
+  localStorage.setItem(kA(SS.jid),JSON.stringify(lst));rhist();updBdg();
+};
 
-  // Campos comuns
-  var _proc = useState(""); var processo = _proc[0]; var setProcesso = _proc[1];
-  var _ali = useState(""); var alimentado = _ali[0]; var setAlimentado = _ali[1];
-  var _ali2 = useState(""); var alimentante = _ali2[0]; var setAlimentante = _ali2[1];
-  var _com = useState(""); var comarca = _com[0]; var setComarca = _com[1];
-  var _ind = useState("ipca"); var indice = _ind[0]; var setIndice = _ind[1];
-  var _just = useState(""); var justificativa = _just[0]; var setJustificativa = _just[1];
+window.doLimpar=function(){
+  if(!confirm('Iniciar novo atendimento? Dados não salvos serão perdidos.'))return;
+  document.querySelectorAll('#abaN input[type="text"],#abaN textarea').forEach(function(i){i.value='';});
+  document.querySelectorAll('#abaN input[type="checkbox"],#abaN input[type="radio"]').forEach(function(i){i.checked=false;});
+  document.querySelectorAll('#abaN select').forEach(function(s){s.value='';});
+  var ao=document.getElementById('aOu');if(ao)ao.style.display='none';
+  oficiosSalvos=[];titularesDOF=[];docsTIT=[];titAtual=null;CA=null;
+  document.getElementById('ofForm').style.display='block';
+  document.getElementById('ofConcluido').style.display='none';
+  document.getElementById('titForm').style.display='block';
+  document.getElementById('docForm').style.display='none';
+  document.getElementById('btnNovoTitular').style.display='none';
+  document.getElementById('titSalvosList').innerHTML='';
+  renderOfListaView();updBdg();
+  document.getElementById('titPag').innerText='Atendimento';
+};
 
-  // Penhora simples
-  var _vref = useState(""); var valorRef = _vref[0]; var setValorRef = _vref[1];
-  var _mref = useState(1); var mesRef = _mref[0]; var setMesRef = _mref[1];
-  var _aref = useState(2024); var anoRef = _aref[0]; var setAnoRef = _aref[1];
-  var _resPen = useState(null); var resPenhora = _resPen[0]; var setResPenhora = _resPen[1];
+/* ===== JORNADAS ADMIN ===== */
+window.abrirModal=function(){rlJA();document.getElementById('mJor').style.display='flex';};
+window.fecharModal=function(){document.getElementById('mJor').style.display='none';};
+window.doCriarJ=function(){var nm=(document.getElementById('nJN').value||'').trim();if(!nm){alert('Informe o nome.');return;}var jj=gJ();var id=nm.toLowerCase().replace(/[^a-z0-9]/g,'');if(jj.find(function(j){return j.id===id;})){alert('Já existe.');return;}jj.push({id:id,nm:nm,fix:false,pw:PW,perfil:null});localStorage.setItem('dpe_j',JSON.stringify(jj));document.getElementById('nJN').value='';rjornadas();rlJA();};
+window.doApagJ=function(id){if(!confirm('Apagar jornada?'))return;var jj=gJ().filter(function(j){return j.id!==id;});localStorage.setItem('dpe_j',JSON.stringify(jj));localStorage.removeItem(kA(id));localStorage.removeItem(kS(id));rjornadas();rlJA();};
+function rlJA(){var d=document.getElementById('lJA');if(!d)return;d.innerHTML='';gJ().forEach(function(j){var it=document.createElement('div');it.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #eee;font-size:12px;';it.innerHTML='<span>'+j.nm+'</span>'+(j.fix?'':'<button class="btn br bsm" onclick="doApagJ(\''+j.id+'\')">Apagar</button>');d.appendChild(it);});}
 
-  // Pris\u00e3o civil (parcelas)
-  var _dia = useState("5"); var diaVencimento = _dia[0]; var setDiaVencimento = _dia[1];
-  var _tipo = useState("sm"); var tipoAlimento = _tipo[0]; var setTipoAlimento = _tipo[1];
-  var _pct = useState(""); var percentualSM = _pct[0]; var setPercentualSM = _pct[1];
-  var _vfix = useState(""); var valorFixoAlimento = _vfix[0]; var setValorFixoAlimento = _vfix[1];
-  var _parc = useState([novaParcela()]); var parcelas = _parc[0]; var setParcelas = _parc[1];
-  var _si = useState(false); var showIntervalo = _si[0]; var setShowIntervalo = _si[1];
-  var _i13 = useState(false); var incluir13 = _i13[0]; var setIncluir13 = _i13[1];
-  var _resPri = useState(null); var resPrisao = _resPri[0]; var setResPrisao = _resPri[1];
-  var _ld = useState(false); var loading = _ld[0]; var setLoading = _ld[1];
+/* ===== ENCERRAR JORNADA ===== */
+window.doEncerrar=function(){
+  var s=prompt('Senha para encerrar jornada:');if(!s)return;
+  var jj=gJ();var jorn=jj.find(function(j){return j.id===SS.jid;});
+  if(s!==(jorn&&jorn.pw||PW)){alert('Senha incorreta.');return;}
+  if(!confirm('Encerrar jornada "'+SS.jnm+'"?\nUm relatório será gerado.'))return;
+  var lst=JSON.parse(localStorage.getItem(kA(SS.jid))||'[]'),td=0,to=0;
+  lst.forEach(function(a){to+=(a.oficios?a.oficios.length:0);a.oficios&&a.oficios.forEach(function(of){of.titulares&&of.titulares.forEach(function(t){td+=t.docs?t.docs.length:0;});});});
+  var rl=JSON.parse(localStorage.getItem('dpe_rl')||'[]');
+  var nr={id:Date.now(),jid:SS.jid,jnm:SS.jnm,de:new Date().toLocaleDateString('pt-BR'),ho:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),df:SS.nm,dfu:SS.un,ta:lst.length,to:to,td:td,seqFinal:parseInt(localStorage.getItem(kS(SS.jid))||'0',10),ats:lst};
+  rl.push(nr);try{localStorage.setItem('dpe_rl',JSON.stringify(rl));}catch(e){}
+  prel(nr);
+  setTimeout(function(){localStorage.removeItem(kA(SS.jid));localStorage.removeItem(kS(SS.jid));localStorage.removeItem('dpe_ss');location.reload();},800);
+};
 
-  var calcMesFimPadrao = function() {
-    var hoje = new Date(); var dv=Number(diaVencimento)||5;
-    var mA=hoje.getMonth()+1, aA=hoje.getFullYear();
-    if(hoje.getDate()>=dv) return {mesFim:mA,anoFim:aA};
-    var mAnt=mA-1, aAnt=aA; if(mAnt<1){mAnt=12;aAnt--;}
-    return {mesFim:mAnt,anoFim:aAnt};
-  };
-  var padrao = calcMesFimPadrao();
-  var _intv = useState({mesIni:1,anoIni:2024,mesFim:padrao.mesFim,anoFim:padrao.anoFim,pago:""});
-  var intervalo = _intv[0]; var setIntervalo = _intv[1];
+/* ===== BUSCA GLOBAL ===== */
+function carregarRlSel(){var sel=document.getElementById('rlSel');if(!sel)return;var rl=JSON.parse(localStorage.getItem('dpe_rl')||'[]');sel.innerHTML='<option value="">Selecione...</option>';var seen={};for(var i=rl.length-1;i>=0;i--){var r=rl[i];if(!seen[r.jid]){seen[r.jid]=true;var o=document.createElement('option');o.value=r.jid+'|'+r.id;o.textContent=r.jnm+' (enc. '+r.de+')';sel.appendChild(o);}}}
+function carregarRelsLogin(){var rl=JSON.parse(localStorage.getItem('dpe_rl')||'[]'),d=document.getElementById('lbRel');if(!d)return;if(!rl.length){d.innerHTML='<p style="color:#888;font-style:italic;font-size:12px;">Nenhum relatório salvo.</p>';return;}d.innerHTML='';for(var i=rl.length-1;i>=0;i--){(function(r){var it=document.createElement('div');it.style.cssText='background:var(--vc);border:1px solid var(--vm);border-radius:6px;padding:10px 12px;margin-bottom:8px;';it.innerHTML='<div style="font-weight:700;font-size:12px;color:var(--v3);">'+r.jnm+'</div><div style="font-size:11px;color:#555;">'+r.de+' — '+r.ta+' atend. / '+r.to+' ofícios / '+r.td+' docs</div><div style="font-size:11px;color:#777;margin-bottom:6px;">'+r.df+'</div><button class="btn bv bsm" onclick="doReimRel('+r.id+')">Reimprimir</button>';d.appendChild(it);})(rl[i]);}}
+window.doAutBusca=function(){var s=(document.getElementById('lbSe').value||'').trim();if(s!==PW){document.getElementById('lbErr').style.display='block';document.getElementById('lbSe').value='';return;}document.getElementById('lbErr').style.display='none';LBAU=true;document.getElementById('lbAuth').style.display='none';document.getElementById('lbPain').style.display='block';carregarRelsLogin();};
+window.doLbuscar=function(){
+  if(!LBAU)return;
+  var tn=(document.getElementById('lbNm').value||'').trim().toUpperCase();
+  var tc=(document.getElementById('lbCP').value||'').trim();
+  if(!tn&&!tc){document.getElementById('lbInfo').innerText='Informe ao menos um critério.';document.getElementById('lbRes').innerHTML='';return;}
+  var res=[];
+  gJ().forEach(function(j){JSON.parse(localStorage.getItem(kA(j.id))||'[]').forEach(function(at){var ok=false;if(tc&&at.rq&&at.rq.cp&&at.rq.cp.replace(/\D/g,'')===tc.replace(/\D/g,''))ok=true;if(tn&&at.rq&&at.rq.nm&&at.rq.nm.indexOf(tn)>=0)ok=true;if(at.oficios)at.oficios.forEach(function(of){of.titulares&&of.titulares.forEach(function(t){if(tn&&t.nome&&t.nome.indexOf(tn)>=0)ok=true;if(tc&&t.cpf&&t.cpf.replace(/\D/g,'')===tc.replace(/\D/g,''))ok=true;});});if(ok)res.push({j:j,at:at});});});
+  var rl=JSON.parse(localStorage.getItem('dpe_rl')||'[]');
+  var vR={};rl.forEach(function(r){if(vR[r.jid])return;vR[r.jid]=true;(r.ats||[]).forEach(function(at){var na=res.find(function(x){return x.at.id===at.id;});if(na)return;var ok=false;if(tc&&at.rq&&at.rq.cp&&at.rq.cp.replace(/\D/g,'')===tc.replace(/\D/g,''))ok=true;if(tn&&at.rq&&at.rq.nm&&at.rq.nm.indexOf(tn)>=0)ok=true;if(at.oficios)at.oficios.forEach(function(of){of.titulares&&of.titulares.forEach(function(t){if(tn&&t.nome&&t.nome.indexOf(tn)>=0)ok=true;});});if(ok)res.push({j:{id:r.jid,nm:r.jnm+' (encerrada)'},at:at});});});
+  var bi=document.getElementById('lbInfo'),bd=document.getElementById('lbRes');
+  if(!res.length){bi.innerText='Nenhum resultado.';bd.innerHTML='';return;}
+  var js={};res.forEach(function(r){js[r.j.id]=true;});bi.innerText=res.length+' resultado(s) em '+Object.keys(js).length+' jornada(s).';bd.innerHTML='';
+  var gr={};res.forEach(function(r){if(!gr[r.j.id])gr[r.j.id]={nm:r.j.nm,its:[]};gr[r.j.id].its.push(r.at);});
+  Object.keys(gr).forEach(function(jid){var g=gr[jid];var t=document.createElement('div');t.style.cssText='background:var(--v3);color:#fff;padding:5px 10px;border-radius:4px;font-size:12px;font-weight:700;margin:10px 0 6px;';t.innerText=g.nm+' ('+g.its.length+')';bd.appendChild(t);g.its.forEach(function(at){var it=document.createElement('div');it.className='hi';var ofDesc=(at.oficios||[]).map(function(o){return(o.no||'?')+' → '+o.cartorio;}).join(' | ');it.innerHTML='<div><h3>'+at.dt+' — '+(at.rq&&at.rq.nm?at.rq.nm:'')+'</h3><p>Ofícios: '+ofDesc+'</p><p style="font-size:10px;color:var(--v3);">'+g.nm+(at.ss&&at.ss.nm?' | '+at.ss.nm:'')+'</p></div>';bd.appendChild(it);});});
+};
+window.doLlimpar=function(){document.getElementById('lbNm').value='';document.getElementById('lbCP').value='';document.getElementById('lbInfo').innerText='';document.getElementById('lbRes').innerHTML='';};
+window.doReimRel=function(id){var rl=JSON.parse(localStorage.getItem('dpe_rl')||'[]'),r=rl.find(function(x){return x.id===id;});if(r)prel(r);};
 
-  var inpStyle = { width:"100%", padding:"8px", borderRadius:6, border:"1px solid "+C.borda, fontSize:13, boxSizing:"border-box" };
-
-  var addParcela = function(){ setParcelas(function(p){ return p.concat([novaParcela()]); }); };
-  var removeParcela = function(id){ setParcelas(function(p){ return p.filter(function(x){return x.id!==id;}); }); };
-  var editParcela = function(id,campo,val){ setParcelas(function(p){ return p.map(function(x){ if(x.id===id){var n=Object.assign({},x);n[campo]=val;return n;} return x; }); }); };
-
-  var contarParcelas = function(){
-    var n=0,m=intervalo.mesIni,a=intervalo.anoIni;
-    while(a<intervalo.anoFim||(a===intervalo.anoFim&&m<=intervalo.mesFim)){n++;m++;if(m>12){m=1;a++;}}
-    return n;
-  };
-  var addIntervalo = function(){
-    var novas=[]; var m=intervalo.mesIni,a=intervalo.anoIni;
-    while(a<intervalo.anoFim||(a===intervalo.anoFim&&m<=intervalo.mesFim)){
-      var valor; if(tipoAlimento==="sm") valor=r2(getSM(m,a)*Number(percentualSM)/100).toFixed(2); else valor=r2(parseMoney(valorFixoAlimento)).toFixed(2);
-      novas.push({id:Date.now()+novas.length,mes:m,ano:a,valor:valor,pago:intervalo.pago?Number(intervalo.pago).toFixed(2):"",is13:false});
-      m++;if(m>12){m=1;a++;}
-    }
-    setParcelas(function(prev){
-      var ex={};prev.forEach(function(p){ex[p.ano+"-"+p.mes]=true;});
-      var u=novas.filter(function(n){return !ex[n.ano+"-"+n.mes];});
-      return prev.concat(u);
-    });
-    setIntervalo(function(i){return Object.assign({},i,{pago:""});});
-  };
-
-  // C\u00e1lculo penhora simples
-  var calcularPenhora = function(){
-    var valorRefNum = parseMoney(valorRef);
-    if (!valorRef || valorRefNum <= 0) { alert("Informe o valor de refer\u00eancia."); return; }
-    var hoje = new Date();
-    var mHoje = hoje.getMonth()+1, aHoje = hoje.getFullYear();
-    var calc = corrigirAte(valorRefNum, mesRef, anoRef, mHoje, aHoje, indice);
-    var labelIndice = indice==="selic" ? "SELIC (acumulada)" : "IPCA-E + Juros 1% a.m.";
-    var dataBase = hoje.toLocaleDateString("pt-BR");
-    var dataRef = MESES[mesRef-1]+"/"+anoRef;
-    var res = {
-      processo: maskProcesso(processo), alimentado, alimentante, comarca,
-      indice, indiceLabel: labelIndice,
-      valorRef: valorRefNum,
-      dataRef: dataRef,
-      dataBase: dataBase,
-      mesRef, anoRef,
-      fator: calc.fator,
-      corrigido: calc.corrigido,
-      juros: calc.juros,
-      total: calc.total,
-      mesesAtraso: calc.mesesAtraso,
-      justificativa: justificativa.trim(),
-      defensor: perfil.nome||"",
-      lotacao: perfil.lotacao||""
-    };
-    setResPenhora(res);
-    onSalvarHistorico({ id:Date.now(), tipo:"atu-penhora", alimentado, processo:maskProcesso(processo), data:dataBase, total:calc.total });
-  };
-
-  // C\u00e1lculo pris\u00e3o (id\u00eantico ao original, mas tudo vai para um \u00fanico bloco pris\u00e3o)
-  var calcularPrisao = function(){
-    if (!usuario.autenticado && !perfil.nome) { alert("Essa calculadora \u00e9 somente para defensores legais."); return; }
-    setLoading(true); setResPrisao(null);
-    setTimeout(function(){
-      var raw = parcelas
-        .filter(function(p){return p.valor&&Number(p.valor)>0;})
-        .sort(function(a,b){return a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes;})
-        .map(function(p){return {
-          mes:p.mes,ano:p.ano,label:fmtMes(p.mes,p.ano),
-          smVig:getSM(p.mes===13?12:p.mes,p.ano),
-          nominal:r2(Number(p.valor)),pago:r2(Number(p.pago||0)),is13:!!p.is13
-        };});
-
-      if (incluir13) {
-        var anosSet={};
-        raw.filter(function(p){return !p.is13;}).forEach(function(p){anosSet[p.ano]=true;});
-        var anos13=Object.keys(anosSet).map(Number);
-        var parc13=[];
-        anos13.forEach(function(ano){
-          var doAno=raw.filter(function(p){return p.ano===ano&&!p.is13;});
-          if(doAno.length>0){
-            var ja=raw.filter(function(p){return p.ano===ano&&p.is13;}).length>0;
-            if(!ja){
-              var hoje2=new Date();
-              var dez=(ano<hoje2.getFullYear())||(ano===hoje2.getFullYear()&&hoje2.getMonth()>=11);
-              if(dez){
-                var soma=0;doAno.forEach(function(p){soma+=p.nominal;});
-                var media=r2(soma/doAno.length);
-                parc13.push({mes:13,ano,label:"13\u00ba/"+ano,smVig:getSM(12,ano),nominal:media,pago:0,is13:true});
-              }
-            }
-          }
-        });
-        raw=raw.concat(parc13).sort(function(a,b){return a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes;});
-      }
-
-      if (!raw.length){setLoading(false);return;}
-
-      var pagamentos=[];
-      raw.forEach(function(p){if(p.pago>0) pagamentos.push({valor:p.pago,mesPgto:p.mes===13?12:p.mes,anoPgto:p.ano,labelOrigem:p.label});});
-      var saldosNominais=raw.map(function(p){return{saldoNominal:p.nominal};});
-      var logImp=[];
-
-      pagamentos.forEach(function(pg){
-        var saldoPgto=pg.valor;
-        for(var i=0;i<raw.length;i++){
-          if(saldoPgto<=0)break;
-          if(saldosNominais[i].saldoNominal<=0)continue;
-          var mesParc=raw[i].mes===13?12:raw[i].mes;
-          var calcAtePgto=corrigirAte(saldosNominais[i].saldoNominal,mesParc,raw[i].ano,pg.mesPgto,pg.anoPgto,indice);
-          var devidoAtePgto=calcAtePgto.total;
-          if(saldoPgto>=devidoAtePgto){
-            saldoPgto=r2(saldoPgto-devidoAtePgto);
-            logImp.push({parcelaDestino:raw[i].label,valorAbatido:devidoAtePgto,pgtoOrigem:pg.labelOrigem,quitada:true,saldoNominalAntes:saldosNominais[i].saldoNominal});
-            saldosNominais[i].saldoNominal=0;
-          } else {
-            var prop=saldoPgto/devidoAtePgto;
-            var nomQuitado=r2(saldosNominais[i].saldoNominal*prop);
-            logImp.push({parcelaDestino:raw[i].label,valorAbatido:saldoPgto,pgtoOrigem:pg.labelOrigem,quitada:false,saldoNominalAntes:saldosNominais[i].saldoNominal});
-            saldosNominais[i].saldoNominal=r2(saldosNominais[i].saldoNominal-nomQuitado);
-            saldoPgto=0;
-          }
-        }
-        if(saldoPgto>0) logImp.push({parcelaDestino:"(cr\u00e9dito excedente)",valorAbatido:saldoPgto,pgtoOrigem:pg.labelOrigem,quitada:false,creditoExcedente:true});
-      });
-
-      var parcelasCorrigidas=raw.map(function(p,idx){
-        var saldoNom=saldosNominais[idx].saldoNominal;
-        var quitado=saldoNom<=0;
-        var calc=quitado?{fator:1,corrigido:0,juros:0,total:0,mesesAtraso:0}:corrigir(saldoNom,p.mes,p.ano,indice);
-        var calcIntegral=corrigir(p.nominal,p.mes,p.ano,indice);
-        var creditoApl=0;
-        logImp.forEach(function(l){if(l.parcelaDestino===p.label&&!l.creditoExcedente)creditoApl=r2(creditoApl+l.valorAbatido);});
-        return Object.assign({},p,{
-          fator:calcIntegral.fator,corrigido:quitado?0:calc.corrigido,juros:quitado?0:calc.juros,
-          total:quitado?0:calc.total,mesesAtraso:calcIntegral.mesesAtraso,
-          saldoBruto:saldoNom,saldoNominalOriginal:p.nominal,creditoAplicado:creditoApl,
-          quitado,pagoOriginal:p.pago
-        });
-      });
-
-      var total=r2(parcelasCorrigidas.reduce(function(s,p){return s+p.total;},0));
-      var creditoExcedente=0;
-      logImp.forEach(function(l){if(l.creditoExcedente)creditoExcedente=r2(creditoExcedente+l.valorAbatido);});
-
-      var obsImp="";
-      if(pagamentos.length>0){
-        var pgLabels=pagamentos.map(function(pg){return pg.labelOrigem+" ("+fmt(pg.valor)+")";});
-        var pQ=logImp.filter(function(l){return l.quitada;});
-        var pA=logImp.filter(function(l){return !l.quitada&&l.valorAbatido>0&&!l.creditoExcedente;});
-        obsImp="IMPUTA\u00c7\u00c3O DE PAGAMENTOS (art. 354 CC): Pagamento(s) efetuado(s) em "+pgLabels.join(", ")+". ";
-        obsImp+="Cada parcela foi corrigida at\u00e9 a data do respectivo pagamento e o valor imputado nas mais antigas. ";
-        if(pQ.length>0) obsImp+="Parcela(s) quitada(s): "+pQ.map(function(l){return l.parcelaDestino;}).join(", ")+". ";
-        if(pA.length>0) obsImp+="Parcela(s) abatida(s): "+pA.map(function(l){return l.parcelaDestino+" (abatido "+fmt(l.valorAbatido)+")"}).join(", ")+". ";
-        if(creditoExcedente>0) obsImp+="Cr\u00e9dito excedente: "+fmt(creditoExcedente)+".";
-      }
-
-      var justFinal=justificativa.trim();
-      if(obsImp){if(justFinal)justFinal+="\n\n";justFinal+=obsImp;}
-
-      var labelIndice=indice==="selic"?"SELIC (acumulada)":"IPCA-E + Juros 1% a.m.";
-      var res={
-        processo:maskProcesso(processo),alimentado,alimentante,comarca,
-        diaVencimento,tipoAlimento,percentualSM,valorFixoAlimento,
-        indice,indiceLabel:labelIndice,
-        justificativa:justFinal,
-        parcelas:parcelasCorrigidas,
-        total,
-        data:new Date().toLocaleDateString("pt-BR"),
-        defensor:perfil.nome||"",
-        lotacao:perfil.lotacao||"",
-        obsImputacao:obsImp,
-        creditoRemanescente:creditoExcedente
-      };
-      setResPrisao(res);
-      onSalvarHistorico({id:Date.now(),tipo:"atu-prisao",alimentado,processo:maskProcesso(processo),data:new Date().toLocaleDateString("pt-BR"),total});
-      setLoading(false);
-    }, 400);
-  };
-
-  return (
-    <div>
-      {/* Sub-abas */}
-      <div style={{ display:"flex", gap:0, marginBottom:20, borderRadius:8, overflow:"hidden", border:"1px solid "+C.borda }}>
-        {[
-          ["penhora", "\ud83d\udcb0 Atualizar \u2014 Rito da Penhora", "Valor de refer\u00eancia + corre\u00e7\u00e3o"],
-          ["prisao", "\ud83d\udd12 Atualizar \u2014 Rito da Pris\u00e3o Civil", "Parcelas vencidas ap\u00f3s a distribui\u00e7\u00e3o"]
-        ].map(function(item, idx){
-          var v=item[0], l=item[1], desc=item[2];
-          var ativo=subModo===v;
-          return (
-            <button key={v} onClick={function(){setSubModo(v);}} style={{
-              flex:1, padding:"14px 16px", border:"none",
-              borderRight: idx===0?"1px solid "+C.borda:"none",
-              background: ativo ? (v==="penhora"?C.azul:C.verde) : C.cinzaClaro,
-              color: ativo ? "#fff" : C.cinza,
-              cursor:"pointer", textAlign:"left", touchAction:"manipulation"
-            }}>
-              <div style={{ fontWeight:700, fontSize:13 }}>{l}</div>
-              <div style={{ fontSize:11, opacity:.8, marginTop:2 }}>{desc}</div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Campos comuns */}
-      <Card>
-        <h3 style={{ margin:"0 0 16px", color:C.cinza, fontSize:15 }}>{"Dados do Processo"}</h3>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px" }}>
-          <div style={{ marginBottom:14 }}>
-            <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"N\u00famero do Processo"}</label>
-            <input type="text" inputMode="numeric"
-              value={maskProcesso(processo)}
-              onChange={function(e){setProcesso(digitsFromDisplay(e.target.value));}}
-              placeholder={"0000000-00.0000.8.18.0000"}
-              style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box", fontFamily:"monospace" }} />
-          </div>
-          <Input label={"Vara/Comarca"} value={comarca} onChange={setComarca} placeholder={"Vara/Comarca"} />
-          <Input label={"Alimentado(a) / Exequente"} value={alimentado} onChange={setAlimentado} placeholder={"Nome completo"} />
-          <Input label={"Alimentante / Executado"} value={alimentante} onChange={setAlimentante} placeholder={"Nome completo"} />
-        </div>
-        <SeletorIndice indice={indice} setIndice={setIndice} />
-      </Card>
-
-      {/* ---- PENHORA SIMPLES ---- */}
-      {subModo === "penhora" && (
-        <div>
-          <Card>
-            <h3 style={{ margin:"0 0 16px", color:C.azul, fontSize:15 }}>{"Saldo de Refer\u00eancia"}</h3>
-            <div style={{ background:"#e8f0f8", border:"1px solid "+C.azul, borderRadius:8, padding:"12px 16px", marginBottom:16, fontSize:13, color:C.azul }}>
-              {"Informe o valor do d\u00e9bito j\u00e1 constante nos autos (conforme \u00faltima atualiza\u00e7\u00e3o judicial ou da parte contr\u00e1ria) e o m\u00eas/ano a que esse valor se refere. O sistema ir\u00e1 atualiz\u00e1-lo at\u00e9 hoje."}
-            </div>
-            <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr 1fr", gap:16, alignItems:"end" }}>
-              <div>
-                <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Valor de Refer\u00eancia (R$)"}</label>
-                <input type="text" inputMode="decimal" value={valorRef}
-                  onChange={function(e){
-                    var raw = e.target.value.replace(/[^0-9]/g, "");
-                    setValorRef(fmtInput(raw));
-                  }}
-                  placeholder={"0,00"}
-                  style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
-              </div>
-              <div>
-                <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"M\u00eas de Ref."}</label>
-                <select value={mesRef} onChange={function(e){setMesRef(Number(e.target.value));}}
-                  style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:13, boxSizing:"border-box" }}>
-                  {MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>;})}
-                </select>
-              </div>
-              <div>
-                <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Ano de Ref."}</label>
-                <input type="number" value={anoRef}
-                  onChange={function(e){setAnoRef(Number(e.target.value));}}
-                  style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
-              </div>
-            </div>
-            <div style={{ marginTop:14 }}>
-              <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Justificativa / Observa\u00e7\u00f5es (opcional)"}</label>
-              <textarea value={justificativa} onChange={function(e){setJustificativa(e.target.value);}} rows={3}
-                placeholder={"Ex.: Atualiza\u00e7\u00e3o requerida nos autos conforme intima\u00e7\u00e3o de ..."}
-                style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:13, boxSizing:"border-box", resize:"vertical", fontFamily:"inherit" }} />
-            </div>
-            <div style={{ marginTop:16 }}>
-              <Btn onClick={calcularPenhora} cor={C.azul}>{"Calcular Atualiza\u00e7\u00e3o (Penhora)"}</Btn>
-            </div>
-          </Card>
-
-          {resPenhora && (
-            <Card style={{ borderLeft:"4px solid "+C.azul }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-                <h3 style={{ margin:0, color:C.azul }}>{"Resultado \u2014 Atualiza\u00e7\u00e3o (Penhora)"}</h3>
-                <Btn onClick={function(){carregarLogo().then(function(ld){gerarPDFAtuPenhora(resPenhora,ld);});}} cor={C.azul}>{"Gerar PDF"}</Btn>
-              </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
-                {[
-                  ["Valor de Refer\u00eancia", fmt(resPenhora.valorRef)],
-                  ["Fator de Corre\u00e7\u00e3o", resPenhora.fator.toFixed(6)],
-                  ["M\u00eases", String(resPenhora.mesesAtraso)]
-                ].map(function(item,i){
-                  return (
-                    <div key={i} style={{ background:C.cinzaClaro, borderRadius:6, padding:"10px 14px" }}>
-                      <div style={{ fontSize:11, color:"#888" }}>{item[0]}</div>
-                      <div style={{ fontWeight:700, fontSize:14 }}>{item[1]}</div>
-                    </div>
-                  );
-                })}
-              </div>
-              {resPenhora.indice === "ipca" && (
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
-                  <div style={{ background:"#e8f0f8", borderRadius:6, padding:"10px 14px" }}>
-                    <div style={{ fontSize:11, color:C.azul }}>{"Valor Corrigido (IPCA-E)"}</div>
-                    <div style={{ fontWeight:700, fontSize:14 }}>{fmt(resPenhora.corrigido)}</div>
-                  </div>
-                  <div style={{ background:"#e8f0f8", borderRadius:6, padding:"10px 14px" }}>
-                    <div style={{ fontSize:11, color:C.azul }}>{"Juros de Mora (1% a.m.)"}</div>
-                    <div style={{ fontWeight:700, fontSize:14 }}>{fmt(resPenhora.juros)}</div>
-                  </div>
-                </div>
-              )}
-              <div style={{ background:C.azul, borderRadius:8, padding:"14px 20px", textAlign:"center" }}>
-                <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"TOTAL ATUALIZADO \u2014 PENHORA"}</div>
-                <div style={{ color:"#fff", fontWeight:800, fontSize:22 }}>{fmt(resPenhora.total)}</div>
-                <div style={{ color:"rgba(255,255,255,0.7)", fontSize:11, marginTop:4 }}>{"\u00cdndice: "+resPenhora.indiceLabel}</div>
-              </div>
-            </Card>
-          )}
-        </div>
-      )}
-
-      {/* ---- PRIS\u00c3O CIVIL ---- */}
-      {subModo === "prisao" && (
-        <div>
-          <Card>
-            <h3 style={{ margin:"0 0 12px", color:C.verde, fontSize:15 }}>{"Alimentos Fixados"}</h3>
-            <div style={{ display:"flex", gap:10, marginBottom:10 }}>
-              {[["sm","% do Sal\u00e1rio M\u00ednimo"],["fixo","Valor fixo (R$)"]].map(function(item){
-                var v=item[0],l=item[1];
-                return (
-                  <button key={v} onClick={function(){setTipoAlimento(v);}} style={{
-                    padding:"7px 16px", borderRadius:6, border:"2px solid "+(tipoAlimento===v?C.verde:C.borda),
-                    background:tipoAlimento===v?C.verde:C.branco, color:tipoAlimento===v?"#fff":C.cinza,
-                    fontWeight:600, fontSize:13, cursor:"pointer"
-                  }}>{l}</button>
-                );
-              })}
-            </div>
-            {tipoAlimento==="sm"
-              ? <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <input type="text" inputMode="decimal" value={percentualSM} onChange={function(e){setPercentualSM(e.target.value);}} placeholder={"ex: 20"}
-                    style={{ width:100, padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
-                  <span style={{ fontSize:14, color:C.cinza }}>{"% do sal\u00e1rio m\u00ednimo federal"}</span>
-                </div>
-              : <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <span style={{ fontSize:14, color:C.cinza }}>{"R$"}</span>
-                  <input type="text" inputMode="decimal" value={valorFixoAlimento} onChange={function(e){var raw=e.target.value.replace(/[^0-9]/g,"");setValorFixoAlimento(fmtInput(raw));}} placeholder={"0,00"}
-                    style={{ width:150, padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
-                </div>
-            }
-            <div style={{ maxWidth:200, marginTop:12 }}>
-              <Input label={"Dia de vencimento"} value={diaVencimento} onChange={setDiaVencimento} placeholder={"5"} type={"number"} />
-            </div>
-          </Card>
-
-          <Card>
-            <h3 style={{ margin:"0 0 4px", color:C.verde, fontSize:15 }}>{"Parcelas em Aberto (todas no Rito da Pris\u00e3o)"}</h3>
-            <p style={{ fontSize:12, color:"#888", marginTop:0, marginBottom:12 }}>{"Inclua todas as parcelas vencidas ap\u00f3s a distribui\u00e7\u00e3o da execu\u00e7\u00e3o que devem ser atualizadas pelo rito da pris\u00e3o civil."}</p>
-            <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginBottom:12 }}>
-              <Btn small onClick={function(){
-                if(!showIntervalo){var p2=calcMesFimPadrao();setIntervalo(function(prev){return Object.assign({},prev,{mesFim:p2.mesFim,anoFim:p2.anoFim});});}
-                setShowIntervalo(!showIntervalo);
-              }} cor={C.azul}>{"Intervalo"}</Btn>
-              <Btn small onClick={addParcela} cor={C.verdeClaro}>{"+ Avulsa"}</Btn>
-              {parcelas.length>0 && <Btn small onClick={function(){if(window.confirm("Apagar todas?"))setParcelas([]);}} cor={C.vermelho} outline>{"Limpar"}</Btn>}
-            </div>
-
-            {showIntervalo && (
-              <div style={{ background:"#f0f4f8", border:"1px solid "+C.azul, borderRadius:8, padding:16, marginBottom:16 }}>
-                <div style={{ fontWeight:700, color:C.azul, marginBottom:8 }}>{"Adicionar intervalo"}</div>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:8, alignItems:"end" }}>
-                  <div>
-                    <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"M\u00eas ini"}</label>
-                    <select value={intervalo.mesIni} onChange={function(e){setIntervalo(Object.assign({},intervalo,{mesIni:Number(e.target.value)}));}} style={inpStyle}>
-                      {MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>;})}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"Ano ini"}</label>
-                    <input type="number" value={intervalo.anoIni} onChange={function(e){setIntervalo(Object.assign({},intervalo,{anoIni:Number(e.target.value)}));}} style={inpStyle} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"M\u00eas fim"}</label>
-                    <select value={intervalo.mesFim} onChange={function(e){setIntervalo(Object.assign({},intervalo,{mesFim:Number(e.target.value)}));}} style={inpStyle}>
-                      {MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>;})}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"Ano fim"}</label>
-                    <input type="number" value={intervalo.anoFim} onChange={function(e){setIntervalo(Object.assign({},intervalo,{anoFim:Number(e.target.value)}));}} style={inpStyle} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"Pago (R$)"}</label>
-                    <input type="text" inputMode="decimal" value={intervalo.pago} onChange={function(e){setIntervalo(Object.assign({},intervalo,{pago:e.target.value}));}} placeholder={"0,00"} style={inpStyle} />
-                  </div>
-                </div>
-                <div style={{ marginTop:12, display:"flex", gap:8 }}>
-                  <Btn small onClick={addIntervalo} cor={C.azul}>{"Adicionar "+contarParcelas()+" parcelas"}</Btn>
-                  <Btn small onClick={function(){setShowIntervalo(false);}} outline cor={C.cinza}>{"Fechar"}</Btn>
-                </div>
-              </div>
-            )}
-
-            {parcelas.map(function(p){
-              return (
-                <div key={p.id} style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr auto", gap:10, alignItems:"end", marginBottom:10, padding:12, background:p.is13?"#fff8e1":C.cinzaClaro, borderRadius:8, border:p.is13?"1px solid #f0c040":"none" }}>
-                  <div>
-                    <label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{p.is13?"13\u00ba Sal\u00e1rio":"M\u00eas"}</label>
-                    {p.is13
-                      ? <div style={{ padding:8, fontSize:13, color:C.azul, fontWeight:700 }}>{"13\u00ba/"+p.ano}</div>
-                      : <select value={p.mes} onChange={function(e){editParcela(p.id,"mes",Number(e.target.value));}} style={inpStyle}>
-                          {MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>;})}
-                        </select>
-                    }
-                  </div>
-                  <div>
-                    <label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"Ano"}</label>
-                    <input type="number" value={p.ano} onChange={function(e){editParcela(p.id,"ano",Number(e.target.value));}} style={inpStyle} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"Valor (R$)"}</label>
-                    <input type="text" inputMode="decimal" value={p.valor} onChange={function(e){editParcela(p.id,"valor",e.target.value);}} placeholder={"0,00"} style={inpStyle} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"Pago (R$)"}</label>
-                    <input type="text" inputMode="decimal" value={p.pago} onChange={function(e){editParcela(p.id,"pago",e.target.value);}} placeholder={"0,00"} style={inpStyle} />
-                  </div>
-                  <button onClick={function(){removeParcela(p.id);}} style={{ background:"transparent", border:"none", cursor:"pointer", color:C.vermelho, fontSize:18, paddingBottom:4 }}>{"\u2715"}</button>
-                </div>
-              );
-            })}
-
-            <div style={{ marginBottom:14 }}>
-              <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Justificativa / Observa\u00e7\u00f5es (opcional)"}</label>
-              <textarea value={justificativa} onChange={function(e){setJustificativa(e.target.value);}} rows={3}
-                placeholder={"Ex.: Atualiza\u00e7\u00e3o requerida nos autos conforme intima\u00e7\u00e3o de ..."}
-                style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:13, boxSizing:"border-box", resize:"vertical", fontFamily:"inherit" }} />
-            </div>
-
-            <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", background:incluir13?"#fff8e1":"#f9f9f9", border:"1px solid "+(incluir13?"#f0c040":C.borda), borderRadius:8, marginBottom:16 }}>
-              <input type="checkbox" checked={incluir13} onChange={function(e){setIncluir13(e.target.checked);}} style={{ width:20, height:20, cursor:"pointer" }} />
-              <div>
-                <div style={{ fontWeight:700, fontSize:13, color:C.cinza }}>{"Incluir 13\u00ba sal\u00e1rio"}</div>
-                <div style={{ fontSize:11, color:"#888" }}>{"Gera parcela de 13\u00ba ao final de cada ano (m\u00e9dia dos meses)."}</div>
-              </div>
-            </div>
-
-            <Btn onClick={calcularPrisao} disabled={loading||parcelas.every(function(p){return !p.valor;})}>
-              {loading?"Calculando...":"Calcular Atualiza\u00e7\u00e3o (Pris\u00e3o Civil)"}
-            </Btn>
-          </Card>
-
-          {resPrisao && (
-            <Card style={{ borderLeft:"4px solid "+C.verde }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-                <h3 style={{ margin:0, color:C.verde }}>{"Resultado \u2014 Atualiza\u00e7\u00e3o (Pris\u00e3o Civil)"}</h3>
-                <Btn onClick={function(){carregarLogo().then(function(ld){gerarPDFAtuPrisao(resPrisao,ld);});}} cor={C.verde}>{"Gerar PDF"}</Btn>
-              </div>
-              {resPrisao.obsImputacao && (
-                <div style={{ background:"#fff8e1", border:"1px solid #f0c040", borderRadius:8, padding:"12px 16px", marginBottom:12, fontSize:12, color:"#555", lineHeight:1.6 }}>
-                  <div style={{ fontWeight:700, color:"#b8860b", marginBottom:4 }}>{"Imputa\u00e7\u00e3o de Pagamentos (art. 354 CC)"}</div>
-                  {resPrisao.obsImputacao}
-                </div>
-              )}
-              <div style={{ background:C.verdePale, border:"1px solid "+C.verde, borderRadius:8, padding:16, marginBottom:12 }}>
-                <div style={{ fontWeight:700, color:C.verde, marginBottom:8 }}>{"Parcelas \u2014 Rito da Pris\u00e3o Civil"}</div>
-                {resPrisao.parcelas.map(function(p,i){
-                  return (
-                    <div key={i} style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginTop:4 }}>
-                      <span>
-                        {p.label}{p.is13?" [13\u00ba]":""}
-                        {p.pagoOriginal>0?" (pago: "+fmt(p.pagoOriginal)+")":""}
-                        {p.creditoAplicado>0?" (cr\u00e9d.: "+fmt(p.creditoAplicado)+")":""}
-                        {p.quitado?" \u2014 QUITADO":""}
-                      </span>
-                      <span style={{ fontWeight:600, color:p.quitado?C.verde:"inherit" }}>{p.quitado?"-":fmt(p.total)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div style={{ background:C.verde, borderRadius:8, padding:"14px 20px", textAlign:"center" }}>
-                <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"TOTAL ATUALIZADO \u2014 PRIS\u00c3O CIVIL"}</div>
-                <div style={{ color:"#fff", fontWeight:800, fontSize:22 }}>{fmt(resPrisao.total)}</div>
-                <div style={{ color:"rgba(255,255,255,0.7)", fontSize:11, marginTop:4 }}>{"\u00cdndice: "+resPrisao.indiceLabel}</div>
-              </div>
-            </Card>
-          )}
-        </div>
-      )}
-    </div>
-  );
+/* ===== RELATÓRIO ===== */
+function prel(r){
+  var ls=LB||LURL;var lns='';
+  (r.ats||[]).forEach(function(a,i){
+    var ofDesc=(a.oficios||[]).map(function(o){return(o.no||'?')+' → '+o.cartorio+', '+o.cidade;}).join('; ');
+    lns+='<tr style="background:'+(i%2===0?'#F1F8E9':'#fff')+'"><td style="padding:5px 8px;border:1px solid #ccc;">'+ctit((a.rq.nm||'').toLowerCase())+'</td><td style="padding:5px 8px;border:1px solid #ccc;text-align:center;">'+(a.rq.cp||'—')+'</td><td style="padding:5px 8px;border:1px solid #ccc;text-align:center;">'+(a.dt||'—')+'</td><td style="padding:5px 8px;border:1px solid #ccc;">'+(ofDesc||'—')+'</td></tr>';
+  });
+  var jn=window.open('','_blank','width=900,height=700');if(!jn){alert('Permita popups.');return;}
+  var html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório</title><style>*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}body{padding:24px;font-size:10pt;}@page{margin:1.5cm 2cm;size:A4 portrait;}@media print{.np{display:none;}}</style></head><body>'
+    +'<div style="display:flex;align-items:center;gap:14px;border-bottom:3px solid #4CAF50;padding-bottom:10px;margin-bottom:16px;"><img src="'+ls+'" style="width:80px;height:auto;" onerror="this.style.display=\'none\'"><div style="flex:1;text-align:center;"><div style="color:#2E7D32;font-size:13pt;font-weight:700;text-transform:uppercase;">Relatório de Encerramento de Jornada</div><div style="color:#43A047;font-size:9pt;font-weight:700;margin-top:3px;">Defensoria Pública do Estado do Piauí — Diretoria Itinerante</div></div></div>'
+    +'<div style="display:flex;gap:12px;margin-bottom:16px;"><div style="flex:1;background:#F1F8E9;border:1px solid #C8E6C9;border-radius:6px;padding:10px 14px;"><div style="font-size:8pt;font-weight:700;text-transform:uppercase;color:#2E7D32;">Jornada</div><div style="font-size:10pt;font-weight:700;">'+r.jnm+'</div><div style="font-size:8.5pt;color:#555;">Encerrada em '+r.de+' às '+r.ho+'</div></div><div style="flex:1;background:#F1F8E9;border:1px solid #C8E6C9;border-radius:6px;padding:10px 14px;"><div style="font-size:8pt;font-weight:700;text-transform:uppercase;color:#2E7D32;">Responsável</div><div style="font-size:10pt;font-weight:700;">'+r.df+'</div><div style="font-size:8.5pt;color:#555;">'+(r.dfu||'')+'</div></div></div>'
+    +'<div style="display:flex;gap:12px;margin-bottom:20px;"><div style="flex:1;text-align:center;background:#2E7D32;color:#fff;border-radius:8px;padding:12px;"><div style="font-size:22pt;font-weight:700;">'+r.ta+'</div><div>Atendimentos</div></div><div style="flex:1;text-align:center;background:#43A047;color:#fff;border-radius:8px;padding:12px;"><div style="font-size:22pt;font-weight:700;">'+r.to+'</div><div>Ofícios</div></div><div style="flex:1;text-align:center;background:#66BB6A;color:#fff;border-radius:8px;padding:12px;"><div style="font-size:22pt;font-weight:700;">'+r.td+'</div><div>Documentos</div></div></div>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:8.5pt;"><thead><tr style="background:#2E7D32;color:#fff;"><th style="padding:6px 8px;border:1px solid #aaa;text-align:left;">Requerente</th><th style="padding:6px 8px;border:1px solid #aaa;">CPF</th><th style="padding:6px 8px;border:1px solid #aaa;">Data</th><th style="padding:6px 8px;border:1px solid #aaa;text-align:left;">Ofícios</th></tr></thead><tbody>'+lns+'</tbody></table>'
+    +'<div class="np" style="text-align:center;margin-top:20px;"><button onclick="window.print()" style="background:#2E7D32;color:#fff;border:none;padding:10px 28px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">Imprimir</button></div>'
+    +'</body></html>';
+  jn.document.write(html);jn.document.close();jn.onload=function(){jn.print();};
 }
 
-// ===================== APP PRINCIPAL =====================
+/* ===== FICHA MANUAL ===== */
+window.doFichaManual=function(){
+  document.getElementById('pF').style.display='none';document.getElementById('pOficios').innerHTML='';document.getElementById('pM').style.display='block';
+  alogos();var to=document.title;document.title='Fichamodelo.pdf';
+  window.print();
+  setTimeout(function(){document.getElementById('pF').style.display='';document.getElementById('pM').style.display='none';document.title=to;},1200);
+};
 
-export default function App() {
-  var _s1 = useState(null); var logado = _s1[0]; var setLogado = _s1[1];
-  var fazerLogout = function() {
-    localStorage.removeItem("dpe_perfil"); localStorage.removeItem("dpe_historico");
-    setLogado(null); setTimeout(function(){window.location.reload();},50);
-  };
-  if (!logado) return (
-    <TelaLogin
-      onLogin={function(u){setLogado(u);}}
-      onVisitante={function(){setLogado({nome:"",lotacao:"",autenticado:false});}} />
-  );
-  return <AppInterno usuario={logado} onLogout={fazerLogout} />;
-}
-
-function AppInterno(props) {
-  var usuario = props.usuario;
-  var onLogout = props.onLogout;
-
-  var _p = useState(function(){
-    if(usuario.autenticado) return {nome:usuario.nome,lotacao:usuario.lotacao,apiKey:""};
-    try{return JSON.parse(localStorage.getItem("dpe_perfil")||"{}");} catch(e){return {};}
-  }); var perfil = _p[0]; var setPerfil = _p[1];
-
-  var _sp = useState(false); var showPerfil = _sp[0]; var setShowPerfil = _sp[1];
-  var _st = useState("calc"); var tab = _st[0]; var setTab = _st[1];
-
-  var _sh = useState(function(){
-    try{return JSON.parse(localStorage.getItem("dpe_historico")||"[]");} catch(e){return [];}
-  }); var historico = _sh[0]; var setHistorico = _sh[1];
-
-  var salvarPerfil = function(p) { setPerfil(p); localStorage.setItem("dpe_perfil",JSON.stringify(p)); };
-
-  var salvarHistorico = function(item) {
-    setHistorico(function(h){
-      var novo=[item].concat(h).slice(0,50);
-      localStorage.setItem("dpe_historico",JSON.stringify(novo));
-      return novo;
-    });
-  };
-
-  // ---- ESTADO ABA C\u00c1LCULO INICIAL ----
-  var _ind = useState("ipca"); var indice = _ind[0]; var setIndice = _ind[1];
-  var _proc = useState(""); var processo = _proc[0]; var setProcesso = _proc[1];
-  var _alim = useState(""); var alimentado = _alim[0]; var setAlimentado = _alim[1];
-  var _alim2 = useState(""); var alimentante = _alim2[0]; var setAlimentante = _alim2[1];
-  var _com = useState(""); var comarca = _com[0]; var setComarca = _com[1];
-  var _dia = useState("5"); var diaVencimento = _dia[0]; var setDiaVencimento = _dia[1];
-  var _tipo = useState("sm"); var tipoAlimento = _tipo[0]; var setTipoAlimento = _tipo[1];
-  var _pct = useState(""); var percentualSM = _pct[0]; var setPercentualSM = _pct[1];
-  var _vfix = useState(""); var valorFixoAlimento = _vfix[0]; var setValorFixoAlimento = _vfix[1];
-  var _parc = useState([novaParcela()]); var parcelas = _parc[0]; var setParcelas = _parc[1];
-  var _si = useState(false); var showIntervalo = _si[0]; var setShowIntervalo = _si[1];
-
-  var calcMesFimPadrao = function(diaVenc) {
-    var hoje=new Date(); var dv=Number(diaVenc)||5;
-    var mA=hoje.getMonth()+1, aA=hoje.getFullYear();
-    if(hoje.getDate()>=dv) return {mesFim:mA,anoFim:aA};
-    var mAnt=mA-1,aAnt=aA; if(mAnt<1){mAnt=12;aAnt--;}
-    return {mesFim:mAnt,anoFim:aAnt};
-  };
-  var padrao=calcMesFimPadrao(diaVencimento);
-  var _intv=useState({mesIni:1,anoIni:2024,mesFim:padrao.mesFim,anoFim:padrao.anoFim,pago:""});
-  var intervalo=_intv[0]; var setIntervalo=_intv[1];
-
-  var _i13=useState(false); var incluir13=_i13[0]; var setIncluir13=_i13[1];
-  var _just=useState(""); var justificativa=_just[0]; var setJustificativa=_just[1];
-  var _res=useState(null); var resultado=_res[0]; var setResultado=_res[1];
-  var _ld=useState(false); var loading=_ld[0]; var setLoading=_ld[1];
-  var _lia=useState(false); var loadingIA=_lia[0]; var setLoadingIA=_lia[1];
-  var _mia=useState(""); var msgIA=_mia[0]; var setMsgIA=_mia[1];
-  var fileRef=useRef();
-
-  var inpStyle={width:"100%",padding:"8px",borderRadius:6,border:"1px solid "+C.borda,fontSize:13,boxSizing:"border-box"};
-
-  var addParcela=function(){setParcelas(function(p){return p.concat([novaParcela()]);});};
-  var removeParcela=function(id){setParcelas(function(p){return p.filter(function(x){return x.id!==id;});});};
-  var editParcela=function(id,campo,val){setParcelas(function(p){return p.map(function(x){if(x.id===id){var n=Object.assign({},x);n[campo]=val;return n;}return x;});});};
-
-  var contarParcelas=function(){
-    var n=0,m=intervalo.mesIni,a=intervalo.anoIni;
-    while(a<intervalo.anoFim||(a===intervalo.anoFim&&m<=intervalo.mesFim)){n++;m++;if(m>12){m=1;a++;}}
-    return n;
-  };
-  var addIntervalo=function(){
-    var novas=[]; var m=intervalo.mesIni,a=intervalo.anoIni;
-    while(a<intervalo.anoFim||(a===intervalo.anoFim&&m<=intervalo.mesFim)){
-      var valor; if(tipoAlimento==="sm") valor=r2(getSM(m,a)*Number(percentualSM)/100).toFixed(2); else valor=r2(parseMoney(valorFixoAlimento)).toFixed(2);
-      novas.push({id:Date.now()+novas.length,mes:m,ano:a,valor:valor,pago:intervalo.pago?Number(intervalo.pago).toFixed(2):"",is13:false});
-      m++;if(m>12){m=1;a++;}
-    }
-    setParcelas(function(prev){
-      var ex={};prev.forEach(function(p){ex[p.ano+"-"+p.mes]=true;});
-      var u=novas.filter(function(n){return !ex[n.ano+"-"+n.mes];});
-      return prev.concat(u);
-    });
-    setIntervalo(function(i){return Object.assign({},i,{pago:""});});
-  };
-
-  var handleUpload=function(e){
-    var file=e.target.files[0];if(!file)return;
-    if(!perfil.apiKey){setMsgIA("Erro: Configure sua chave de API no perfil.");return;}
-    setLoadingIA(true);setMsgIA("Lendo documento com IA...");
-    var reader=new FileReader();
-    reader.onload=function(){
-      var base64=reader.result.split(",")[1];
-      var block=file.type==="application/pdf"
-        ?{type:"document",source:{type:"base64",media_type:"application/pdf",data:base64}}
-        :{type:"image",source:{type:"base64",media_type:file.type,data:base64}};
-      fetch("https://api.anthropic.com/v1/messages",{
-        method:"POST",
-        headers:{"Content-Type":"application/json","x-api-key":perfil.apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:[block,{type:"text",text:"Extraia: n\u00famero do processo CNJ, alimentado, alimentante, parcelas. Responda SOMENTE em JSON: {\"processo\":\"\",\"alimentado\":\"\",\"alimentante\":\"\",\"parcelas\":[{\"mes\":1,\"ano\":2024,\"valor\":1500.00}]}"}]}]})
-      }).then(function(resp){return resp.json();}).then(function(data){
-        var text=(data.content&&data.content[0]&&data.content[0].text)||"";
-        var parsed=JSON.parse(text.replace(/```json|```/g,"").trim());
-        if(parsed.processo)setProcesso(parsed.processo.replace(/\D/g,"").slice(0,17));
-        if(parsed.alimentado)setAlimentado(parsed.alimentado);
-        if(parsed.alimentante)setAlimentante(parsed.alimentante);
-        if(parsed.parcelas&&parsed.parcelas.length)
-          setParcelas(parsed.parcelas.map(function(p,i){return {id:Date.now()+i,mes:p.mes,ano:p.ano,valor:String(r2(p.valor)),pago:"",is13:false};}));
-        setMsgIA("OK! "+(parsed.parcelas?parsed.parcelas.length:0)+" parcela(s) extra\u00edda(s). Revise antes de calcular.");
-        setLoadingIA(false); if(fileRef.current)fileRef.current.value="";
-      }).catch(function(){setMsgIA("Erro: N\u00e3o foi poss\u00edvel ler o documento.");setLoadingIA(false);if(fileRef.current)fileRef.current.value="";});
-    };
-    reader.onerror=function(){setMsgIA("Erro ao ler arquivo.");setLoadingIA(false);};
-    reader.readAsDataURL(file);
-  };
-
-  var calcular=function(){
-    if(!usuario.autenticado&&!perfil.nome){alert("Essa calculadora \u00e9 somente para defensores legais.");return;}
-    setLoading(true);setResultado(null);
-    setTimeout(function(){
-      var raw=parcelas
-        .filter(function(p){return p.valor&&Number(p.valor)>0;})
-        .sort(function(a,b){return a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes;})
-        .map(function(p){return {mes:p.mes,ano:p.ano,label:fmtMes(p.mes,p.ano),smVig:getSM(p.mes===13?12:p.mes,p.ano),nominal:r2(Number(p.valor)),pago:r2(Number(p.pago||0)),is13:!!p.is13};});
-
-      if(incluir13){
-        var anosSet={};
-        raw.filter(function(p){return !p.is13;}).forEach(function(p){anosSet[p.ano]=true;});
-        var anos=Object.keys(anosSet).map(Number);
-        var parc13=[];
-        anos.forEach(function(ano){
-          var doAno=raw.filter(function(p){return p.ano===ano&&!p.is13;});
-          if(doAno.length>0){
-            var ja=raw.filter(function(p){return p.ano===ano&&p.is13;}).length>0;
-            if(!ja){
-              var hoje2=new Date();
-              var dez=(ano<hoje2.getFullYear())||(ano===hoje2.getFullYear()&&hoje2.getMonth()>=11);
-              if(dez){var soma=0;doAno.forEach(function(p){soma+=p.nominal;});var media=r2(soma/doAno.length);parc13.push({mes:13,ano,label:"13\u00ba/"+ano,smVig:getSM(12,ano),nominal:media,pago:0,is13:true});}
-            }
-          }
-        });
-        raw=raw.concat(parc13).sort(function(a,b){return a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes;});
-      }
-
-      if(!raw.length){setLoading(false);return;}
-
-      var pagamentos=[];
-      raw.forEach(function(p){if(p.pago>0)pagamentos.push({valor:p.pago,mesPgto:p.mes===13?12:p.mes,anoPgto:p.ano,labelOrigem:p.label});});
-      var saldosNominais=raw.map(function(p){return{saldoNominal:p.nominal};});
-      var logImp=[];
-
-      pagamentos.forEach(function(pg){
-        var saldoPgto=pg.valor;
-        for(var i=0;i<raw.length;i++){
-          if(saldoPgto<=0)break;
-          if(saldosNominais[i].saldoNominal<=0)continue;
-          var mesParc=raw[i].mes===13?12:raw[i].mes;
-          var calcAtePgto=corrigirAte(saldosNominais[i].saldoNominal,mesParc,raw[i].ano,pg.mesPgto,pg.anoPgto,indice);
-          var dev=calcAtePgto.total;
-          if(saldoPgto>=dev){saldoPgto=r2(saldoPgto-dev);logImp.push({parcelaDestino:raw[i].label,valorAbatido:dev,pgtoOrigem:pg.labelOrigem,quitada:true,saldoNominalAntes:saldosNominais[i].saldoNominal});saldosNominais[i].saldoNominal=0;}
-          else{var prop=saldoPgto/dev;var nomQ=r2(saldosNominais[i].saldoNominal*prop);logImp.push({parcelaDestino:raw[i].label,valorAbatido:saldoPgto,pgtoOrigem:pg.labelOrigem,quitada:false,saldoNominalAntes:saldosNominais[i].saldoNominal});saldosNominais[i].saldoNominal=r2(saldosNominais[i].saldoNominal-nomQ);saldoPgto=0;}
-        }
-        if(saldoPgto>0)logImp.push({parcelaDestino:"(cr\u00e9dito excedente)",valorAbatido:saldoPgto,pgtoOrigem:pg.labelOrigem,quitada:false,creditoExcedente:true});
-      });
-
-      var parcelasCorrigidas=raw.map(function(p,idx){
-        var saldoNom=saldosNominais[idx].saldoNominal;
-        var quitado=saldoNom<=0;
-        var calc=quitado?{fator:1,corrigido:0,juros:0,total:0,mesesAtraso:0}:corrigir(saldoNom,p.mes,p.ano,indice);
-        var calcIntegral=corrigir(p.nominal,p.mes,p.ano,indice);
-        var creditoApl=0;
-        logImp.forEach(function(l){if(l.parcelaDestino===p.label&&!l.creditoExcedente)creditoApl=r2(creditoApl+l.valorAbatido);});
-        return Object.assign({},p,{fator:calcIntegral.fator,corrigido:quitado?0:calc.corrigido,juros:quitado?0:calc.juros,total:quitado?0:calc.total,mesesAtraso:calcIntegral.mesesAtraso,saldoBruto:saldoNom,saldoNominalOriginal:p.nominal,creditoAplicado:creditoApl,quitado,pagoOriginal:p.pago});
-      });
-
-      var prisaoItems=parcelasCorrigidas.slice(-3);
-      var penhoraItems=parcelasCorrigidas.slice(0,-3);
-      var somaArr=function(arr){var s=0;arr.forEach(function(x){s+=x.total;});return r2(s);};
-      var creditoExcedente=0;
-      logImp.forEach(function(l){if(l.creditoExcedente)creditoExcedente=r2(creditoExcedente+l.valorAbatido);});
-
-      var obsImp="";
-      if(pagamentos.length>0){
-        var pgLabels=pagamentos.map(function(pg){return pg.labelOrigem+" ("+fmt(pg.valor)+")";});
-        var pQ=logImp.filter(function(l){return l.quitada;});
-        var pA=logImp.filter(function(l){return !l.quitada&&l.valorAbatido>0&&!l.creditoExcedente;});
-        obsImp="IMPUTA\u00c7\u00c3O DE PAGAMENTOS (art. 354 CC): Pagamento(s) efetuado(s) em "+pgLabels.join(", ")+". Cada parcela devida foi corrigida at\u00e9 a data do respectivo pagamento, e o valor pago foi imputado nas parcelas mais antigas, conforme ordem cronol\u00f3gica. O saldo remanescente de cada parcela n\u00e3o integralmente quitada continua sendo corrigido at\u00e9 a data-base do c\u00e1lculo. ";
-        if(pQ.length>0) obsImp+="Parcela(s) integralmente quitada(s): "+pQ.map(function(l){return l.parcelaDestino;}).join(", ")+". ";
-        if(pA.length>0) obsImp+="Parcela(s) parcialmente abatida(s): "+pA.map(function(l){return l.parcelaDestino+" (abatido "+fmt(l.valorAbatido)+")"}).join(", ")+". ";
-        if(creditoExcedente>0) obsImp+="Cr\u00e9dito excedente ap\u00f3s quita\u00e7\u00e3o de todas as parcelas: "+fmt(creditoExcedente)+".";
-      }
-
-      var justFinal=justificativa.trim();
-      if(obsImp){if(justFinal)justFinal+="\n\n";justFinal+=obsImp;}
-
-      var labelIndice=indice==="selic"?"SELIC (acumulada)":"IPCA-E + Juros 1% a.m.";
-      var res={
-        processo:maskProcesso(processo),alimentado,alimentante,comarca,
-        diaVencimento,tipoAlimento,percentualSM,valorFixoAlimento,
-        indice,indiceLabel:labelIndice,
-        justificativa:justFinal,
-        prisao:prisaoItems,penhora:penhoraItems,
-        totalPrisao:somaArr(prisaoItems),totalPenhora:somaArr(penhoraItems),
-        data:new Date().toLocaleDateString("pt-BR"),
-        defensor:perfil.nome||"",lotacao:perfil.lotacao||"",
-        obsImputacao:obsImp,creditoRemanescente:creditoExcedente
-      };
-      setResultado(res);
-      salvarHistorico({id:Date.now(),tipo:"novo",alimentado,processo:maskProcesso(processo),data:res.data,total:r2(somaArr(prisaoItems)+somaArr(penhoraItems))});
-      setLoading(false);
-    },400);
-  };
-
-  return (
-    <div style={{ fontFamily:"Segoe UI, Arial, sans-serif", minHeight:"100vh", background:"#f0f2f0" }}>
-      <Header perfil={perfil} onPerfil={function(){setShowPerfil(true);}} onLogout={onLogout} />
-      {showPerfil && <ModalPerfil perfil={perfil} onSave={salvarPerfil} onClose={function(){setShowPerfil(false);}} />}
-
-      {/* Tabs */}
-      <div style={{ background:C.branco, borderBottom:"1px solid "+C.borda, display:"flex", padding:"0 28px" }}>
-        {[
-          ["calc","Novo C\u00e1lculo"],
-          ["atualizar","Atualiza\u00e7\u00e3o de D\u00e9bito"],
-          ["historico","Hist\u00f3rico"]
-        ].map(function(item){
-          var id=item[0],label=item[1];
-          return (
-            <button key={id} onClick={function(){setTab(id);}} style={{
-              padding:"14px 20px", border:"none", background:"transparent", cursor:"pointer",
-              fontWeight:600, fontSize:14,
-              color: tab===id?C.verde:C.cinza,
-              borderBottom: tab===id?"3px solid "+C.verde:"3px solid transparent",
-              touchAction:"manipulation"
-            }}>{label}</button>
-          );
-        })}
-      </div>
-
-      <div style={{ maxWidth:900, margin:"0 auto", padding:"24px 16px" }}>
-
-        {/* ========= ABA: NOVO C\u00c1LCULO ========= */}
-        {tab==="calc" && (
-          <div>
-            {!perfil.nome && (
-              <div style={{ background:"#fff8e1", border:"1px solid #f0c040", borderRadius:8, padding:"12px 18px", marginBottom:18, fontSize:14 }}>
-                {"Configure seu perfil para aparecer nos PDFs. "}
-                <span style={{ color:C.verde, cursor:"pointer", textDecoration:"underline" }} onClick={function(){setShowPerfil(true);}}>{"Configurar agora"}</span>
-              </div>
-            )}
-
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:20 }}>
-              <Card style={{ margin:0, borderTop:"3px solid "+C.azul }}>
-                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
-                  <span style={{ fontSize:20 }}>{"A"}</span>
-                  <div>
-                    <div style={{ fontWeight:700, color:C.azul, fontSize:14 }}>{"Op\u00e7\u00e3o A \u2014 Importar com IA"}</div>
-                    <div style={{ fontSize:11, color:"#666" }}>{"Envie a senten\u00e7a e a IA preenche"}</div>
-                  </div>
-                </div>
-                <input ref={fileRef} type="file" accept=".pdf,image/*" onChange={handleUpload} style={{ display:"none" }} />
-                <Btn onClick={function(){fileRef.current.click();}} disabled={loadingIA} cor={C.azul} small>
-                  {loadingIA?"Processando...":"Selecionar PDF ou imagem"}
-                </Btn>
-                {msgIA && <div style={{ marginTop:8, fontSize:12, color:msgIA.indexOf("OK")===0?C.verde:C.vermelho }}>{msgIA}</div>}
-                {!perfil.apiKey && <div style={{ marginTop:6, fontSize:11, color:"#999" }}>{"Opcional. Requer chave API no perfil."}</div>}
-              </Card>
-              <Card style={{ margin:0, borderTop:"3px solid "+C.verde }}>
-                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
-                  <span style={{ fontSize:20 }}>{"B"}</span>
-                  <div>
-                    <div style={{ fontWeight:700, color:C.verde, fontSize:14 }}>{"C\u00e1lculo Manual"}</div>
-                    <div style={{ fontSize:11, color:"#666" }}>{"Sempre dispon\u00edvel"}</div>
-                  </div>
-                </div>
-                <div style={{ fontSize:12, color:"#555" }}>{"Preencha os dados abaixo."}</div>
-                <div style={{ marginTop:10 }}>
-                  <span style={{ background:C.verdePale, color:C.verde, borderRadius:20, padding:"3px 10px", fontSize:11, fontWeight:600 }}>{"Sem conta necess\u00e1ria"}</span>
-                </div>
-              </Card>
-            </div>
-
-            <Card>
-              <h3 style={{ margin:"0 0 16px", color:C.verde, fontSize:15 }}>{"Dados do Processo"}</h3>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px" }}>
-                <div style={{ marginBottom:14 }}>
-                  <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"N\u00famero do Processo"}</label>
-                  <input type="text" inputMode="numeric"
-                    value={maskProcesso(processo)}
-                    onChange={function(e){setProcesso(digitsFromDisplay(e.target.value));}}
-                    placeholder={"0000000-00.0000.8.18.0000"}
-                    style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box", fontFamily:"monospace", letterSpacing:"0.5px" }} />
-                </div>
-                <Input label={"Vara/Comarca"} value={comarca} onChange={setComarca} placeholder={"Vara/Comarca"} />
-                <Input label={"Alimentado(a) / Exequente"} value={alimentado} onChange={setAlimentado} placeholder={"Nome completo"} />
-                <Input label={"Alimentante / Executado"} value={alimentante} onChange={setAlimentante} placeholder={"Nome completo"} />
-              </div>
-              <div style={{ marginBottom:14 }}>
-                <label style={{ display:"block", fontWeight:600, marginBottom:8, color:C.cinza, fontSize:13 }}>{"Alimentos fixados em"}</label>
-                <div style={{ display:"flex", gap:10, marginBottom:10 }}>
-                  {[["sm","% do Sal\u00e1rio M\u00ednimo"],["fixo","Valor fixo (R$)"]].map(function(item){
-                    var v=item[0],l=item[1];
-                    return (
-                      <button key={v} onClick={function(){setTipoAlimento(v);}} style={{
-                        padding:"7px 16px", borderRadius:6, border:"2px solid "+(tipoAlimento===v?C.verde:C.borda),
-                        background:tipoAlimento===v?C.verde:C.branco, color:tipoAlimento===v?"#fff":C.cinza,
-                        fontWeight:600, fontSize:13, cursor:"pointer"
-                      }}>{l}</button>
-                    );
-                  })}
-                </div>
-                {tipoAlimento==="sm"
-                  ? <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                      <input type="text" inputMode="decimal" value={percentualSM} onChange={function(e){setPercentualSM(e.target.value);}} placeholder={"ex: 20"}
-                        style={{ width:100, padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
-                      <span style={{ fontSize:14, color:C.cinza }}>{"% do sal\u00e1rio m\u00ednimo federal"}</span>
-                    </div>
-                  : <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                      <span style={{ fontSize:14, color:C.cinza }}>{"R$"}</span>
-                      <input type="text" inputMode="decimal" value={valorFixoAlimento} onChange={function(e){var raw=e.target.value.replace(/[^0-9]/g,"");setValorFixoAlimento(fmtInput(raw));}} placeholder={"0,00"}
-                        style={{ width:150, padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
-                    </div>
-                }
-              </div>
-              <div style={{ maxWidth:200 }}>
-                <Input label={"Dia de vencimento"} value={diaVencimento} onChange={setDiaVencimento} placeholder={"5"} type={"number"} />
-              </div>
-              <SeletorIndice indice={indice} setIndice={setIndice} />
-            </Card>
-
-            <Card>
-              <h3 style={{ margin:"0 0 16px", color:C.verde, fontSize:15 }}>{"Op\u00e7\u00f5es Adicionais"}</h3>
-              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16, padding:"12px 16px", background:incluir13?"#fff8e1":"#f9f9f9", border:"1px solid "+(incluir13?"#f0c040":C.borda), borderRadius:8 }}>
-                <input type="checkbox" checked={incluir13} onChange={function(e){setIncluir13(e.target.checked);}} style={{ width:20, height:20, cursor:"pointer" }} />
-                <div>
-                  <div style={{ fontWeight:700, fontSize:13, color:C.cinza }}>{"Incluir 13\u00ba sal\u00e1rio"}</div>
-                  <div style={{ fontSize:11, color:"#888" }}>{"Gera parcela de 13\u00ba ao final de cada ano (m\u00e9dia dos meses). Vencimento: dezembro. Valor edit\u00e1vel manualmente."}</div>
-                </div>
-              </div>
-              <div>
-                <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Justificativa / Observa\u00e7\u00f5es (aparece no PDF)"}</label>
-                <textarea value={justificativa} onChange={function(e){setJustificativa(e.target.value);}} rows={4}
-                  placeholder={"Ex.: C\u00e1lculo elaborado com base na senten\u00e7a proferida nos autos..."}
-                  style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:13, boxSizing:"border-box", resize:"vertical", fontFamily:"inherit", lineHeight:1.5 }} />
-              </div>
-            </Card>
-
-            <Card>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-                <h3 style={{ margin:0, color:C.verde, fontSize:15 }}>{"Parcelas em Atraso"}</h3>
-                <div style={{ display:"flex", gap:8 }}>
-                  <Btn small onClick={function(){
-                    if(!showIntervalo){var p2=calcMesFimPadrao(diaVencimento);setIntervalo(function(prev){return Object.assign({},prev,{mesFim:p2.mesFim,anoFim:p2.anoFim});});}
-                    setShowIntervalo(!showIntervalo);
-                  }} cor={C.azul}>{"Intervalo"}</Btn>
-                  <Btn small onClick={addParcela} cor={C.verdeClaro}>{"+ Avulsa"}</Btn>
-                  {parcelas.length>0 && <Btn small onClick={function(){if(window.confirm("Apagar todas as parcelas?"))setParcelas([]);}} cor={C.vermelho} outline>{"Limpar"}</Btn>}
-                </div>
-              </div>
-
-              {showIntervalo && (
-                <div style={{ background:"#f0f4f8", border:"1px solid "+C.azul, borderRadius:8, padding:16, marginBottom:16 }}>
-                  <div style={{ fontWeight:700, color:C.azul, marginBottom:8 }}>{"Adicionar intervalo"}</div>
-                  <div style={{ fontSize:12, color:"#555", marginBottom:12, background:"#e8f0f8", padding:"8px 12px", borderRadius:6 }}>
-                    {"Valor: "}{tipoAlimento==="sm"?(percentualSM||"?")+"% do SM vigente":"R$ "+(valorFixoAlimento||"?")+" (fixo)"}
-                  </div>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:8, alignItems:"end" }}>
-                    <div>
-                      <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"M\u00eas ini"}</label>
-                      <select value={intervalo.mesIni} onChange={function(e){setIntervalo(Object.assign({},intervalo,{mesIni:Number(e.target.value)}));}} style={inpStyle}>
-                        {MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>;})}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"Ano ini"}</label>
-                      <input type="number" value={intervalo.anoIni} onChange={function(e){setIntervalo(Object.assign({},intervalo,{anoIni:Number(e.target.value)}));}} style={inpStyle} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"M\u00eas fim"}</label>
-                      <select value={intervalo.mesFim} onChange={function(e){setIntervalo(Object.assign({},intervalo,{mesFim:Number(e.target.value)}));}} style={inpStyle}>
-                        {MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>;})}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"Ano fim"}</label>
-                      <input type="number" value={intervalo.anoFim} onChange={function(e){setIntervalo(Object.assign({},intervalo,{anoFim:Number(e.target.value)}));}} style={inpStyle} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"Pago (R$)"}</label>
-                      <input type="text" inputMode="decimal" value={intervalo.pago} onChange={function(e){setIntervalo(Object.assign({},intervalo,{pago:e.target.value}));}} placeholder={"0,00"} style={inpStyle} />
-                    </div>
-                  </div>
-                  <div style={{ marginTop:12, display:"flex", gap:8, alignItems:"center" }}>
-                    <Btn small onClick={addIntervalo} cor={C.azul}>{"Adicionar "+contarParcelas()+" parcelas"}</Btn>
-                    <Btn small onClick={function(){setShowIntervalo(false);}} outline cor={C.cinza}>{"Fechar"}</Btn>
-                  </div>
-                </div>
-              )}
-
-              {parcelas.map(function(p){
-                return (
-                  <div key={p.id} style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr auto", gap:10, alignItems:"end", marginBottom:10, padding:12, background:p.is13?"#fff8e1":C.cinzaClaro, borderRadius:8, border:p.is13?"1px solid #f0c040":"none" }}>
-                    <div>
-                      <label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{p.is13?"13\u00ba Sal\u00e1rio":"M\u00eas"}</label>
-                      {p.is13
-                        ?<div style={{ padding:8, fontSize:13, color:C.azul, fontWeight:700 }}>{"13\u00ba/"+p.ano}</div>
-                        :<select value={p.mes} onChange={function(e){editParcela(p.id,"mes",Number(e.target.value));}} style={inpStyle}>{MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>;})}</select>
-                      }
-                    </div>
-                    <div>
-                      <label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"Ano"}</label>
-                      <input type="number" value={p.ano} onChange={function(e){editParcela(p.id,"ano",Number(e.target.value));}} style={inpStyle} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"Valor (R$)"}</label>
-                      <input type="text" inputMode="decimal" value={p.valor} onChange={function(e){editParcela(p.id,"valor",e.target.value);}} placeholder={"0,00"} style={inpStyle} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"Pago (R$)"}</label>
-                      <input type="text" inputMode="decimal" value={p.pago} onChange={function(e){editParcela(p.id,"pago",e.target.value);}} placeholder={"0,00"} style={inpStyle} />
-                    </div>
-                    <button onClick={function(){removeParcela(p.id);}} style={{ background:"transparent", border:"none", cursor:"pointer", color:C.vermelho, fontSize:18, paddingBottom:4 }}>{"\u2715"}</button>
-                  </div>
-                );
-              })}
-              <div style={{ marginTop:16 }}>
-                <Btn onClick={calcular} disabled={loading||parcelas.every(function(p){return !p.valor;})}>
-                  {loading?"Calculando...":"Calcular D\u00e9bito"}
-                </Btn>
-              </div>
-            </Card>
-
-            {resultado && (
-              <Card style={{ borderLeft:"4px solid "+C.verde }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-                  <h3 style={{ margin:0, color:C.verde }}>{"Resultado"}</h3>
-                  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                    <span style={{ fontSize:12, color:"#888" }}>{resultado.indiceLabel}</span>
-                    <Btn onClick={function(){carregarLogo().then(function(ld){gerarPDFCompleto(resultado,ld);});}} cor={C.azul}>{"Gerar PDF"}</Btn>
-                  </div>
-                </div>
-                {resultado.processo && <p style={{ margin:"0 0 4px", fontSize:13, color:"#666" }}>{"Processo: "}<strong>{resultado.processo}</strong></p>}
-                {resultado.alimentado && <p style={{ margin:"0 0 16px", fontSize:13, color:"#666" }}>{"Alimentado(a): "}<strong>{resultado.alimentado}</strong></p>}
-                {resultado.obsImputacao && (
-                  <div style={{ background:"#fff8e1", border:"1px solid #f0c040", borderRadius:8, padding:"12px 16px", marginBottom:16, fontSize:12, color:"#555", lineHeight:1.6 }}>
-                    <div style={{ fontWeight:700, color:"#b8860b", marginBottom:4, fontSize:13 }}>{"Imputa\u00e7\u00e3o de Pagamentos (art. 354 CC)"}</div>
-                    {resultado.obsImputacao}
-                    {resultado.creditoRemanescente>0 && <div style={{ marginTop:8, fontWeight:700, color:C.verde }}>{"Cr\u00e9dito remanescente: "+fmt(resultado.creditoRemanescente)}</div>}
-                  </div>
-                )}
-                {resultado.prisao.length>0 && (
-                  <div style={{ background:C.verdePale, border:"1px solid "+C.verde, borderRadius:8, padding:16, marginBottom:12 }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                      <div style={{ fontWeight:700, color:C.verde }}>{"BLOCO 1 \u2014 Pris\u00e3o Civil"}</div>
-                      <span style={{ background:C.verde, color:"#fff", borderRadius:20, padding:"3px 12px", fontSize:12, fontWeight:700 }}>{fmt(resultado.totalPrisao)}</span>
-                    </div>
-                    {resultado.prisao.map(function(p,i){
-                      return (
-                        <div key={i} style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginTop:4 }}>
-                          <span>{p.label}{p.is13?" [13\u00ba]":""}{p.pagoOriginal>0?" (pago: "+fmt(p.pagoOriginal)+")":""}{p.creditoAplicado>0?" (cr\u00e9d.: "+fmt(p.creditoAplicado)+")":""}{p.quitado?" QUITADO":""}</span>
-                          <span style={{ fontWeight:600, color:p.quitado?C.verde:"inherit" }}>{p.quitado?"-":fmt(p.total)}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                {resultado.penhora.length>0 && (
-                  <div style={{ background:"#e8f0f8", border:"1px solid "+C.azul, borderRadius:8, padding:16, marginBottom:12 }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                      <div style={{ fontWeight:700, color:C.azul }}>{"BLOCO 2 \u2014 Penhora"}</div>
-                      <span style={{ background:C.azul, color:"#fff", borderRadius:20, padding:"3px 12px", fontSize:12, fontWeight:700 }}>{fmt(resultado.totalPenhora)}</span>
-                    </div>
-                    {resultado.penhora.map(function(p,i){
-                      return (
-                        <div key={i} style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginTop:4 }}>
-                          <span>{p.label}{p.is13?" [13\u00ba]":""}{p.pagoOriginal>0?" (pago: "+fmt(p.pagoOriginal)+")":""}{p.creditoAplicado>0?" (cr\u00e9d.: "+fmt(p.creditoAplicado)+")":""}{p.quitado?" QUITADO":""}</span>
-                          <span style={{ fontWeight:600, color:p.quitado?C.verde:"inherit" }}>{p.quitado?"-":fmt(p.total)}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:8 }}>
-                  <div style={{ background:C.verde, borderRadius:8, padding:"12px 16px", textAlign:"center" }}>
-                    <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"BLOCO 1 \u2014 Pris\u00e3o Civil"}</div>
-                    <div style={{ color:"#fff", fontWeight:800, fontSize:18 }}>{fmt(resultado.totalPrisao)}</div>
-                  </div>
-                  <div style={{ background:C.azul, borderRadius:8, padding:"12px 16px", textAlign:"center" }}>
-                    <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"BLOCO 2 \u2014 Penhora"}</div>
-                    <div style={{ color:"#fff", fontWeight:800, fontSize:18 }}>{fmt(resultado.totalPenhora)}</div>
-                  </div>
-                </div>
-              </Card>
-            )}
-          </div>
-        )}
-
-        {/* ========= ABA: ATUALIZA\u00c7\u00c3O ========= */}
-        {tab==="atualizar" && (
-          <TabAtualizacao
-            perfil={perfil}
-            usuario={usuario}
-            onSalvarHistorico={salvarHistorico}
-          />
-        )}
-
-        {/* ========= ABA: HIST\u00d3RICO ========= */}
-        {tab==="historico" && (
-          <Card>
-            <h3 style={{ margin:"0 0 16px", color:C.verde }}>{"Hist\u00f3rico"}</h3>
-            {historico.length===0
-              ?<p style={{ color:"#888", textAlign:"center", padding:32 }}>{"Nenhum c\u00e1lculo ainda."}</p>
-              :historico.map(function(h){
-                var tipoLabel=h.tipo==="atu-penhora"?"Atualiz. Penhora":h.tipo==="atu-prisao"?"Atualiz. Pris\u00e3o":"Novo C\u00e1lculo";
-                var corTipo=h.tipo==="atu-penhora"?C.azul:C.verde;
-                return (
-                  <div key={h.id} style={{ borderBottom:"1px solid "+C.borda, padding:"14px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                    <div>
-                      <div style={{ fontWeight:600, fontSize:14 }}>{h.alimentado||"-"}</div>
-                      <div style={{ fontSize:12, color:"#888" }}>{(h.processo||"Sem n\u00ba")+" \u2014 "+h.data}</div>
-                      <span style={{ fontSize:11, color:corTipo, fontWeight:600 }}>{tipoLabel}</span>
-                    </div>
-                    <div style={{ fontWeight:700, color:C.verde, fontSize:15 }}>{fmt(h.total||0)}</div>
-                  </div>
-                );
-              })
-            }
-            {historico.length>0 && (
-              <div style={{ marginTop:16 }}>
-                <Btn small outline cor={C.vermelho} onClick={function(){
-                  if(window.confirm("Limpar hist\u00f3rico?")){setHistorico([]);localStorage.removeItem("dpe_historico");}
-                }}>{"Limpar"}</Btn>
-              </div>
-            )}
-          </Card>
-        )}
-      </div>
-    </div>
-  );
-}
+window.mcpf=mcpf;window.mdat=mdat;window.mtel=mtel;window.irnd=irnd;window.mrnd=mrnd;window.ctit=ctit;
+})();
+</script>
+</body>
+</html>
