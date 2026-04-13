@@ -262,45 +262,55 @@ function TelaLogin(props) {
     props.onLogin({ nome: nome, lotacao: def.lotacao, autenticado: true });
   };
   return (
-    <div style={{ minHeight:"100vh", background:"#f0f2f0", display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ background:"#fff", borderRadius:12, padding:40, width:400, boxShadow:"0 8px 32px rgba(0,0,0,0.15)" }}>
-        <div style={{ textAlign:"center", marginBottom:28 }}>
+    <div style={{ minHeight:"100vh", background:"#e8ede8", display:"flex", alignItems:"center", justifyContent:"center", padding:"20px 16px" }}>
+      <div style={{ background:"#fff", borderRadius:16, width:"100%", maxWidth:460, boxShadow:"0 12px 40px rgba(0,0,0,0.18)", overflow:"hidden" }}>
+
+        {/* Banner verde com logo — sem xadrez */}
+        <div style={{ background:C.verde, padding:"32px 40px 28px", textAlign:"center" }}>
           <img src="/logo-apidep.png" alt="DEFCALC"
-            style={{ height:60, objectFit:"contain", marginBottom:12 }}
+            style={{ height:80, objectFit:"contain", display:"block", margin:"0 auto 0" }}
             onError={function(e){e.target.style.display="none";}} />
-          <div style={{ fontWeight:800, fontSize:16, color:C.verde }}>{"Calculadora de Débitos Alimentares"}</div>
-          <div style={{ fontSize:12, color:"#888", marginTop:4 }}>{"Fase teste — Apenas Defensores Legais"}</div>
         </div>
-        <div style={{ marginBottom:14 }}>
-          <label style={{ display:"block", fontWeight:600, marginBottom:6, fontSize:13, color:C.cinza }}>{"Nome do Defensor"}</label>
-          <select value={nome} onChange={function(e){setNome(e.target.value);}}
-            style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid #d0d0d0", fontSize:14, boxSizing:"border-box" }}>
-            <option value="">{"-- Selecione --"}</option>
-            {Object.keys(DEFENSORES).map(function(d,i){ return <option key={i} value={d}>{d}</option>; })}
-          </select>
-          {nome && DEFENSORES[nome] && (
-            <div style={{ fontSize:12, color:C.verde, marginTop:4, paddingLeft:4 }}>{"» "}{DEFENSORES[nome].lotacao}</div>
+
+        {/* Subtítulo fora do banner */}
+        <div style={{ textAlign:"center", padding:"18px 40px 4px" }}>
+          <div style={{ fontWeight:800, fontSize:18, color:C.verde }}>{"Calculadora de Débitos Alimentares"}</div>
+          <div style={{ fontSize:13, color:"#888", marginTop:5 }}>{"Acesso restrito — Defensores cadastrados"}</div>
+        </div>
+
+        {/* Formulário */}
+        <div style={{ padding:"20px 40px 36px" }}>
+          <div style={{ marginBottom:16 }}>
+            <label style={{ display:"block", fontWeight:700, marginBottom:7, fontSize:14, color:C.cinza }}>{"Nome do Defensor"}</label>
+            <select value={nome} onChange={function(e){setNome(e.target.value);}}
+              style={{ width:"100%", padding:"11px 14px", borderRadius:8, border:"1px solid #d0d0d0", fontSize:15, boxSizing:"border-box", background:"#fafafa" }}>
+              <option value="">{"-- Selecione --"}</option>
+              {Object.keys(DEFENSORES).map(function(d,i){ return <option key={i} value={d}>{d}</option>; })}
+            </select>
+            {nome && DEFENSORES[nome] && (
+              <div style={{ fontSize:13, color:C.verde, marginTop:5, paddingLeft:4, fontWeight:600 }}>{"» "}{DEFENSORES[nome].lotacao}</div>
+            )}
+          </div>
+          <div style={{ marginBottom:22 }}>
+            <label style={{ display:"block", fontWeight:700, marginBottom:7, fontSize:14, color:C.cinza }}>{"Senha de Acesso"}</label>
+            <input type="password" value={senha}
+              onChange={function(e){setSenha(e.target.value);}}
+              onKeyDown={function(e){if(e.key==="Enter")tentar();}}
+              placeholder={"Digite a senha"}
+              style={{ width:"100%", padding:"11px 14px", borderRadius:8, border:"1px solid #d0d0d0", fontSize:15, boxSizing:"border-box", background:"#fafafa" }} />
+          </div>
+          {erro && (
+            <div style={{ background:"#fdecea", border:"1px solid #e57373", borderRadius:8, padding:"11px 14px", fontSize:13, color:C.vermelho, marginBottom:18 }}>{erro}</div>
           )}
+          <button onClick={tentar}
+            style={{ width:"100%", background:C.verde, color:"#fff", border:"none", borderRadius:8, padding:"13px 0", fontSize:16, fontWeight:700, cursor:"pointer", marginBottom:12, letterSpacing:"0.3px" }}>
+            {"Entrar"}
+          </button>
+          <button onClick={props.onVisitante}
+            style={{ width:"100%", background:"transparent", color:"#777", border:"1px solid #ccc", borderRadius:8, padding:"11px 0", fontSize:14, cursor:"pointer" }}>
+            {"Entrar sem login (visitante)"}
+          </button>
         </div>
-        <div style={{ marginBottom:20 }}>
-          <label style={{ display:"block", fontWeight:600, marginBottom:6, fontSize:13, color:C.cinza }}>{"Senha de Acesso"}</label>
-          <input type="password" value={senha}
-            onChange={function(e){setSenha(e.target.value);}}
-            onKeyDown={function(e){if(e.key==="Enter")tentar();}}
-            placeholder={"Digite a senha"}
-            style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid #d0d0d0", fontSize:14, boxSizing:"border-box" }} />
-        </div>
-        {erro && (
-          <div style={{ background:"#fdecea", border:"1px solid #e57373", borderRadius:6, padding:"10px 12px", fontSize:12, color:C.vermelho, marginBottom:16 }}>{erro}</div>
-        )}
-        <button onClick={tentar}
-          style={{ width:"100%", background:C.verde, color:"#fff", border:"none", borderRadius:6, padding:12, fontSize:15, fontWeight:700, cursor:"pointer", marginBottom:10 }}>
-          {"Entrar"}
-        </button>
-        <button onClick={props.onVisitante}
-          style={{ width:"100%", background:"transparent", color:C.cinza, border:"1px solid "+C.borda, borderRadius:6, padding:10, fontSize:13, cursor:"pointer" }}>
-          {"Entrar sem login (visitante)"}
-        </button>
       </div>
     </div>
   );
