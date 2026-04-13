@@ -201,25 +201,46 @@ var DEFENSORES = {
 var _logoB64 = null;
 var _logoRatio = 4.0; // logo DEFCALC horizontal ~4:1
 
-function carregarLogo() {
-  if (_logoB64) return Promise.resolve(_logoB64);
+// Renderiza o PNG transparente sobre fundo colorido (cor do cabeçalho do PDF)
+// para evitar o xadrez/cinza que o jsPDF coloca atrás de PNGs transparentes.
+function renderizarLogoComFundo(b64, bgColor) {
+  return new Promise(function(res) {
+    var img = new Image();
+    img.onload = function() {
+      try {
+        var cv = document.createElement("canvas");
+        cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+        var ctx = cv.getContext("2d");
+        // Preencher com a cor do cabeçalho antes de desenhar o logo
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, cv.width, cv.height);
+        ctx.drawImage(img, 0, 0);
+        _logoRatio = img.naturalWidth / img.naturalHeight;
+        res(cv.toDataURL("image/png"));
+      } catch(e) { res(b64); }
+    };
+    img.onerror = function() { res(b64); };
+    img.src = b64;
+  });
+}
+
+// Cache separado por cor de fundo
+var _logoCache = {};
+
+function carregarLogo(bgColor) {
+  var cor = bgColor || "#1a6b3a";
+  if (_logoCache[cor]) return Promise.resolve(_logoCache[cor]);
   return fetch("/logo-apidep.png")
     .then(function(r) { return r.blob(); })
     .then(function(blob) {
       return new Promise(function(res) {
         var reader = new FileReader();
         reader.onload = function() {
-          var b64 = reader.result;
-          var img = new Image();
-          img.onload = function() {
-            if (img.naturalWidth && img.naturalHeight) {
-              _logoRatio = img.naturalWidth / img.naturalHeight;
-            }
-            _logoB64 = b64;
-            res(b64);
-          };
-          img.onerror = function() { _logoB64 = b64; res(b64); };
-          img.src = b64;
+          renderizarLogoComFundo(reader.result, cor).then(function(b64final) {
+            _logoCache[cor] = b64final;
+            if (!_logoB64) _logoB64 = b64final;
+            res(b64final);
+          });
         };
         reader.onerror = function() { res(null); };
         reader.readAsDataURL(blob);
@@ -1255,7 +1276,7 @@ function TabAtualizacao(props) {
             <Card style={{ borderLeft:"4px solid "+C.azul }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
                 <h3 style={{ margin:0, color:C.azul }}>{"Resultado — Atualização (Penhora)"}</h3>
-                <Btn onClick={function(){carregarLogo().then(function(ld){gerarPDFAtuPenhora(resPenhora,ld);});}} cor={C.azul}>{"Gerar PDF"}</Btn>
+                <Btn onClick={function(){carregarLogo("#1a5276").then(function(ld){gerarPDFAtuPenhora(resPenhora,ld);});}} cor={C.azul}>{"Gerar PDF"}</Btn>
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
                 {[
@@ -1428,7 +1449,7 @@ function TabAtualizacao(props) {
             <Card style={{ borderLeft:"4px solid "+C.verde }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
                 <h3 style={{ margin:0, color:C.verde }}>{"Resultado — Atualização (Prisão Civil)"}</h3>
-                <Btn onClick={function(){carregarLogo().then(function(ld){gerarPDFAtuPrisao(resPrisao,ld);});}} cor={C.verde}>{"Gerar PDF"}</Btn>
+                <Btn onClick={function(){carregarLogo("#1a6b3a").then(function(ld){gerarPDFAtuPrisao(resPrisao,ld);});}} cor={C.verde}>{"Gerar PDF"}</Btn>
               </div>
               {resPrisao.obsImputacao && (
                 <div style={{ background:"#fff8e1", border:"1px solid #f0c040", borderRadius:8, padding:"12px 16px", marginBottom:12, fontSize:12, color:"#555", lineHeight:1.6 }}>
@@ -1937,7 +1958,7 @@ function AppInterno(props) {
                   <h3 style={{ margin:0, color:C.verde }}>{"Resultado"}</h3>
                   <div style={{ display:"flex", gap:8, alignItems:"center" }}>
                     <span style={{ fontSize:12, color:"#888" }}>{resultado.indiceLabel}</span>
-                    <Btn onClick={function(){carregarLogo().then(function(ld){gerarPDFCompleto(resultado,ld);});}} cor={C.azul}>{"Gerar PDF"}</Btn>
+                    <Btn onClick={function(){carregarLogo("#1a6b3a").then(function(ld){gerarPDFCompleto(resultado,ld);});}} cor={C.azul}>{"Gerar PDF"}</Btn>
                   </div>
                 </div>
                 {resultado.processo && <p style={{ margin:"0 0 4px", fontSize:13, color:"#666" }}>{"Processo: "}<strong>{resultado.processo}</strong></p>}
