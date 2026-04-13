@@ -217,7 +217,7 @@ function carregarLogo() {
       } catch(e) { res(null); }
     };
     img.onerror = function() { res(null); };
-    img.src = "/defalc.png";
+    img.src = "/logo-apidep.png";
   });
 }
 carregarLogo();
@@ -238,7 +238,7 @@ function TelaLogin(props) {
     <div style={{ minHeight:"100vh", background:"#f0f2f0", display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ background:"#fff", borderRadius:12, padding:40, width:400, boxShadow:"0 8px 32px rgba(0,0,0,0.15)" }}>
         <div style={{ textAlign:"center", marginBottom:28 }}>
-          <img src="/defalc.png" alt="DEFCALC" crossOrigin="anonymous"
+          <img src="/logo-apidep.png" alt="DEFCALC" crossOrigin="anonymous"
             style={{ height:60, objectFit:"contain", marginBottom:12 }}
             onError={function(e){e.target.style.display="none";}} />
           <div style={{ fontWeight:800, fontSize:16, color:C.verde }}>{"Calculadora de Débitos Alimentares"}</div>
@@ -424,7 +424,7 @@ function Header(props) {
   return (
     <div style={{ background:C.verde, color:"#fff", padding:"12px 28px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
       <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-        <img src="/defalc.png" alt="DEFCALC" crossOrigin="anonymous"
+        <img src="/logo-apidep.png" alt="DEFCALC" crossOrigin="anonymous"
           style={{ height:56, objectFit:"contain" }}
           onError={function(e){e.target.style.display="none";}} />
         <div>
@@ -1179,24 +1179,21 @@ function TabAtualizacao(props) {
           <div style={{ marginBottom:14 }}>
             <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Vara/Comarca"}</label>
             <input type="text" value={comarca}
-              onChange={function(e){setComarca(e.target.value);}}
-              onBlur={function(e){setComarca(capitalizarNome(e.target.value));}}
+              onChange={function(e){setComarca(capitalizarNome(e.target.value));}}
               placeholder={"Vara/Comarca"}
               style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
           </div>
           <div style={{ marginBottom:14 }}>
             <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Alimentado(a) / Exequente"}</label>
             <input type="text" value={alimentado}
-              onChange={function(e){setAlimentado(e.target.value);}}
-              onBlur={function(e){setAlimentado(capitalizarNome(e.target.value));}}
+              onChange={function(e){setAlimentado(capitalizarNome(e.target.value));}}
               placeholder={"Nome Completo"}
               style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
           </div>
           <div style={{ marginBottom:14 }}>
             <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Alimentante / Executado"}</label>
             <input type="text" value={alimentante}
-              onChange={function(e){setAlimentante(e.target.value);}}
-              onBlur={function(e){setAlimentante(capitalizarNome(e.target.value));}}
+              onChange={function(e){setAlimentante(capitalizarNome(e.target.value));}}
               placeholder={"Nome Completo"}
               style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
           </div>
@@ -1774,24 +1771,21 @@ function AppInterno(props) {
                 <div style={{ marginBottom:14 }}>
                   <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Vara/Comarca"}</label>
                   <input type="text" value={comarca}
-                    onChange={function(e){setComarca(e.target.value);}}
-                    onBlur={function(e){setComarca(capitalizarNome(e.target.value));}}
+                    onChange={function(e){setComarca(capitalizarNome(e.target.value));}}
                     placeholder={"Vara/Comarca"}
                     style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
                 </div>
                 <div style={{ marginBottom:14 }}>
                   <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Alimentado(a) / Exequente"}</label>
                   <input type="text" value={alimentado}
-                    onChange={function(e){setAlimentado(e.target.value);}}
-                    onBlur={function(e){setAlimentado(capitalizarNome(e.target.value));}}
+                    onChange={function(e){setAlimentado(capitalizarNome(e.target.value));}}
                     placeholder={"Nome Completo"}
                     style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
                 </div>
                 <div style={{ marginBottom:14 }}>
                   <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Alimentante / Executado"}</label>
                   <input type="text" value={alimentante}
-                    onChange={function(e){setAlimentante(e.target.value);}}
-                    onBlur={function(e){setAlimentante(capitalizarNome(e.target.value));}}
+                    onChange={function(e){setAlimentante(capitalizarNome(e.target.value));}}
                     placeholder={"Nome Completo"}
                     style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
                 </div>
