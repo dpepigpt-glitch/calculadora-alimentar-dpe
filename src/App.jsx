@@ -199,28 +199,34 @@ var DEFENSORES = {
 };
 
 var _logoB64 = null;
-var _logoRatio = 1.5;
+var _logoRatio = 4.0; // logo DEFCALC horizontal ~4:1
 
 function carregarLogo() {
   if (_logoB64) return Promise.resolve(_logoB64);
-  return new Promise(function(res) {
-    var img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = function() {
-      try {
-        var cv = document.createElement("canvas");
-        cv.width = img.naturalWidth; cv.height = img.naturalHeight;
-        cv.getContext("2d").drawImage(img, 0, 0);
-        _logoB64 = cv.toDataURL("image/png");
-        _logoRatio = img.naturalWidth / img.naturalHeight;
-        res(_logoB64);
-      } catch(e) { res(null); }
-    };
-    img.onerror = function() { res(null); };
-    img.src = "/logo-apidep.png";
-  });
+  return fetch("/logo-apidep.png")
+    .then(function(r) { return r.blob(); })
+    .then(function(blob) {
+      return new Promise(function(res) {
+        var reader = new FileReader();
+        reader.onload = function() {
+          var b64 = reader.result;
+          var img = new Image();
+          img.onload = function() {
+            if (img.naturalWidth && img.naturalHeight) {
+              _logoRatio = img.naturalWidth / img.naturalHeight;
+            }
+            _logoB64 = b64;
+            res(b64);
+          };
+          img.onerror = function() { _logoB64 = b64; res(b64); };
+          img.src = b64;
+        };
+        reader.onerror = function() { res(null); };
+        reader.readAsDataURL(blob);
+      });
+    })
+    .catch(function() { return null; });
 }
-carregarLogo();
 
 // ===================== COMPONENTES BASE =====================
 
@@ -238,7 +244,7 @@ function TelaLogin(props) {
     <div style={{ minHeight:"100vh", background:"#f0f2f0", display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ background:"#fff", borderRadius:12, padding:40, width:400, boxShadow:"0 8px 32px rgba(0,0,0,0.15)" }}>
         <div style={{ textAlign:"center", marginBottom:28 }}>
-          <img src="/logo-apidep.png" alt="DEFCALC" crossOrigin="anonymous"
+          <img src="/logo-apidep.png" alt="DEFCALC"
             style={{ height:60, objectFit:"contain", marginBottom:12 }}
             onError={function(e){e.target.style.display="none";}} />
           <div style={{ fontWeight:800, fontSize:16, color:C.verde }}>{"Calculadora de Débitos Alimentares"}</div>
@@ -424,7 +430,7 @@ function Header(props) {
   return (
     <div style={{ background:C.verde, color:"#fff", padding:"12px 28px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
       <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-        <img src="/logo-apidep.png" alt="DEFCALC" crossOrigin="anonymous"
+        <img src="/logo-apidep.png" alt="DEFCALC"
           style={{ height:56, objectFit:"contain" }}
           onError={function(e){e.target.style.display="none";}} />
         <div>
@@ -462,7 +468,7 @@ function gerarPDFCompleto(resultado, logoData) {
   // Cabeçalho
   doc.setFillColor(26,107,58); doc.rect(0,0,W,28,"F");
   if (logoData) {
-    try { var lh=22, lw=Math.max(lh*_logoRatio,30); doc.addImage(logoData,"PNG",6,3,lw,lh); doc.addImage(logoData,"PNG",W-6-lw,3,lw,lh); } catch(e){}
+    try { var lh=18, lw=Math.min(Math.max(lh*_logoRatio,30),65); doc.addImage(logoData,"PNG",6,5,lw,lh); doc.addImage(logoData,"PNG",W-6-lw,5,lw,lh); } catch(e){}
   }
   doc.setTextColor(255,255,255);
   doc.setFontSize(14); doc.setFont("helvetica","bold");
@@ -646,7 +652,7 @@ function gerarPDFAtuPenhora(dados, logoData) {
 
   doc.setFillColor(26,82,118); doc.rect(0,0,W,28,"F");
   if (logoData) {
-    try { var lh=22, lw=Math.max(lh*_logoRatio,30); doc.addImage(logoData,"PNG",6,3,lw,lh); doc.addImage(logoData,"PNG",W-6-lw,3,lw,lh); } catch(e){}
+    try { var lh=18, lw=Math.min(Math.max(lh*_logoRatio,30),65); doc.addImage(logoData,"PNG",6,5,lw,lh); doc.addImage(logoData,"PNG",W-6-lw,5,lw,lh); } catch(e){}
   }
   doc.setTextColor(255,255,255);
   doc.setFontSize(14); doc.setFont("helvetica","bold");
@@ -770,7 +776,7 @@ function gerarPDFAtuPrisao(resultado, logoData) {
 
   doc.setFillColor(26,107,58); doc.rect(0,0,W,28,"F");
   if (logoData) {
-    try { var lh=22, lw=Math.max(lh*_logoRatio,30); doc.addImage(logoData,"PNG",6,3,lw,lh); doc.addImage(logoData,"PNG",W-6-lw,3,lw,lh); } catch(e){}
+    try { var lh=18, lw=Math.min(Math.max(lh*_logoRatio,30),65); doc.addImage(logoData,"PNG",6,5,lw,lh); doc.addImage(logoData,"PNG",W-6-lw,5,lw,lh); } catch(e){}
   }
   doc.setTextColor(255,255,255);
   doc.setFontSize(14); doc.setFont("helvetica","bold");
