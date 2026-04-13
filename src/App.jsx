@@ -1,4 +1,4 @@
-// v4.0 \u2014 SELIC + Atualiza\u00e7\u00e3o de D\u00e9bito (penhora e pris\u00e3o civil)
+// v4.0 — SELIC + Atualização de Débito (penhora e prisão civil)
 import { useState, useRef } from "react";
 
 var C = {
@@ -10,36 +10,40 @@ var C = {
 
 var r2 = function(v) { return Math.round((Number(v)||0) * 100) / 100; };
 var fmt = function(v) { return "R$ " + r2(v).toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, "."); };
+
 // Parse monetary input: handles "1.234,56" or "1234.56" or "1234,56"
 var parseMoney = function(s) {
   if (!s && s !== 0) return 0;
   var str = String(s).trim().replace(/R\$\s*/g, "");
-  // If has dot and comma: "1.234,56" -> remove dots, replace comma with dot
   if (str.indexOf(".") !== -1 && str.indexOf(",") !== -1) {
     str = str.replace(/\./g, "").replace(",", ".");
   } else if (str.indexOf(",") !== -1) {
-    // Only comma: "1234,56" -> replace comma with dot
     str = str.replace(",", ".");
   }
   var n = parseFloat(str);
   return isNaN(n) ? 0 : n;
 };
-// Format monetary input as user types: returns display string
+
+// Format monetary input as user types
 var fmtInput = function(raw) {
-  // Strip everything except digits and comma/dot
   var digits = raw.replace(/[^0-9]/g, "");
   if (!digits) return "";
-  // treat last 2 digits as cents
   while (digits.length < 3) digits = "0" + digits;
   var cents = digits.slice(-2);
   var reais = digits.slice(0, -2).replace(/^0+/, "") || "0";
-  // add thousand separators
   reais = reais.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   return reais + "," + cents;
 };
+
 var fmtMes = function(mes, ano) {
   var n = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-  return mes === 13 ? "13\u00ba/" + ano : n[mes-1] + "/" + ano;
+  return mes === 13 ? "13º/" + ano : n[mes-1] + "/" + ano;
+};
+
+// Capitaliza iniciais de cada palavra do nome
+var capitalizarNome = function(str) {
+  if (!str) return str;
+  return str.replace(/\b\w/g, function(c) { return c.toUpperCase(); });
 };
 
 function maskProcesso(digits) {
@@ -103,7 +107,7 @@ var IPCA_E = {
   "2026-07":0.31,"2026-08":0.31,"2026-09":0.31,"2026-10":0.31,"2026-11":0.31,"2026-12":0.31
 };
 
-// SELIC mensal efetiva (%) \u2014 taxa acumulada no m\u00eas
+// SELIC mensal efetiva (%) — taxa acumulada no mês
 var SELIC = {
   "2022-01":0.73,"2022-02":0.76,"2022-03":0.93,"2022-04":0.83,"2022-05":1.03,"2022-06":1.03,
   "2022-07":1.03,"2022-08":1.07,"2022-09":1.07,"2022-10":1.07,"2022-11":1.07,"2022-12":1.07,
@@ -141,7 +145,7 @@ function corrigirAteIPCA(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo) {
   };
 }
 
-// Corrigir usando SELIC acumulada (subs. corre\u00e7\u00e3o e juros)
+// Corrigir usando SELIC acumulada (subst. correção e juros)
 function corrigirAteSELIC(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo) {
   var fator = 1;
   var m = mesVenc; var a = anoVenc;
@@ -165,7 +169,7 @@ function corrigirAteSELIC(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo) {
   };
 }
 
-// Dispatcher \u2014 usa o indice escolhido
+// Dispatcher — usa o indice escolhido
 function corrigirAte(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo, indice) {
   if (indice === "selic") return corrigirAteSELIC(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo);
   return corrigirAteIPCA(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo);
@@ -178,20 +182,20 @@ function corrigir(saldo, mes, ano, indice) {
 }
 
 var MESES = [
-  "Janeiro","Fevereiro","Mar\u00e7o","Abril","Maio","Junho",
+  "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
   "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
 ];
 
 var DEFENSORES = {
-  "Dr. Robert Rios J\u00fanior": { lotacao: "2\u00aa Defensoria Itinerante", senha: "Robert2027" },
-  "Dra. Andrea Melo de Carvalho": { lotacao: "1\u00aa Defensoria de Fam\u00edlia", senha: "Andrea2027" },
-  "Dra. Dayana Sampaio Mendes Magalh\u00e3es": { lotacao: "2\u00aa Defensoria P\u00fablica Regional de Altos", senha: "Dayana2027" },
-  "Dr. Eric Leonardo Pires de Melo": { lotacao: "7\u00aa Defensoria de Fam\u00edlia", senha: "Eric2027" },
-  "Dra. L\u00edvia de Oliveira Revor\u00eado": { lotacao: "3\u00aa Defensoria P\u00fablica Regional de S\u00e3o Raimundo Nonato", senha: "Livia2027" },
-  "Dr. Marcos Martins de Oliveira": { lotacao: "2\u00aa Defensoria de Floriano", senha: "Marcos2027" },
-  "Dra. Priscila Gimenes do Nascimento Godoi": { lotacao: "2\u00aa Defensoria P\u00fablica Regional de Uni\u00e3o", senha: "Priscila2027" },
-  "Dra. Julyanne Cristine Douglas Leone": { lotacao: "Assessora \u2014 2\u00aa Defensoria Itinerante", senha: "Julyanne2027" },
-  "Dra. Giulia Mazza": { lotacao: "Assessora \u2014 2\u00aa Defensoria Regional de Piripiri", senha: "Giulia2027" }
+  "Dr. Robert Rios Júnior": { lotacao: "2ª Defensoria Itinerante", senha: "Robert2027" },
+  "Dra. Andrea Melo de Carvalho": { lotacao: "1ª Defensoria de Família", senha: "Andrea2027" },
+  "Dra. Dayana Sampaio Mendes Magalhães": { lotacao: "2ª Defensoria Pública Regional de Altos", senha: "Dayana2027" },
+  "Dr. Eric Leonardo Pires de Melo": { lotacao: "7ª Defensoria de Família", senha: "Eric2027" },
+  "Dra. Lívia de Oliveira Revorêado": { lotacao: "3ª Defensoria Pública Regional de São Raimundo Nonato", senha: "Livia2027" },
+  "Dr. Marcos Martins de Oliveira": { lotacao: "2ª Defensoria de Floriano", senha: "Marcos2027" },
+  "Dra. Priscila Gimenes do Nascimento Godoi": { lotacao: "2ª Defensoria Pública Regional de União", senha: "Priscila2027" },
+  "Dra. Julyanne Cristine Douglas Leone": { lotacao: "Assessora — 2ª Defensoria Itinerante", senha: "Julyanne2027" },
+  "Dra. Giulia Mazza": { lotacao: "Assessora — 2ª Defensoria Regional de Piripiri", senha: "Giulia2027" }
 };
 
 var _logoB64 = null;
@@ -213,7 +217,7 @@ function carregarLogo() {
       } catch(e) { res(null); }
     };
     img.onerror = function() { res(null); };
-    img.src = "/logo-apidep.png";
+    img.src = "/defalc.png";
   });
 }
 carregarLogo();
@@ -234,11 +238,11 @@ function TelaLogin(props) {
     <div style={{ minHeight:"100vh", background:"#f0f2f0", display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ background:"#fff", borderRadius:12, padding:40, width:400, boxShadow:"0 8px 32px rgba(0,0,0,0.15)" }}>
         <div style={{ textAlign:"center", marginBottom:28 }}>
-          <img src="/logo-apidep.png" alt="APIDEP" crossOrigin="anonymous"
+          <img src="/defalc.png" alt="DEFCALC" crossOrigin="anonymous"
             style={{ height:60, objectFit:"contain", marginBottom:12 }}
             onError={function(e){e.target.style.display="none";}} />
-          <div style={{ fontWeight:800, fontSize:16, color:C.verde }}>{"Calculadora de D\u00e9bitos Alimentares"}</div>
-          <div style={{ fontSize:12, color:"#888", marginTop:4 }}>{"Fase teste \u2014 Apenas Defensores Legais"}</div>
+          <div style={{ fontWeight:800, fontSize:16, color:C.verde }}>{"Calculadora de Débitos Alimentares"}</div>
+          <div style={{ fontSize:12, color:"#888", marginTop:4 }}>{"Fase teste — Apenas Defensores Legais"}</div>
         </div>
         <div style={{ marginBottom:14 }}>
           <label style={{ display:"block", fontWeight:600, marginBottom:6, fontSize:13, color:C.cinza }}>{"Nome do Defensor"}</label>
@@ -248,7 +252,7 @@ function TelaLogin(props) {
             {Object.keys(DEFENSORES).map(function(d,i){ return <option key={i} value={d}>{d}</option>; })}
           </select>
           {nome && DEFENSORES[nome] && (
-            <div style={{ fontSize:12, color:C.verde, marginTop:4, paddingLeft:4 }}>{"\u00bb "}{DEFENSORES[nome].lotacao}</div>
+            <div style={{ fontSize:12, color:C.verde, marginTop:4, paddingLeft:4 }}>{"» "}{DEFENSORES[nome].lotacao}</div>
           )}
         </div>
         <div style={{ marginBottom:20 }}>
@@ -311,19 +315,19 @@ function Card(props) {
   );
 }
 
-// Seletor de \u00edndice de corre\u00e7\u00e3o \u2014 reutiliz\u00e1vel
+// Seletor de índice de correção — reutilizável
 function SeletorIndice(props) {
   var indice = props.indice;
   var setIndice = props.setIndice;
   return (
     <div style={{ marginBottom:16 }}>
       <label style={{ display:"block", fontWeight:700, marginBottom:8, color:C.cinza, fontSize:13 }}>
-        {"\u00cdndice de Corre\u00e7\u00e3o e Juros"}
+        {"Índice de Correção e Juros"}
       </label>
       <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
         {[
-          ["ipca", "IPCA-E + Juros 1% a.m.", "Corre\u00e7\u00e3o monet\u00e1ria (IPCA) + juros de mora 1% a.m."],
-          ["selic", "SELIC", "Taxa SELIC acumulada \u2014 substitui corre\u00e7\u00e3o e juros"]
+          ["ipca", "IPCA-E + Juros 1% a.m.", "Correção monetária (IPCA) + juros de mora 1% a.m."],
+          ["selic", "SELIC", "Taxa SELIC acumulada — substitui correção e juros"]
         ].map(function(item){
           var v=item[0], l=item[1], desc=item[2];
           var ativo = indice === v;
@@ -344,7 +348,7 @@ function SeletorIndice(props) {
       </div>
       {indice === "selic" && (
         <div style={{ marginTop:8, background:"#fff8e1", border:"1px solid #f0c040", borderRadius:6, padding:"8px 12px", fontSize:11, color:"#7a6000" }}>
-          {"SELIC: \u00edndices oficiais at\u00e9 mar/2026. A partir de abr/2026: proje\u00e7\u00e3o de 1,07% a.m. Sujeito a revis\u00e3o quando publicados os valores definitivos."}
+          {"SELIC: índices oficiais até mar/2026. A partir de abr/2026: projeção de 1,07% a.m. Sujeito a revisão quando publicados os valores definitivos."}
         </div>
       )}
     </div>
@@ -402,7 +406,7 @@ function ModalPerfil(props) {
               style={{ width:"100%", padding:"9px 40px 9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:13, boxSizing:"border-box" }} />
             <button onClick={function(){setShowKey(!showKey);}}
               style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", fontSize:16 }}>
-              {showKey?"\u2715":"\u25cb"}
+              {showKey?"✕":"○"}
             </button>
           </div>
         </div>
@@ -420,12 +424,12 @@ function Header(props) {
   return (
     <div style={{ background:C.verde, color:"#fff", padding:"12px 28px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
       <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-        <img src="/logo-apidep.png" alt="APIDEP" crossOrigin="anonymous"
+        <img src="/defalc.png" alt="DEFCALC" crossOrigin="anonymous"
           style={{ height:56, objectFit:"contain" }}
           onError={function(e){e.target.style.display="none";}} />
         <div>
-          <div style={{ fontWeight:800, fontSize:16 }}>{"Calculadora de D\u00e9bitos Alimentares"}</div>
-          <div style={{ fontSize:12, opacity:.8 }}>{"APIDEP \u2014 Associa\u00e7\u00e3o Piauiense das Defensoras e Defensores P\u00fablicos"}</div>
+          <div style={{ fontWeight:800, fontSize:16 }}>{"Calculadora de Débitos Alimentares"}</div>
+          <div style={{ fontSize:12, opacity:.8 }}>{"DEFCALC — AMIGOS DA DEFENSORIA"}</div>
         </div>
       </div>
       <div style={{ display:"flex", gap:8, alignItems:"center" }}>
@@ -447,26 +451,26 @@ function novaParcela() {
   return { id: Date.now(), mes: h.getMonth()+1, ano: h.getFullYear(), valor: "", pago: "", is13: false };
 }
 
-// ===================== GERADOR PDF COMPLETO (Novo C\u00e1lculo) =====================
+// ===================== GERADOR PDF COMPLETO (Novo Cálculo) =====================
 
 function gerarPDFCompleto(resultado, logoData) {
   var jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
-  if (!jsPDFLib) { alert("PDF n\u00e3o carregou. Recarregue a p\u00e1gina."); return; }
+  if (!jsPDFLib) { alert("PDF não carregou. Recarregue a página."); return; }
   var doc = new jsPDFLib({ orientation:"landscape", unit:"mm", format:"a4" });
   var W=297, mg=12, y=0;
 
-  // Cabe\u00e7alho
+  // Cabeçalho
   doc.setFillColor(26,107,58); doc.rect(0,0,W,28,"F");
   if (logoData) {
     try { var lh=22, lw=Math.max(lh*_logoRatio,30); doc.addImage(logoData,"PNG",6,3,lw,lh); doc.addImage(logoData,"PNG",W-6-lw,3,lw,lh); } catch(e){}
   }
   doc.setTextColor(255,255,255);
   doc.setFontSize(14); doc.setFont("helvetica","bold");
-  doc.text("MEMORIAL DE C\u00c1LCULO", W/2, 10, {align:"center"});
+  doc.text("MEMORIAL DE CÁLCULO", W/2, 10, {align:"center"});
   doc.setFontSize(9); doc.setFont("helvetica","normal");
-  doc.text("D\u00e9bito Alimentar \u2014 Execu\u00e7\u00e3o de Alimentos (art. 528 CPC)", W/2, 16, {align:"center"});
+  doc.text("Débito Alimentar — Execução de Alimentos (art. 528 CPC)", W/2, 16, {align:"center"});
   doc.setFontSize(7.5);
-  doc.text("APIDEP \u2014 Associa\u00e7\u00e3o Piauiense das Defensoras e Defensores P\u00fablicos", W/2, 22, {align:"center"});
+  doc.text("DEFCALC — AMIGOS DA DEFENSORIA", W/2, 22, {align:"center"});
   y = 36;
 
   // Dados
@@ -482,7 +486,7 @@ function gerarPDFCompleto(resultado, logoData) {
     doc.setFont("helvetica","bold"); doc.text(l,x,yy);
     doc.setFont("helvetica","normal"); doc.text(v||"-", x+doc.getTextWidth(l)+2, yy);
   };
-  lb("Processo n\u00ba:", resultado.processo, c1, y);
+  lb("Processo nº:", resultado.processo, c1, y);
   lb("Vara/Comarca:", resultado.comarca, c2, y);
   lb("Data-base:", resultado.data, c3, y);
   y += 8;
@@ -490,23 +494,23 @@ function gerarPDFCompleto(resultado, logoData) {
   lb("Executado:", resultado.alimentante, c2, y);
   y += 8;
   var tl = resultado.tipoAlimento==="sm"
-    ? resultado.percentualSM+"% do sal\u00e1rio m\u00ednimo federal"
+    ? resultado.percentualSM+"% do salário mínimo federal"
     : fmt(parseMoney(resultado.valorFixoAlimento||"0"))+" (valor fixo)";
   lb("Alimentos fixados:", tl, c1, y);
   lb("Vencimento:", "Dia "+resultado.diaVencimento, c2, y);
-  lb("\u00cdndice:", resultado.indiceLabel || "IPCA-E (IBGE)", c3, y);
+  lb("Índice:", resultado.indiceLabel || "IPCA-E (IBGE)", c3, y);
   y += 8;
   if (resultado.indice === "ipca") {
-    lb("Juros de mora:", "1% ao m\u00eas \u2014 art. 406 CC c/c art. 161, \u00a71\u00ba, CTN", c1, y);
+    lb("Juros de mora:", "1% ao mês — art. 406 CC c/c art. 161, §1º, CTN", c1, y);
   } else {
-    lb("SELIC:", "Taxa acumulada mensal (substitui corre\u00e7\u00e3o e juros)", c1, y);
+    lb("SELIC:", "Taxa acumulada mensal (substitui correção e juros)", c1, y);
   }
   y += 10;
 
   // Justificativa
   if (resultado.justificativa) {
     doc.setTextColor(26,107,58); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
-    doc.text("JUSTIFICATIVA / OBSERVA\u00c7\u00d5ES", mg, y);
+    doc.text("JUSTIFICATIVA / OBSERVAÇÕES", mg, y);
     y += 5;
     doc.setDrawColor(26,107,58); doc.line(mg,y,W-mg,y); y += 4;
     doc.setTextColor(40,40,40); doc.setFont("helvetica","normal"); doc.setFontSize(8);
@@ -523,7 +527,7 @@ function gerarPDFCompleto(resultado, logoData) {
     var cw=[8,18,20,20,20,18,18,18,20,20,10,18,20];
     var cx=[mg];
     cw.forEach(function(w,i){cx.push(cx[i]+w+1);});
-    var hd=["#","Compet.","Vcto.","SM Vig.","Nominal","Pago","Cr\u00e9d.Apl.","Saldo","Fator","Corrigido","M.","Juros","Total"];
+    var hd=["#","Compet.","Vcto.","SM Vig.","Nominal","Pago","Créd.Apl.","Saldo","Fator","Corrigido","M.","Juros","Total"];
     doc.setFillColor(230,230,230); doc.rect(mg,y-2,W-mg*2,6,"F");
     doc.setTextColor(40,40,40); doc.setFont("helvetica","bold"); doc.setFontSize(6);
     hd.forEach(function(h,i){doc.text(h,cx[i],y+2);});
@@ -552,7 +556,6 @@ function gerarPDFCompleto(resultado, logoData) {
       doc.text(p.fator.toFixed(6),cx[8],y+2);
       doc.text(p.quitado?"-":fmt(p.corrigido),cx[9],y+2);
       doc.text(String(p.mesesAtraso),cx[10],y+2);
-      // Juros: apenas IPCA; SELIC mostra "-"
       doc.text((p.quitado||resultado.indice==="selic")?"-":fmt(p.juros),cx[11],y+2);
       doc.setFont("helvetica","bold");
       if(p.quitado){doc.setTextColor(26,107,58);doc.text("-",cx[12],y+2);}
@@ -566,26 +569,26 @@ function gerarPDFCompleto(resultado, logoData) {
   };
 
   if (resultado.penhora.length > 0)
-    desenharTabela("BLOCO 2 \u2014 D\u00c9BITO ANTERIOR (art. 528, \u00a78\u00ba, CPC)", [26,82,118], resultado.penhora, resultado.totalPenhora, 1);
+    desenharTabela("BLOCO 2 — DÉBITO ANTERIOR (art. 528, §8º, CPC)", [26,82,118], resultado.penhora, resultado.totalPenhora, 1);
   if (resultado.prisao.length > 0)
-    desenharTabela("BLOCO 1 \u2014 \u00daLTIMAS 3 PARCELAS (art. 528, \u00a73\u00ba, CPC)", [26,107,58], resultado.prisao, resultado.totalPrisao, resultado.penhora.length+1);
+    desenharTabela("BLOCO 1 — ÚLTIMAS 3 PARCELAS (art. 528, §3º, CPC)", [26,107,58], resultado.prisao, resultado.totalPrisao, resultado.penhora.length+1);
 
   // Resumo blocos
   if(y>165){doc.addPage();y=15;}
   var bW=(W-mg*2-4)/2;
   doc.setFillColor(26,107,58); doc.rect(mg,y,bW,22,"F");
   doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8);
-  doc.text("BLOCO 1 \u2014 PRIS\u00c3O CIVIL", mg+3, y+7);
+  doc.text("BLOCO 1 — PRISÃO CIVIL", mg+3, y+7);
   doc.setFontSize(7); doc.setFont("helvetica","normal");
-  doc.text("\u00daltimas 3 parcelas \u2014 art. 528, \u00a73\u00ba, CPC", mg+3, y+12);
+  doc.text("Últimas 3 parcelas — art. 528, §3º, CPC", mg+3, y+12);
   doc.setFont("helvetica","bold"); doc.setFontSize(12);
   doc.text(fmt(resultado.totalPrisao), mg+bW/2, y+19, {align:"center"});
   var x2=mg+bW+4;
   doc.setFillColor(26,82,118); doc.rect(x2,y,bW,22,"F");
   doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8);
-  doc.text("BLOCO 2 \u2014 PENHORA", x2+3, y+7);
+  doc.text("BLOCO 2 — PENHORA", x2+3, y+7);
   doc.setFontSize(7); doc.setFont("helvetica","normal");
-  doc.text("Parcelas anteriores \u2014 art. 528, \u00a78\u00ba, CPC", x2+3, y+12);
+  doc.text("Parcelas anteriores — art. 528, §8º, CPC", x2+3, y+12);
   doc.setFont("helvetica","bold"); doc.setFontSize(12);
   doc.text(fmt(resultado.totalPenhora), x2+bW/2, y+19, {align:"center"});
   y += 30;
@@ -593,20 +596,20 @@ function gerarPDFCompleto(resultado, logoData) {
   // Obs
   if(y>170){doc.addPage();y=15;}
   doc.setTextColor(40,40,40); doc.setFont("helvetica","bold"); doc.setFontSize(8);
-  doc.text("Observa\u00e7\u00f5es:", mg, y); y += 5;
+  doc.text("Observações:", mg, y); y += 5;
   doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
   var obsLines = resultado.indice === "selic" ? [
-    "1. Atualiza\u00e7\u00e3o pela taxa SELIC acumulada mensal (substitui corre\u00e7\u00e3o monet\u00e1ria e juros de mora). \u00cdndices oficiais at\u00e9 mar/2026. A partir de abr/2026: proje\u00e7\u00e3o de 1,07% a.m. Sujeito a revis\u00e3o.",
-    "2. SELIC como fator \u00fanico de atualiza\u00e7\u00e3o do d\u00e9bito alimentar (art. 406 CC c/c Lei 9.250/95).",
-    "3. Bloco 1 (art. 528, \u00a73\u00ba, CPC): \u00faltimas 3 parcelas \u2014 execu\u00e7\u00e3o pelo rito da pris\u00e3o civil.",
-    "4. Bloco 2 (art. 528, \u00a78\u00ba, CPC): parcelas anteriores \u2014 execu\u00e7\u00e3o pelo rito da penhora.",
-    "5. Imputa\u00e7\u00e3o de pagamentos nos d\u00e9bitos mais antigos (art. 354 CC)."
+    "1. Atualização pela taxa SELIC acumulada mensal (substitui correção monetária e juros de mora). Índices oficiais até mar/2026. A partir de abr/2026: projeção de 1,07% a.m. Sujeito a revisão.",
+    "2. SELIC como fator único de atualização do débito alimentar (art. 406 CC c/c Lei 9.250/95).",
+    "3. Bloco 1 (art. 528, §3º, CPC): últimas 3 parcelas — execução pelo rito da prisão civil.",
+    "4. Bloco 2 (art. 528, §8º, CPC): parcelas anteriores — execução pelo rito da penhora.",
+    "5. Imputação de pagamentos nos débitos mais antigos (art. 354 CC)."
   ] : [
-    "1. Corre\u00e7\u00e3o monet\u00e1ria pelo IPCA (IBGE). \u00cdndices oficiais at\u00e9 fev/2026. A partir de mar/2026: proje\u00e7\u00e3o de 0,31% a.m. Sujeito a revis\u00e3o quando publicados os \u00edndices definitivos.",
-    "2. Juros de mora: 1% ao m\u00eas, pro rata die, sobre o valor corrigido (art. 406 CC c/c art. 161, \u00a71\u00ba, CTN).",
-    "3. Bloco 1 (art. 528, \u00a73\u00ba, CPC): \u00faltimas 3 parcelas \u2014 execu\u00e7\u00e3o pelo rito da pris\u00e3o civil.",
-    "4. Bloco 2 (art. 528, \u00a78\u00ba, CPC): parcelas anteriores \u2014 execu\u00e7\u00e3o pelo rito da penhora.",
-    "5. Imputa\u00e7\u00e3o de pagamentos nos d\u00e9bitos mais antigos (art. 354 CC)."
+    "1. Correção monetária pelo IPCA (IBGE). Índices oficiais até fev/2026. A partir de mar/2026: projeção de 0,31% a.m. Sujeito a revisão quando publicados os índices definitivos.",
+    "2. Juros de mora: 1% ao mês, pro rata die, sobre o valor corrigido (art. 406 CC c/c art. 161, §1º, CTN).",
+    "3. Bloco 1 (art. 528, §3º, CPC): últimas 3 parcelas — execução pelo rito da prisão civil.",
+    "4. Bloco 2 (art. 528, §8º, CPC): parcelas anteriores — execução pelo rito da penhora.",
+    "5. Imputação de pagamentos nos débitos mais antigos (art. 354 CC)."
   ];
   obsLines.forEach(function(o){ if(y>190){doc.addPage();y=15;} doc.text(o,mg,y); y+=4.5; });
   y += 8;
@@ -619,7 +622,7 @@ function gerarPDFCompleto(resultado, logoData) {
   doc.setFont("helvetica","bold"); doc.setFontSize(9.5);
   doc.text(resultado.defensor||"", W/2, y, {align:"center"}); y+=5;
   doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
-  doc.text("Defensor(a) P\u00fablico(a)", W/2, y, {align:"center"}); y+=4;
+  doc.text("Defensor(a) Público(a)", W/2, y, {align:"center"}); y+=4;
   if(resultado.lotacao) doc.text(resultado.lotacao, W/2, y, {align:"center"});
 
   var fn = "Memorial_Calculo_"+(resultado.processo||"calculo")+"_"+resultado.data.replace(/\//g,"-")+".pdf";
@@ -633,11 +636,11 @@ function gerarPDFCompleto(resultado, logoData) {
   }
 }
 
-// ===================== GERADOR PDF ATUALIZA\u00c7\u00c3O PENHORA =====================
+// ===================== GERADOR PDF ATUALIZAÇÃO PENHORA =====================
 
 function gerarPDFAtuPenhora(dados, logoData) {
   var jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
-  if (!jsPDFLib) { alert("PDF n\u00e3o carregou."); return; }
+  if (!jsPDFLib) { alert("PDF não carregou."); return; }
   var doc = new jsPDFLib({ orientation:"landscape", unit:"mm", format:"a4" });
   var W=297, mg=12, y=0;
 
@@ -647,11 +650,11 @@ function gerarPDFAtuPenhora(dados, logoData) {
   }
   doc.setTextColor(255,255,255);
   doc.setFontSize(14); doc.setFont("helvetica","bold");
-  doc.text("ATUALIZA\u00c7\u00c3O DE D\u00c9BITO \u2014 RITO DA PENHORA", W/2, 10, {align:"center"});
+  doc.text("ATUALIZAÇÃO DE DÉBITO — RITO DA PENHORA", W/2, 10, {align:"center"});
   doc.setFontSize(9); doc.setFont("helvetica","normal");
-  doc.text("Execu\u00e7\u00e3o de Alimentos \u2014 art. 528, \u00a78\u00ba, CPC (expropria\u00e7\u00e3o)", W/2, 16, {align:"center"});
+  doc.text("Execução de Alimentos — art. 528, §8º, CPC (expropriação)", W/2, 16, {align:"center"});
   doc.setFontSize(7.5);
-  doc.text("APIDEP \u2014 Associa\u00e7\u00e3o Piauiense das Defensoras e Defensores P\u00fablicos", W/2, 22, {align:"center"});
+  doc.text("DEFCALC — AMIGOS DA DEFENSORIA", W/2, 22, {align:"center"});
   y = 36;
 
   // Dados do processo
@@ -667,33 +670,31 @@ function gerarPDFAtuPenhora(dados, logoData) {
     doc.setFont("helvetica","bold"); doc.text(l,x,yy);
     doc.setFont("helvetica","normal"); doc.text(v||"-", x+doc.getTextWidth(l)+2, yy);
   };
-  lb("Processo n\u00ba:", dados.processo, c1, y);
+  lb("Processo nº:", dados.processo, c1, y);
   lb("Vara/Comarca:", dados.comarca, c2, y);
   lb("Data-base:", dados.dataBase, c3, y);
   y += 8;
   lb("Exequente:", dados.alimentado, c1, y);
   lb("Executado:", dados.alimentante, c2, y);
   y += 8;
-  lb("\u00cdndice:", dados.indiceLabel, c1, y);
+  lb("Índice:", dados.indiceLabel, c1, y);
   y += 12;
 
-  // Tabela de atualiza\u00e7\u00e3o
+  // Tabela de atualização
   doc.setFillColor(26,82,118); doc.rect(mg,y,W-mg*2,7,"F");
   doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
-  doc.text("ATUALIZA\u00c7\u00c3O DO SALDO DEVEDOR", mg+3, y+5);
+  doc.text("ATUALIZAÇÃO DO SALDO DEVEDOR", mg+3, y+5);
   y += 10;
 
-  // Cabe\u00e7alho da tabela
   var colsP=[55,40,40,40,40,40];
   var cxP=[mg];
   colsP.forEach(function(w,i){cxP.push(cxP[i]+w+2);});
-  var hdP=["Descri\u00e7\u00e3o","Data de Ref.","Valor de Ref. (R$)","Fator","Atualizado (R$)","Juros (R$)","Total Atualizado (R$)"];
+  var hdP=["Descrição","Data de Ref.","Valor de Ref. (R$)","Fator","Atualizado (R$)","Juros (R$)","Total Atualizado (R$)"];
   doc.setFillColor(230,230,230); doc.rect(mg,y-2,W-mg*2,7,"F");
   doc.setTextColor(40,40,40); doc.setFont("helvetica","bold"); doc.setFontSize(8);
   hdP.forEach(function(h,i){ if(cxP[i]<W-mg) doc.text(h,cxP[i],y+3); });
   y += 8;
 
-  // Linha de dados
   doc.setFillColor(248,250,248); doc.rect(mg,y-2,W-mg*2,7,"F");
   doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
   doc.text("Saldo atualizado", cxP[0], y+3);
@@ -706,41 +707,38 @@ function gerarPDFAtuPenhora(dados, logoData) {
   doc.text(fmt(dados.total), cxP[6], y+3);
   y += 12;
 
-  // Total
   doc.setFillColor(26,82,118); doc.rect(mg,y,W-mg*2,14,"F");
   doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(9);
-  doc.text("TOTAL ATUALIZADO (PENHORA) \u2014 art. 528, \u00a78\u00ba, CPC", mg+4, y+6);
+  doc.text("TOTAL ATUALIZADO (PENHORA) — art. 528, §8º, CPC", mg+4, y+6);
   doc.setFontSize(14);
   doc.text(fmt(dados.total), W-mg-4, y+10, {align:"right"});
   y += 22;
 
-  // Obs
   doc.setTextColor(40,40,40); doc.setFont("helvetica","bold"); doc.setFontSize(8);
-  doc.text("Observa\u00e7\u00f5es:", mg, y); y += 5;
+  doc.text("Observações:", mg, y); y += 5;
   doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
   var obs = dados.indice === "selic" ? [
-    "1. Atualiza\u00e7\u00e3o pela taxa SELIC acumulada mensal, contada a partir da data de refer\u00eancia at\u00e9 a data-base do c\u00e1lculo.",
-    "2. A SELIC substitui a corre\u00e7\u00e3o monet\u00e1ria e os juros de mora (art. 406 CC c/c Lei 9.250/95).",
-    "3. \u00cdndices SELIC oficiais at\u00e9 mar/2026. A partir de abr/2026: proje\u00e7\u00e3o de 1,07% a.m. Sujeito a revis\u00e3o.",
-    "4. Rito da penhora (expropria\u00e7\u00e3o) \u2014 art. 528, \u00a78\u00ba, CPC."
+    "1. Atualização pela taxa SELIC acumulada mensal, contada a partir da data de referência até a data-base do cálculo.",
+    "2. A SELIC substitui a correção monetária e os juros de mora (art. 406 CC c/c Lei 9.250/95).",
+    "3. Índices SELIC oficiais até mar/2026. A partir de abr/2026: projeção de 1,07% a.m. Sujeito a revisão.",
+    "4. Rito da penhora (expropriação) — art. 528, §8º, CPC."
   ] : [
-    "1. Corre\u00e7\u00e3o monet\u00e1ria pelo IPCA-E (IBGE), contada a partir da data de refer\u00eancia at\u00e9 a data-base do c\u00e1lculo.",
-    "2. Juros de mora: 1% ao m\u00eas sobre o valor corrigido (art. 406 CC c/c art. 161, \u00a71\u00ba, CTN).",
-    "3. \u00cdndices oficiais at\u00e9 fev/2026. A partir de mar/2026: proje\u00e7\u00e3o de 0,31% a.m. Sujeito a revis\u00e3o.",
-    "4. Rito da penhora (expropria\u00e7\u00e3o) \u2014 art. 528, \u00a78\u00ba, CPC."
+    "1. Correção monetária pelo IPCA-E (IBGE), contada a partir da data de referência até a data-base do cálculo.",
+    "2. Juros de mora: 1% ao mês sobre o valor corrigido (art. 406 CC c/c art. 161, §1º, CTN).",
+    "3. Índices oficiais até fev/2026. A partir de mar/2026: projeção de 0,31% a.m. Sujeito a revisão.",
+    "4. Rito da penhora (expropriação) — art. 528, §8º, CPC."
   ];
   obs.forEach(function(o){ doc.text(o,mg,y); y+=4.5; });
   if (dados.justificativa) {
     y += 4;
     doc.setFont("helvetica","bold"); doc.setFontSize(8);
-    doc.text("Justificativa / Observa\u00e7\u00f5es adicionais:", mg, y); y += 5;
+    doc.text("Justificativa / Observações adicionais:", mg, y); y += 5;
     doc.setFont("helvetica","normal"); doc.setFontSize(8);
     var linhas=doc.splitTextToSize(dados.justificativa, W-mg*2);
     linhas.forEach(function(l){if(y>190){doc.addPage();y=15;} doc.text(l,mg,y); y+=4.5;});
   }
   y += 10;
 
-  // Assinatura
   if(y>185){doc.addPage();y=15;}
   doc.setFont("helvetica","normal"); doc.setFontSize(9);
   doc.text(dados.dataBase, W/2, y, {align:"center"}); y+=16;
@@ -748,7 +746,7 @@ function gerarPDFAtuPenhora(dados, logoData) {
   doc.setFont("helvetica","bold"); doc.setFontSize(9.5);
   doc.text(dados.defensor||"", W/2, y, {align:"center"}); y+=5;
   doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
-  doc.text("Defensor(a) P\u00fablico(a)", W/2, y, {align:"center"}); y+=4;
+  doc.text("Defensor(a) Público(a)", W/2, y, {align:"center"}); y+=4;
   if(dados.lotacao) doc.text(dados.lotacao, W/2, y, {align:"center"});
 
   var fn="Atualizacao_Penhora_"+(dados.processo||"calculo")+"_"+dados.dataBase.replace(/\//g,"-")+".pdf";
@@ -762,11 +760,11 @@ function gerarPDFAtuPenhora(dados, logoData) {
   }
 }
 
-// ===================== GERADOR PDF ATUALIZA\u00c7\u00c3O PRIS\u00c3O =====================
+// ===================== GERADOR PDF ATUALIZAÇÃO PRISÃO =====================
 
 function gerarPDFAtuPrisao(resultado, logoData) {
   var jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
-  if (!jsPDFLib) { alert("PDF n\u00e3o carregou."); return; }
+  if (!jsPDFLib) { alert("PDF não carregou."); return; }
   var doc = new jsPDFLib({ orientation:"landscape", unit:"mm", format:"a4" });
   var W=297, mg=12, y=0;
 
@@ -776,11 +774,11 @@ function gerarPDFAtuPrisao(resultado, logoData) {
   }
   doc.setTextColor(255,255,255);
   doc.setFontSize(14); doc.setFont("helvetica","bold");
-  doc.text("ATUALIZA\u00c7\u00c3O DE D\u00c9BITO \u2014 RITO DA PRIS\u00c3O CIVIL", W/2, 10, {align:"center"});
+  doc.text("ATUALIZAÇÃO DE DÉBITO — RITO DA PRISÃO CIVIL", W/2, 10, {align:"center"});
   doc.setFontSize(9); doc.setFont("helvetica","normal");
-  doc.text("Execu\u00e7\u00e3o de Alimentos \u2014 art. 528, \u00a73\u00ba, CPC (pris\u00e3o civil)", W/2, 16, {align:"center"});
+  doc.text("Execução de Alimentos — art. 528, §3º, CPC (prisão civil)", W/2, 16, {align:"center"});
   doc.setFontSize(7.5);
-  doc.text("APIDEP \u2014 Associa\u00e7\u00e3o Piauiense das Defensoras e Defensores P\u00fablicos", W/2, 22, {align:"center"});
+  doc.text("DEFCALC — AMIGOS DA DEFENSORIA", W/2, 22, {align:"center"});
   y = 36;
 
   // Dados
@@ -793,21 +791,21 @@ function gerarPDFAtuPrisao(resultado, logoData) {
   var c1=mg+4, c2=mg+105, c3=mg+200;
   doc.setTextColor(40,40,40); doc.setFontSize(9.5);
   var lb=function(l,v,x,yy){doc.setFont("helvetica","bold");doc.text(l,x,yy);doc.setFont("helvetica","normal");doc.text(v||"-",x+doc.getTextWidth(l)+2,yy);};
-  lb("Processo n\u00ba:", resultado.processo, c1, y);
+  lb("Processo nº:", resultado.processo, c1, y);
   lb("Vara/Comarca:", resultado.comarca, c2, y);
   lb("Data-base:", resultado.data, c3, y);
   y += 8;
   lb("Exequente:", resultado.alimentado, c1, y);
   lb("Executado:", resultado.alimentante, c2, y);
   y += 8;
-  lb("\u00cdndice:", resultado.indiceLabel||"IPCA-E (IBGE)", c1, y);
+  lb("Índice:", resultado.indiceLabel||"IPCA-E (IBGE)", c1, y);
   lb("Vencimento:", "Dia "+resultado.diaVencimento, c2, y);
   y += 12;
 
   // Justificativa
   if (resultado.justificativa) {
     doc.setTextColor(26,107,58); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
-    doc.text("JUSTIFICATIVA / OBSERVA\u00c7\u00d5ES", mg, y);
+    doc.text("JUSTIFICATIVA / OBSERVAÇÕES", mg, y);
     y += 5; doc.setDrawColor(26,107,58); doc.line(mg,y,W-mg,y); y+=4;
     doc.setTextColor(40,40,40); doc.setFont("helvetica","normal"); doc.setFontSize(8);
     var linhas=doc.splitTextToSize(resultado.justificativa, W-mg*2);
@@ -815,16 +813,15 @@ function gerarPDFAtuPrisao(resultado, logoData) {
     y+=4;
   }
 
-  // Tabela \u00fanica (tudo pris\u00e3o)
   if(y>150){doc.addPage();y=15;}
   doc.setFillColor(26,107,58); doc.rect(mg,y,W-mg*2,7,"F");
   doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
-  doc.text("PARCELAS EM ABERTO \u2014 RITO DA PRIS\u00c3O CIVIL (art. 528, \u00a73\u00ba, CPC)", mg+3, y+5);
+  doc.text("PARCELAS EM ABERTO — RITO DA PRISÃO CIVIL (art. 528, §3º, CPC)", mg+3, y+5);
   y += 9;
   var cw=[8,18,20,20,20,18,18,18,20,20,10,18,20];
   var cx=[mg];
   cw.forEach(function(w,i){cx.push(cx[i]+w+1);});
-  var hd=["#","Compet.","Vcto.","SM Vig.","Nominal","Pago","Cr\u00e9d.Apl.","Saldo","Fator","Corrigido","M.","Juros","Total"];
+  var hd=["#","Compet.","Vcto.","SM Vig.","Nominal","Pago","Créd.Apl.","Saldo","Fator","Corrigido","M.","Juros","Total"];
   doc.setFillColor(230,230,230); doc.rect(mg,y-2,W-mg*2,6,"F");
   doc.setTextColor(40,40,40); doc.setFont("helvetica","bold"); doc.setFontSize(6);
   hd.forEach(function(h,i){doc.text(h,cx[i],y+2);});
@@ -861,42 +858,38 @@ function gerarPDFAtuPrisao(resultado, logoData) {
     y+=5.5;
   });
 
-  // Rodap\u00e9 subtotal
   doc.setFillColor(26,107,58); doc.rect(mg,y,W-mg*2,6,"F");
   doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8);
-  doc.text("TOTAL (PRIS\u00c3O CIVIL): "+fmt(resultado.total), W-mg-3, y+4, {align:"right"});
+  doc.text("TOTAL (PRISÃO CIVIL): "+fmt(resultado.total), W-mg-3, y+4, {align:"right"});
   y+=14;
 
-  // Box total
   if(y>175){doc.addPage();y=15;}
   var bW=W-mg*2;
   doc.setFillColor(26,107,58); doc.rect(mg,y,bW,18,"F");
   doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(9);
-  doc.text("TOTAL \u2014 PRIS\u00c3O CIVIL \u2014 art. 528, \u00a73\u00ba, CPC", mg+4, y+7);
+  doc.text("TOTAL — PRISÃO CIVIL — art. 528, §3º, CPC", mg+4, y+7);
   doc.setFontSize(14);
   doc.text(fmt(resultado.total), W-mg-4, y+13, {align:"right"});
   y+=26;
 
-  // Obs
   if(y>170){doc.addPage();y=15;}
   doc.setTextColor(40,40,40); doc.setFont("helvetica","bold"); doc.setFontSize(8);
-  doc.text("Observa\u00e7\u00f5es:", mg, y); y+=5;
+  doc.text("Observações:", mg, y); y+=5;
   doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
   var obsP = resultado.indice==="selic" ? [
-    "1. Atualiza\u00e7\u00e3o pela taxa SELIC acumulada mensal (\u00edndices oficiais at\u00e9 mar/2026; proje\u00e7\u00e3o 1,07% a.m. a partir de abr/2026).",
-    "2. A SELIC substitui a corre\u00e7\u00e3o monet\u00e1ria e os juros de mora (art. 406 CC c/c Lei 9.250/95).",
-    "3. Todas as parcelas est\u00e3o no rito da pris\u00e3o civil \u2014 art. 528, \u00a73\u00ba, CPC.",
-    "4. Imputa\u00e7\u00e3o de pagamentos nos d\u00e9bitos mais antigos (art. 354 CC)."
+    "1. Atualização pela taxa SELIC acumulada mensal (índices oficiais até mar/2026; projeção 1,07% a.m. a partir de abr/2026).",
+    "2. A SELIC substitui a correção monetária e os juros de mora (art. 406 CC c/c Lei 9.250/95).",
+    "3. Todas as parcelas estão no rito da prisão civil — art. 528, §3º, CPC.",
+    "4. Imputação de pagamentos nos débitos mais antigos (art. 354 CC)."
   ] : [
-    "1. Corre\u00e7\u00e3o monet\u00e1ria pelo IPCA-E (IBGE). \u00cdndices oficiais at\u00e9 fev/2026. A partir de mar/2026: proje\u00e7\u00e3o de 0,31% a.m.",
-    "2. Juros de mora: 1% ao m\u00eas, pro rata die, sobre o valor corrigido (art. 406 CC c/c art. 161, \u00a71\u00ba, CTN).",
-    "3. Todas as parcelas est\u00e3o no rito da pris\u00e3o civil \u2014 art. 528, \u00a73\u00ba, CPC.",
-    "4. Imputa\u00e7\u00e3o de pagamentos nos d\u00e9bitos mais antigos (art. 354 CC)."
+    "1. Correção monetária pelo IPCA-E (IBGE). Índices oficiais até fev/2026. A partir de mar/2026: projeção de 0,31% a.m.",
+    "2. Juros de mora: 1% ao mês, pro rata die, sobre o valor corrigido (art. 406 CC c/c art. 161, §1º, CTN).",
+    "3. Todas as parcelas estão no rito da prisão civil — art. 528, §3º, CPC.",
+    "4. Imputação de pagamentos nos débitos mais antigos (art. 354 CC)."
   ];
   obsP.forEach(function(o){if(y>190){doc.addPage();y=15;}doc.text(o,mg,y);y+=4.5;});
   y+=8;
 
-  // Assinatura
   if(y>185){doc.addPage();y=15;}
   doc.setFont("helvetica","normal"); doc.setFontSize(9);
   doc.text(resultado.data, W/2, y, {align:"center"}); y+=16;
@@ -904,7 +897,7 @@ function gerarPDFAtuPrisao(resultado, logoData) {
   doc.setFont("helvetica","bold"); doc.setFontSize(9.5);
   doc.text(resultado.defensor||"", W/2, y, {align:"center"}); y+=5;
   doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
-  doc.text("Defensor(a) P\u00fablico(a)", W/2, y, {align:"center"}); y+=4;
+  doc.text("Defensor(a) Público(a)", W/2, y, {align:"center"}); y+=4;
   if(resultado.lotacao) doc.text(resultado.lotacao, W/2, y, {align:"center"});
 
   var fn="Atualizacao_Prisao_"+(resultado.processo||"calculo")+"_"+resultado.data.replace(/\//g,"-")+".pdf";
@@ -918,7 +911,7 @@ function gerarPDFAtuPrisao(resultado, logoData) {
   }
 }
 
-// ===================== ABA: ATUALIZA\u00c7\u00c3O DE D\u00c9BITO =====================
+// ===================== ABA: ATUALIZAÇÃO DE DÉBITO =====================
 
 function TabAtualizacao(props) {
   var perfil = props.perfil;
@@ -941,7 +934,7 @@ function TabAtualizacao(props) {
   var _aref = useState(2024); var anoRef = _aref[0]; var setAnoRef = _aref[1];
   var _resPen = useState(null); var resPenhora = _resPen[0]; var setResPenhora = _resPen[1];
 
-  // Pris\u00e3o civil (parcelas)
+  // Prisão civil (parcelas)
   var _dia = useState("5"); var diaVencimento = _dia[0]; var setDiaVencimento = _dia[1];
   var _tipo = useState("sm"); var tipoAlimento = _tipo[0]; var setTipoAlimento = _tipo[1];
   var _pct = useState(""); var percentualSM = _pct[0]; var setPercentualSM = _pct[1];
@@ -989,10 +982,10 @@ function TabAtualizacao(props) {
     setIntervalo(function(i){return Object.assign({},i,{pago:""});});
   };
 
-  // C\u00e1lculo penhora simples
+  // Cálculo penhora simples
   var calcularPenhora = function(){
     var valorRefNum = parseMoney(valorRef);
-    if (!valorRef || valorRefNum <= 0) { alert("Informe o valor de refer\u00eancia."); return; }
+    if (!valorRef || valorRefNum <= 0) { alert("Informe o valor de referência."); return; }
     var hoje = new Date();
     var mHoje = hoje.getMonth()+1, aHoje = hoje.getFullYear();
     var calc = corrigirAte(valorRefNum, mesRef, anoRef, mHoje, aHoje, indice);
@@ -1000,7 +993,10 @@ function TabAtualizacao(props) {
     var dataBase = hoje.toLocaleDateString("pt-BR");
     var dataRef = MESES[mesRef-1]+"/"+anoRef;
     var res = {
-      processo: maskProcesso(processo), alimentado, alimentante, comarca,
+      processo: maskProcesso(processo),
+      alimentado: capitalizarNome(alimentado),
+      alimentante: capitalizarNome(alimentante),
+      comarca,
       indice, indiceLabel: labelIndice,
       valorRef: valorRefNum,
       dataRef: dataRef,
@@ -1016,12 +1012,12 @@ function TabAtualizacao(props) {
       lotacao: perfil.lotacao||""
     };
     setResPenhora(res);
-    onSalvarHistorico({ id:Date.now(), tipo:"atu-penhora", alimentado, processo:maskProcesso(processo), data:dataBase, total:calc.total });
+    onSalvarHistorico({ id:Date.now(), tipo:"atu-penhora", alimentado: capitalizarNome(alimentado), processo:maskProcesso(processo), data:dataBase, total:calc.total });
   };
 
-  // C\u00e1lculo pris\u00e3o (id\u00eantico ao original, mas tudo vai para um \u00fanico bloco pris\u00e3o)
+  // Cálculo prisão (idêntico ao original, mas tudo vai para um único bloco prisão)
   var calcularPrisao = function(){
-    if (!usuario.autenticado && !perfil.nome) { alert("Essa calculadora \u00e9 somente para defensores legais."); return; }
+    if (!usuario.autenticado && !perfil.nome) { alert("Essa calculadora é somente para defensores legais."); return; }
     setLoading(true); setResPrisao(null);
     setTimeout(function(){
       var raw = parcelas
@@ -1048,7 +1044,7 @@ function TabAtualizacao(props) {
               if(dez){
                 var soma=0;doAno.forEach(function(p){soma+=p.nominal;});
                 var media=r2(soma/doAno.length);
-                parc13.push({mes:13,ano,label:"13\u00ba/"+ano,smVig:getSM(12,ano),nominal:media,pago:0,is13:true});
+                parc13.push({mes:13,ano,label:"13º/"+ano,smVig:getSM(12,ano),nominal:media,pago:0,is13:true});
               }
             }
           }
@@ -1083,7 +1079,7 @@ function TabAtualizacao(props) {
             saldoPgto=0;
           }
         }
-        if(saldoPgto>0) logImp.push({parcelaDestino:"(cr\u00e9dito excedente)",valorAbatido:saldoPgto,pgtoOrigem:pg.labelOrigem,quitada:false,creditoExcedente:true});
+        if(saldoPgto>0) logImp.push({parcelaDestino:"(crédito excedente)",valorAbatido:saldoPgto,pgtoOrigem:pg.labelOrigem,quitada:false,creditoExcedente:true});
       });
 
       var parcelasCorrigidas=raw.map(function(p,idx){
@@ -1110,11 +1106,11 @@ function TabAtualizacao(props) {
         var pgLabels=pagamentos.map(function(pg){return pg.labelOrigem+" ("+fmt(pg.valor)+")";});
         var pQ=logImp.filter(function(l){return l.quitada;});
         var pA=logImp.filter(function(l){return !l.quitada&&l.valorAbatido>0&&!l.creditoExcedente;});
-        obsImp="IMPUTA\u00c7\u00c3O DE PAGAMENTOS (art. 354 CC): Pagamento(s) efetuado(s) em "+pgLabels.join(", ")+". ";
-        obsImp+="Cada parcela foi corrigida at\u00e9 a data do respectivo pagamento e o valor imputado nas mais antigas. ";
+        obsImp="IMPUTAÇÃO DE PAGAMENTOS (art. 354 CC): Pagamento(s) efetuado(s) em "+pgLabels.join(", ")+". ";
+        obsImp+="Cada parcela foi corrigida até a data do respectivo pagamento e o valor imputado nas mais antigas. ";
         if(pQ.length>0) obsImp+="Parcela(s) quitada(s): "+pQ.map(function(l){return l.parcelaDestino;}).join(", ")+". ";
         if(pA.length>0) obsImp+="Parcela(s) abatida(s): "+pA.map(function(l){return l.parcelaDestino+" (abatido "+fmt(l.valorAbatido)+")"}).join(", ")+". ";
-        if(creditoExcedente>0) obsImp+="Cr\u00e9dito excedente: "+fmt(creditoExcedente)+".";
+        if(creditoExcedente>0) obsImp+="Crédito excedente: "+fmt(creditoExcedente)+".";
       }
 
       var justFinal=justificativa.trim();
@@ -1122,7 +1118,10 @@ function TabAtualizacao(props) {
 
       var labelIndice=indice==="selic"?"SELIC (acumulada)":"IPCA-E + Juros 1% a.m.";
       var res={
-        processo:maskProcesso(processo),alimentado,alimentante,comarca,
+        processo:maskProcesso(processo),
+        alimentado:capitalizarNome(alimentado),
+        alimentante:capitalizarNome(alimentante),
+        comarca,
         diaVencimento,tipoAlimento,percentualSM,valorFixoAlimento,
         indice,indiceLabel:labelIndice,
         justificativa:justFinal,
@@ -1135,7 +1134,7 @@ function TabAtualizacao(props) {
         creditoRemanescente:creditoExcedente
       };
       setResPrisao(res);
-      onSalvarHistorico({id:Date.now(),tipo:"atu-prisao",alimentado,processo:maskProcesso(processo),data:new Date().toLocaleDateString("pt-BR"),total});
+      onSalvarHistorico({id:Date.now(),tipo:"atu-prisao",alimentado:capitalizarNome(alimentado),processo:maskProcesso(processo),data:new Date().toLocaleDateString("pt-BR"),total});
       setLoading(false);
     }, 400);
   };
@@ -1145,8 +1144,8 @@ function TabAtualizacao(props) {
       {/* Sub-abas */}
       <div style={{ display:"flex", gap:0, marginBottom:20, borderRadius:8, overflow:"hidden", border:"1px solid "+C.borda }}>
         {[
-          ["penhora", "\ud83d\udcb0 Atualizar \u2014 Rito da Penhora", "Valor de refer\u00eancia + corre\u00e7\u00e3o"],
-          ["prisao", "\ud83d\udd12 Atualizar \u2014 Rito da Pris\u00e3o Civil", "Parcelas vencidas ap\u00f3s a distribui\u00e7\u00e3o"]
+          ["penhora", "💰 Atualizar — Rito da Penhora", "Valor de referência + correção"],
+          ["prisao", "🔒 Atualizar — Rito da Prisão Civil", "Parcelas vencidas após a distribuição"]
         ].map(function(item, idx){
           var v=item[0], l=item[1], desc=item[2];
           var ativo=subModo===v;
@@ -1170,7 +1169,7 @@ function TabAtualizacao(props) {
         <h3 style={{ margin:"0 0 16px", color:C.cinza, fontSize:15 }}>{"Dados do Processo"}</h3>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px" }}>
           <div style={{ marginBottom:14 }}>
-            <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"N\u00famero do Processo"}</label>
+            <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Número do Processo"}</label>
             <input type="text" inputMode="numeric"
               value={maskProcesso(processo)}
               onChange={function(e){setProcesso(digitsFromDisplay(e.target.value));}}
@@ -1178,8 +1177,22 @@ function TabAtualizacao(props) {
               style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box", fontFamily:"monospace" }} />
           </div>
           <Input label={"Vara/Comarca"} value={comarca} onChange={setComarca} placeholder={"Vara/Comarca"} />
-          <Input label={"Alimentado(a) / Exequente"} value={alimentado} onChange={setAlimentado} placeholder={"Nome completo"} />
-          <Input label={"Alimentante / Executado"} value={alimentante} onChange={setAlimentante} placeholder={"Nome completo"} />
+          <div style={{ marginBottom:14 }}>
+            <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Alimentado(a) / Exequente"}</label>
+            <input type="text" value={alimentado}
+              onChange={function(e){setAlimentado(e.target.value);}}
+              onBlur={function(e){setAlimentado(capitalizarNome(e.target.value));}}
+              placeholder={"Nome Completo"}
+              style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
+          </div>
+          <div style={{ marginBottom:14 }}>
+            <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Alimentante / Executado"}</label>
+            <input type="text" value={alimentante}
+              onChange={function(e){setAlimentante(e.target.value);}}
+              onBlur={function(e){setAlimentante(capitalizarNome(e.target.value));}}
+              placeholder={"Nome Completo"}
+              style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
+          </div>
         </div>
         <SeletorIndice indice={indice} setIndice={setIndice} />
       </Card>
@@ -1188,13 +1201,13 @@ function TabAtualizacao(props) {
       {subModo === "penhora" && (
         <div>
           <Card>
-            <h3 style={{ margin:"0 0 16px", color:C.azul, fontSize:15 }}>{"Saldo de Refer\u00eancia"}</h3>
+            <h3 style={{ margin:"0 0 16px", color:C.azul, fontSize:15 }}>{"Saldo de Referência"}</h3>
             <div style={{ background:"#e8f0f8", border:"1px solid "+C.azul, borderRadius:8, padding:"12px 16px", marginBottom:16, fontSize:13, color:C.azul }}>
-              {"Informe o valor do d\u00e9bito j\u00e1 constante nos autos (conforme \u00faltima atualiza\u00e7\u00e3o judicial ou da parte contr\u00e1ria) e o m\u00eas/ano a que esse valor se refere. O sistema ir\u00e1 atualiz\u00e1-lo at\u00e9 hoje."}
+              {"Informe o valor do débito já constante nos autos (conforme última atualização judicial ou da parte contrária) e o mês/ano a que esse valor se refere. O sistema irá atualizá-lo até hoje."}
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr 1fr", gap:16, alignItems:"end" }}>
               <div>
-                <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Valor de Refer\u00eancia (R$)"}</label>
+                <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Valor de Referência (R$)"}</label>
                 <input type="text" inputMode="decimal" value={valorRef}
                   onChange={function(e){
                     var raw = e.target.value.replace(/[^0-9]/g, "");
@@ -1204,7 +1217,7 @@ function TabAtualizacao(props) {
                   style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
               </div>
               <div>
-                <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"M\u00eas de Ref."}</label>
+                <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Mês de Ref."}</label>
                 <select value={mesRef} onChange={function(e){setMesRef(Number(e.target.value));}}
                   style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:13, boxSizing:"border-box" }}>
                   {MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>;})}
@@ -1218,27 +1231,27 @@ function TabAtualizacao(props) {
               </div>
             </div>
             <div style={{ marginTop:14 }}>
-              <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Justificativa / Observa\u00e7\u00f5es (opcional)"}</label>
+              <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Justificativa / Observações (opcional)"}</label>
               <textarea value={justificativa} onChange={function(e){setJustificativa(e.target.value);}} rows={3}
-                placeholder={"Ex.: Atualiza\u00e7\u00e3o requerida nos autos conforme intima\u00e7\u00e3o de ..."}
+                placeholder={"Ex.: Atualização requerida nos autos conforme intimação de ..."}
                 style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:13, boxSizing:"border-box", resize:"vertical", fontFamily:"inherit" }} />
             </div>
             <div style={{ marginTop:16 }}>
-              <Btn onClick={calcularPenhora} cor={C.azul}>{"Calcular Atualiza\u00e7\u00e3o (Penhora)"}</Btn>
+              <Btn onClick={calcularPenhora} cor={C.azul}>{"Calcular Atualização (Penhora)"}</Btn>
             </div>
           </Card>
 
           {resPenhora && (
             <Card style={{ borderLeft:"4px solid "+C.azul }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-                <h3 style={{ margin:0, color:C.azul }}>{"Resultado \u2014 Atualiza\u00e7\u00e3o (Penhora)"}</h3>
+                <h3 style={{ margin:0, color:C.azul }}>{"Resultado — Atualização (Penhora)"}</h3>
                 <Btn onClick={function(){carregarLogo().then(function(ld){gerarPDFAtuPenhora(resPenhora,ld);});}} cor={C.azul}>{"Gerar PDF"}</Btn>
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
                 {[
-                  ["Valor de Refer\u00eancia", fmt(resPenhora.valorRef)],
-                  ["Fator de Corre\u00e7\u00e3o", resPenhora.fator.toFixed(6)],
-                  ["M\u00eases", String(resPenhora.mesesAtraso)]
+                  ["Valor de Referência", fmt(resPenhora.valorRef)],
+                  ["Fator de Correção", resPenhora.fator.toFixed(6)],
+                  ["Meses", String(resPenhora.mesesAtraso)]
                 ].map(function(item,i){
                   return (
                     <div key={i} style={{ background:C.cinzaClaro, borderRadius:6, padding:"10px 14px" }}>
@@ -1261,22 +1274,22 @@ function TabAtualizacao(props) {
                 </div>
               )}
               <div style={{ background:C.azul, borderRadius:8, padding:"14px 20px", textAlign:"center" }}>
-                <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"TOTAL ATUALIZADO \u2014 PENHORA"}</div>
+                <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"TOTAL ATUALIZADO — PENHORA"}</div>
                 <div style={{ color:"#fff", fontWeight:800, fontSize:22 }}>{fmt(resPenhora.total)}</div>
-                <div style={{ color:"rgba(255,255,255,0.7)", fontSize:11, marginTop:4 }}>{"\u00cdndice: "+resPenhora.indiceLabel}</div>
+                <div style={{ color:"rgba(255,255,255,0.7)", fontSize:11, marginTop:4 }}>{"Índice: "+resPenhora.indiceLabel}</div>
               </div>
             </Card>
           )}
         </div>
       )}
 
-      {/* ---- PRIS\u00c3O CIVIL ---- */}
+      {/* ---- PRISÃO CIVIL ---- */}
       {subModo === "prisao" && (
         <div>
           <Card>
             <h3 style={{ margin:"0 0 12px", color:C.verde, fontSize:15 }}>{"Alimentos Fixados"}</h3>
             <div style={{ display:"flex", gap:10, marginBottom:10 }}>
-              {[["sm","% do Sal\u00e1rio M\u00ednimo"],["fixo","Valor fixo (R$)"]].map(function(item){
+              {[["sm","% do Salário Mínimo"],["fixo","Valor fixo (R$)"]].map(function(item){
                 var v=item[0],l=item[1];
                 return (
                   <button key={v} onClick={function(){setTipoAlimento(v);}} style={{
@@ -1291,7 +1304,7 @@ function TabAtualizacao(props) {
               ? <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <input type="text" inputMode="decimal" value={percentualSM} onChange={function(e){setPercentualSM(e.target.value);}} placeholder={"ex: 20"}
                     style={{ width:100, padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
-                  <span style={{ fontSize:14, color:C.cinza }}>{"% do sal\u00e1rio m\u00ednimo federal"}</span>
+                  <span style={{ fontSize:14, color:C.cinza }}>{"% do salário mínimo federal"}</span>
                 </div>
               : <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <span style={{ fontSize:14, color:C.cinza }}>{"R$"}</span>
@@ -1305,8 +1318,8 @@ function TabAtualizacao(props) {
           </Card>
 
           <Card>
-            <h3 style={{ margin:"0 0 4px", color:C.verde, fontSize:15 }}>{"Parcelas em Aberto (todas no Rito da Pris\u00e3o)"}</h3>
-            <p style={{ fontSize:12, color:"#888", marginTop:0, marginBottom:12 }}>{"Inclua todas as parcelas vencidas ap\u00f3s a distribui\u00e7\u00e3o da execu\u00e7\u00e3o que devem ser atualizadas pelo rito da pris\u00e3o civil."}</p>
+            <h3 style={{ margin:"0 0 4px", color:C.verde, fontSize:15 }}>{"Parcelas em Aberto (todas no Rito da Prisão)"}</h3>
+            <p style={{ fontSize:12, color:"#888", marginTop:0, marginBottom:12 }}>{"Inclua todas as parcelas vencidas após a distribuição da execução que devem ser atualizadas pelo rito da prisão civil."}</p>
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginBottom:12 }}>
               <Btn small onClick={function(){
                 if(!showIntervalo){var p2=calcMesFimPadrao();setIntervalo(function(prev){return Object.assign({},prev,{mesFim:p2.mesFim,anoFim:p2.anoFim});});}
@@ -1321,7 +1334,7 @@ function TabAtualizacao(props) {
                 <div style={{ fontWeight:700, color:C.azul, marginBottom:8 }}>{"Adicionar intervalo"}</div>
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:8, alignItems:"end" }}>
                   <div>
-                    <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"M\u00eas ini"}</label>
+                    <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"Mês ini"}</label>
                     <select value={intervalo.mesIni} onChange={function(e){setIntervalo(Object.assign({},intervalo,{mesIni:Number(e.target.value)}));}} style={inpStyle}>
                       {MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>;})}
                     </select>
@@ -1331,7 +1344,7 @@ function TabAtualizacao(props) {
                     <input type="number" value={intervalo.anoIni} onChange={function(e){setIntervalo(Object.assign({},intervalo,{anoIni:Number(e.target.value)}));}} style={inpStyle} />
                   </div>
                   <div>
-                    <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"M\u00eas fim"}</label>
+                    <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"Mês fim"}</label>
                     <select value={intervalo.mesFim} onChange={function(e){setIntervalo(Object.assign({},intervalo,{mesFim:Number(e.target.value)}));}} style={inpStyle}>
                       {MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>;})}
                     </select>
@@ -1356,9 +1369,9 @@ function TabAtualizacao(props) {
               return (
                 <div key={p.id} style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr auto", gap:10, alignItems:"end", marginBottom:10, padding:12, background:p.is13?"#fff8e1":C.cinzaClaro, borderRadius:8, border:p.is13?"1px solid #f0c040":"none" }}>
                   <div>
-                    <label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{p.is13?"13\u00ba Sal\u00e1rio":"M\u00eas"}</label>
+                    <label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{p.is13?"13º Salário":"Mês"}</label>
                     {p.is13
-                      ? <div style={{ padding:8, fontSize:13, color:C.azul, fontWeight:700 }}>{"13\u00ba/"+p.ano}</div>
+                      ? <div style={{ padding:8, fontSize:13, color:C.azul, fontWeight:700 }}>{"13º/"+p.ano}</div>
                       : <select value={p.mes} onChange={function(e){editParcela(p.id,"mes",Number(e.target.value));}} style={inpStyle}>
                           {MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>;})}
                         </select>
@@ -1376,53 +1389,53 @@ function TabAtualizacao(props) {
                     <label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"Pago (R$)"}</label>
                     <input type="text" inputMode="decimal" value={p.pago} onChange={function(e){editParcela(p.id,"pago",e.target.value);}} placeholder={"0,00"} style={inpStyle} />
                   </div>
-                  <button onClick={function(){removeParcela(p.id);}} style={{ background:"transparent", border:"none", cursor:"pointer", color:C.vermelho, fontSize:18, paddingBottom:4 }}>{"\u2715"}</button>
+                  <button onClick={function(){removeParcela(p.id);}} style={{ background:"transparent", border:"none", cursor:"pointer", color:C.vermelho, fontSize:18, paddingBottom:4 }}>{"✕"}</button>
                 </div>
               );
             })}
 
             <div style={{ marginBottom:14 }}>
-              <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Justificativa / Observa\u00e7\u00f5es (opcional)"}</label>
+              <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Justificativa / Observações (opcional)"}</label>
               <textarea value={justificativa} onChange={function(e){setJustificativa(e.target.value);}} rows={3}
-                placeholder={"Ex.: Atualiza\u00e7\u00e3o requerida nos autos conforme intima\u00e7\u00e3o de ..."}
+                placeholder={"Ex.: Atualização requerida nos autos conforme intimação de ..."}
                 style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:13, boxSizing:"border-box", resize:"vertical", fontFamily:"inherit" }} />
             </div>
 
             <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", background:incluir13?"#fff8e1":"#f9f9f9", border:"1px solid "+(incluir13?"#f0c040":C.borda), borderRadius:8, marginBottom:16 }}>
               <input type="checkbox" checked={incluir13} onChange={function(e){setIncluir13(e.target.checked);}} style={{ width:20, height:20, cursor:"pointer" }} />
               <div>
-                <div style={{ fontWeight:700, fontSize:13, color:C.cinza }}>{"Incluir 13\u00ba sal\u00e1rio"}</div>
-                <div style={{ fontSize:11, color:"#888" }}>{"Gera parcela de 13\u00ba ao final de cada ano (m\u00e9dia dos meses)."}</div>
+                <div style={{ fontWeight:700, fontSize:13, color:C.cinza }}>{"Incluir 13º salário"}</div>
+                <div style={{ fontSize:11, color:"#888" }}>{"Gera parcela de 13º ao final de cada ano (média dos meses)."}</div>
               </div>
             </div>
 
             <Btn onClick={calcularPrisao} disabled={loading||parcelas.every(function(p){return !p.valor;})}>
-              {loading?"Calculando...":"Calcular Atualiza\u00e7\u00e3o (Pris\u00e3o Civil)"}
+              {loading?"Calculando...":"Calcular Atualização (Prisão Civil)"}
             </Btn>
           </Card>
 
           {resPrisao && (
             <Card style={{ borderLeft:"4px solid "+C.verde }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-                <h3 style={{ margin:0, color:C.verde }}>{"Resultado \u2014 Atualiza\u00e7\u00e3o (Pris\u00e3o Civil)"}</h3>
+                <h3 style={{ margin:0, color:C.verde }}>{"Resultado — Atualização (Prisão Civil)"}</h3>
                 <Btn onClick={function(){carregarLogo().then(function(ld){gerarPDFAtuPrisao(resPrisao,ld);});}} cor={C.verde}>{"Gerar PDF"}</Btn>
               </div>
               {resPrisao.obsImputacao && (
                 <div style={{ background:"#fff8e1", border:"1px solid #f0c040", borderRadius:8, padding:"12px 16px", marginBottom:12, fontSize:12, color:"#555", lineHeight:1.6 }}>
-                  <div style={{ fontWeight:700, color:"#b8860b", marginBottom:4 }}>{"Imputa\u00e7\u00e3o de Pagamentos (art. 354 CC)"}</div>
+                  <div style={{ fontWeight:700, color:"#b8860b", marginBottom:4 }}>{"Imputação de Pagamentos (art. 354 CC)"}</div>
                   {resPrisao.obsImputacao}
                 </div>
               )}
               <div style={{ background:C.verdePale, border:"1px solid "+C.verde, borderRadius:8, padding:16, marginBottom:12 }}>
-                <div style={{ fontWeight:700, color:C.verde, marginBottom:8 }}>{"Parcelas \u2014 Rito da Pris\u00e3o Civil"}</div>
+                <div style={{ fontWeight:700, color:C.verde, marginBottom:8 }}>{"Parcelas — Rito da Prisão Civil"}</div>
                 {resPrisao.parcelas.map(function(p,i){
                   return (
                     <div key={i} style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginTop:4 }}>
                       <span>
-                        {p.label}{p.is13?" [13\u00ba]":""}
+                        {p.label}{p.is13?" [13º]":""}
                         {p.pagoOriginal>0?" (pago: "+fmt(p.pagoOriginal)+")":""}
-                        {p.creditoAplicado>0?" (cr\u00e9d.: "+fmt(p.creditoAplicado)+")":""}
-                        {p.quitado?" \u2014 QUITADO":""}
+                        {p.creditoAplicado>0?" (créd.: "+fmt(p.creditoAplicado)+")":""}
+                        {p.quitado?" — QUITADO":""}
                       </span>
                       <span style={{ fontWeight:600, color:p.quitado?C.verde:"inherit" }}>{p.quitado?"-":fmt(p.total)}</span>
                     </div>
@@ -1430,9 +1443,9 @@ function TabAtualizacao(props) {
                 })}
               </div>
               <div style={{ background:C.verde, borderRadius:8, padding:"14px 20px", textAlign:"center" }}>
-                <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"TOTAL ATUALIZADO \u2014 PRIS\u00c3O CIVIL"}</div>
+                <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"TOTAL ATUALIZADO — PRISÃO CIVIL"}</div>
                 <div style={{ color:"#fff", fontWeight:800, fontSize:22 }}>{fmt(resPrisao.total)}</div>
-                <div style={{ color:"rgba(255,255,255,0.7)", fontSize:11, marginTop:4 }}>{"\u00cdndice: "+resPrisao.indiceLabel}</div>
+                <div style={{ color:"rgba(255,255,255,0.7)", fontSize:11, marginTop:4 }}>{"Índice: "+resPrisao.indiceLabel}</div>
               </div>
             </Card>
           )}
@@ -1484,7 +1497,7 @@ function AppInterno(props) {
     });
   };
 
-  // ---- ESTADO ABA C\u00c1LCULO INICIAL ----
+  // ---- ESTADO ABA CÁLCULO INICIAL ----
   var _ind = useState("ipca"); var indice = _ind[0]; var setIndice = _ind[1];
   var _proc = useState(""); var processo = _proc[0]; var setProcesso = _proc[1];
   var _alim = useState(""); var alimentado = _alim[0]; var setAlimentado = _alim[1];
@@ -1555,25 +1568,25 @@ function AppInterno(props) {
       fetch("https://api.anthropic.com/v1/messages",{
         method:"POST",
         headers:{"Content-Type":"application/json","x-api-key":perfil.apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:[block,{type:"text",text:"Extraia: n\u00famero do processo CNJ, alimentado, alimentante, parcelas. Responda SOMENTE em JSON: {\"processo\":\"\",\"alimentado\":\"\",\"alimentante\":\"\",\"parcelas\":[{\"mes\":1,\"ano\":2024,\"valor\":1500.00}]}"}]}]})
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:[block,{type:"text",text:"Extraia: número do processo CNJ, alimentado, alimentante, parcelas. Responda SOMENTE em JSON: {\"processo\":\"\",\"alimentado\":\"\",\"alimentante\":\"\",\"parcelas\":[{\"mes\":1,\"ano\":2024,\"valor\":1500.00}]}"}]}]})
       }).then(function(resp){return resp.json();}).then(function(data){
         var text=(data.content&&data.content[0]&&data.content[0].text)||"";
         var parsed=JSON.parse(text.replace(/```json|```/g,"").trim());
         if(parsed.processo)setProcesso(parsed.processo.replace(/\D/g,"").slice(0,17));
-        if(parsed.alimentado)setAlimentado(parsed.alimentado);
-        if(parsed.alimentante)setAlimentante(parsed.alimentante);
+        if(parsed.alimentado)setAlimentado(capitalizarNome(parsed.alimentado));
+        if(parsed.alimentante)setAlimentante(capitalizarNome(parsed.alimentante));
         if(parsed.parcelas&&parsed.parcelas.length)
           setParcelas(parsed.parcelas.map(function(p,i){return {id:Date.now()+i,mes:p.mes,ano:p.ano,valor:String(r2(p.valor)),pago:"",is13:false};}));
-        setMsgIA("OK! "+(parsed.parcelas?parsed.parcelas.length:0)+" parcela(s) extra\u00edda(s). Revise antes de calcular.");
+        setMsgIA("OK! "+(parsed.parcelas?parsed.parcelas.length:0)+" parcela(s) extraída(s). Revise antes de calcular.");
         setLoadingIA(false); if(fileRef.current)fileRef.current.value="";
-      }).catch(function(){setMsgIA("Erro: N\u00e3o foi poss\u00edvel ler o documento.");setLoadingIA(false);if(fileRef.current)fileRef.current.value="";});
+      }).catch(function(){setMsgIA("Erro: Não foi possível ler o documento.");setLoadingIA(false);if(fileRef.current)fileRef.current.value="";});
     };
     reader.onerror=function(){setMsgIA("Erro ao ler arquivo.");setLoadingIA(false);};
     reader.readAsDataURL(file);
   };
 
   var calcular=function(){
-    if(!usuario.autenticado&&!perfil.nome){alert("Essa calculadora \u00e9 somente para defensores legais.");return;}
+    if(!usuario.autenticado&&!perfil.nome){alert("Essa calculadora é somente para defensores legais.");return;}
     setLoading(true);setResultado(null);
     setTimeout(function(){
       var raw=parcelas
@@ -1593,7 +1606,7 @@ function AppInterno(props) {
             if(!ja){
               var hoje2=new Date();
               var dez=(ano<hoje2.getFullYear())||(ano===hoje2.getFullYear()&&hoje2.getMonth()>=11);
-              if(dez){var soma=0;doAno.forEach(function(p){soma+=p.nominal;});var media=r2(soma/doAno.length);parc13.push({mes:13,ano,label:"13\u00ba/"+ano,smVig:getSM(12,ano),nominal:media,pago:0,is13:true});}
+              if(dez){var soma=0;doAno.forEach(function(p){soma+=p.nominal;});var media=r2(soma/doAno.length);parc13.push({mes:13,ano,label:"13º/"+ano,smVig:getSM(12,ano),nominal:media,pago:0,is13:true});}
             }
           }
         });
@@ -1618,7 +1631,7 @@ function AppInterno(props) {
           if(saldoPgto>=dev){saldoPgto=r2(saldoPgto-dev);logImp.push({parcelaDestino:raw[i].label,valorAbatido:dev,pgtoOrigem:pg.labelOrigem,quitada:true,saldoNominalAntes:saldosNominais[i].saldoNominal});saldosNominais[i].saldoNominal=0;}
           else{var prop=saldoPgto/dev;var nomQ=r2(saldosNominais[i].saldoNominal*prop);logImp.push({parcelaDestino:raw[i].label,valorAbatido:saldoPgto,pgtoOrigem:pg.labelOrigem,quitada:false,saldoNominalAntes:saldosNominais[i].saldoNominal});saldosNominais[i].saldoNominal=r2(saldosNominais[i].saldoNominal-nomQ);saldoPgto=0;}
         }
-        if(saldoPgto>0)logImp.push({parcelaDestino:"(cr\u00e9dito excedente)",valorAbatido:saldoPgto,pgtoOrigem:pg.labelOrigem,quitada:false,creditoExcedente:true});
+        if(saldoPgto>0)logImp.push({parcelaDestino:"(crédito excedente)",valorAbatido:saldoPgto,pgtoOrigem:pg.labelOrigem,quitada:false,creditoExcedente:true});
       });
 
       var parcelasCorrigidas=raw.map(function(p,idx){
@@ -1642,10 +1655,10 @@ function AppInterno(props) {
         var pgLabels=pagamentos.map(function(pg){return pg.labelOrigem+" ("+fmt(pg.valor)+")";});
         var pQ=logImp.filter(function(l){return l.quitada;});
         var pA=logImp.filter(function(l){return !l.quitada&&l.valorAbatido>0&&!l.creditoExcedente;});
-        obsImp="IMPUTA\u00c7\u00c3O DE PAGAMENTOS (art. 354 CC): Pagamento(s) efetuado(s) em "+pgLabels.join(", ")+". Cada parcela devida foi corrigida at\u00e9 a data do respectivo pagamento, e o valor pago foi imputado nas parcelas mais antigas, conforme ordem cronol\u00f3gica. O saldo remanescente de cada parcela n\u00e3o integralmente quitada continua sendo corrigido at\u00e9 a data-base do c\u00e1lculo. ";
+        obsImp="IMPUTAÇÃO DE PAGAMENTOS (art. 354 CC): Pagamento(s) efetuado(s) em "+pgLabels.join(", ")+". Cada parcela devida foi corrigida até a data do respectivo pagamento, e o valor pago foi imputado nas parcelas mais antigas, conforme ordem cronológica. O saldo remanescente de cada parcela não integralmente quitada continua sendo corrigido até a data-base do cálculo. ";
         if(pQ.length>0) obsImp+="Parcela(s) integralmente quitada(s): "+pQ.map(function(l){return l.parcelaDestino;}).join(", ")+". ";
         if(pA.length>0) obsImp+="Parcela(s) parcialmente abatida(s): "+pA.map(function(l){return l.parcelaDestino+" (abatido "+fmt(l.valorAbatido)+")"}).join(", ")+". ";
-        if(creditoExcedente>0) obsImp+="Cr\u00e9dito excedente ap\u00f3s quita\u00e7\u00e3o de todas as parcelas: "+fmt(creditoExcedente)+".";
+        if(creditoExcedente>0) obsImp+="Crédito excedente após quitação de todas as parcelas: "+fmt(creditoExcedente)+".";
       }
 
       var justFinal=justificativa.trim();
@@ -1653,7 +1666,10 @@ function AppInterno(props) {
 
       var labelIndice=indice==="selic"?"SELIC (acumulada)":"IPCA-E + Juros 1% a.m.";
       var res={
-        processo:maskProcesso(processo),alimentado,alimentante,comarca,
+        processo:maskProcesso(processo),
+        alimentado:capitalizarNome(alimentado),
+        alimentante:capitalizarNome(alimentante),
+        comarca,
         diaVencimento,tipoAlimento,percentualSM,valorFixoAlimento,
         indice,indiceLabel:labelIndice,
         justificativa:justFinal,
@@ -1664,7 +1680,7 @@ function AppInterno(props) {
         obsImputacao:obsImp,creditoRemanescente:creditoExcedente
       };
       setResultado(res);
-      salvarHistorico({id:Date.now(),tipo:"novo",alimentado,processo:maskProcesso(processo),data:res.data,total:r2(somaArr(prisaoItems)+somaArr(penhoraItems))});
+      salvarHistorico({id:Date.now(),tipo:"novo",alimentado:capitalizarNome(alimentado),processo:maskProcesso(processo),data:res.data,total:r2(somaArr(prisaoItems)+somaArr(penhoraItems))});
       setLoading(false);
     },400);
   };
@@ -1677,9 +1693,9 @@ function AppInterno(props) {
       {/* Tabs */}
       <div style={{ background:C.branco, borderBottom:"1px solid "+C.borda, display:"flex", padding:"0 28px" }}>
         {[
-          ["calc","Novo C\u00e1lculo"],
-          ["atualizar","Atualiza\u00e7\u00e3o de D\u00e9bito"],
-          ["historico","Hist\u00f3rico"]
+          ["calc","Novo Cálculo"],
+          ["atualizar","Atualização de Débito"],
+          ["historico","Histórico"]
         ].map(function(item){
           var id=item[0],label=item[1];
           return (
@@ -1696,7 +1712,7 @@ function AppInterno(props) {
 
       <div style={{ maxWidth:900, margin:"0 auto", padding:"24px 16px" }}>
 
-        {/* ========= ABA: NOVO C\u00c1LCULO ========= */}
+        {/* ========= ABA: NOVO CÁLCULO ========= */}
         {tab==="calc" && (
           <div>
             {!perfil.nome && (
@@ -1711,8 +1727,8 @@ function AppInterno(props) {
                 <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
                   <span style={{ fontSize:20 }}>{"A"}</span>
                   <div>
-                    <div style={{ fontWeight:700, color:C.azul, fontSize:14 }}>{"Op\u00e7\u00e3o A \u2014 Importar com IA"}</div>
-                    <div style={{ fontSize:11, color:"#666" }}>{"Envie a senten\u00e7a e a IA preenche"}</div>
+                    <div style={{ fontWeight:700, color:C.azul, fontSize:14 }}>{"Opção A — Importar com IA"}</div>
+                    <div style={{ fontSize:11, color:"#666" }}>{"Envie a sentença e a IA preenche"}</div>
                   </div>
                 </div>
                 <input ref={fileRef} type="file" accept=".pdf,image/*" onChange={handleUpload} style={{ display:"none" }} />
@@ -1726,13 +1742,13 @@ function AppInterno(props) {
                 <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
                   <span style={{ fontSize:20 }}>{"B"}</span>
                   <div>
-                    <div style={{ fontWeight:700, color:C.verde, fontSize:14 }}>{"C\u00e1lculo Manual"}</div>
-                    <div style={{ fontSize:11, color:"#666" }}>{"Sempre dispon\u00edvel"}</div>
+                    <div style={{ fontWeight:700, color:C.verde, fontSize:14 }}>{"Cálculo Manual"}</div>
+                    <div style={{ fontSize:11, color:"#666" }}>{"Sempre disponível"}</div>
                   </div>
                 </div>
                 <div style={{ fontSize:12, color:"#555" }}>{"Preencha os dados abaixo."}</div>
                 <div style={{ marginTop:10 }}>
-                  <span style={{ background:C.verdePale, color:C.verde, borderRadius:20, padding:"3px 10px", fontSize:11, fontWeight:600 }}>{"Sem conta necess\u00e1ria"}</span>
+                  <span style={{ background:C.verdePale, color:C.verde, borderRadius:20, padding:"3px 10px", fontSize:11, fontWeight:600 }}>{"Sem conta necessária"}</span>
                 </div>
               </Card>
             </div>
@@ -1741,7 +1757,7 @@ function AppInterno(props) {
               <h3 style={{ margin:"0 0 16px", color:C.verde, fontSize:15 }}>{"Dados do Processo"}</h3>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px" }}>
                 <div style={{ marginBottom:14 }}>
-                  <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"N\u00famero do Processo"}</label>
+                  <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Número do Processo"}</label>
                   <input type="text" inputMode="numeric"
                     value={maskProcesso(processo)}
                     onChange={function(e){setProcesso(digitsFromDisplay(e.target.value));}}
@@ -1749,13 +1765,27 @@ function AppInterno(props) {
                     style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box", fontFamily:"monospace", letterSpacing:"0.5px" }} />
                 </div>
                 <Input label={"Vara/Comarca"} value={comarca} onChange={setComarca} placeholder={"Vara/Comarca"} />
-                <Input label={"Alimentado(a) / Exequente"} value={alimentado} onChange={setAlimentado} placeholder={"Nome completo"} />
-                <Input label={"Alimentante / Executado"} value={alimentante} onChange={setAlimentante} placeholder={"Nome completo"} />
+                <div style={{ marginBottom:14 }}>
+                  <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Alimentado(a) / Exequente"}</label>
+                  <input type="text" value={alimentado}
+                    onChange={function(e){setAlimentado(e.target.value);}}
+                    onBlur={function(e){setAlimentado(capitalizarNome(e.target.value));}}
+                    placeholder={"Nome Completo"}
+                    style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
+                </div>
+                <div style={{ marginBottom:14 }}>
+                  <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Alimentante / Executado"}</label>
+                  <input type="text" value={alimentante}
+                    onChange={function(e){setAlimentante(e.target.value);}}
+                    onBlur={function(e){setAlimentante(capitalizarNome(e.target.value));}}
+                    placeholder={"Nome Completo"}
+                    style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
+                </div>
               </div>
               <div style={{ marginBottom:14 }}>
                 <label style={{ display:"block", fontWeight:600, marginBottom:8, color:C.cinza, fontSize:13 }}>{"Alimentos fixados em"}</label>
                 <div style={{ display:"flex", gap:10, marginBottom:10 }}>
-                  {[["sm","% do Sal\u00e1rio M\u00ednimo"],["fixo","Valor fixo (R$)"]].map(function(item){
+                  {[["sm","% do Salário Mínimo"],["fixo","Valor fixo (R$)"]].map(function(item){
                     var v=item[0],l=item[1];
                     return (
                       <button key={v} onClick={function(){setTipoAlimento(v);}} style={{
@@ -1770,7 +1800,7 @@ function AppInterno(props) {
                   ? <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                       <input type="text" inputMode="decimal" value={percentualSM} onChange={function(e){setPercentualSM(e.target.value);}} placeholder={"ex: 20"}
                         style={{ width:100, padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
-                      <span style={{ fontSize:14, color:C.cinza }}>{"% do sal\u00e1rio m\u00ednimo federal"}</span>
+                      <span style={{ fontSize:14, color:C.cinza }}>{"% do salário mínimo federal"}</span>
                     </div>
                   : <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                       <span style={{ fontSize:14, color:C.cinza }}>{"R$"}</span>
@@ -1786,18 +1816,18 @@ function AppInterno(props) {
             </Card>
 
             <Card>
-              <h3 style={{ margin:"0 0 16px", color:C.verde, fontSize:15 }}>{"Op\u00e7\u00f5es Adicionais"}</h3>
+              <h3 style={{ margin:"0 0 16px", color:C.verde, fontSize:15 }}>{"Opções Adicionais"}</h3>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16, padding:"12px 16px", background:incluir13?"#fff8e1":"#f9f9f9", border:"1px solid "+(incluir13?"#f0c040":C.borda), borderRadius:8 }}>
                 <input type="checkbox" checked={incluir13} onChange={function(e){setIncluir13(e.target.checked);}} style={{ width:20, height:20, cursor:"pointer" }} />
                 <div>
-                  <div style={{ fontWeight:700, fontSize:13, color:C.cinza }}>{"Incluir 13\u00ba sal\u00e1rio"}</div>
-                  <div style={{ fontSize:11, color:"#888" }}>{"Gera parcela de 13\u00ba ao final de cada ano (m\u00e9dia dos meses). Vencimento: dezembro. Valor edit\u00e1vel manualmente."}</div>
+                  <div style={{ fontWeight:700, fontSize:13, color:C.cinza }}>{"Incluir 13º salário"}</div>
+                  <div style={{ fontSize:11, color:"#888" }}>{"Gera parcela de 13º ao final de cada ano (média dos meses). Vencimento: dezembro. Valor editável manualmente."}</div>
                 </div>
               </div>
               <div>
-                <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Justificativa / Observa\u00e7\u00f5es (aparece no PDF)"}</label>
+                <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Justificativa / Observações (aparece no PDF)"}</label>
                 <textarea value={justificativa} onChange={function(e){setJustificativa(e.target.value);}} rows={4}
-                  placeholder={"Ex.: C\u00e1lculo elaborado com base na senten\u00e7a proferida nos autos..."}
+                  placeholder={"Ex.: Cálculo elaborado com base na sentença proferida nos autos..."}
                   style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:13, boxSizing:"border-box", resize:"vertical", fontFamily:"inherit", lineHeight:1.5 }} />
               </div>
             </Card>
@@ -1823,7 +1853,7 @@ function AppInterno(props) {
                   </div>
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:8, alignItems:"end" }}>
                     <div>
-                      <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"M\u00eas ini"}</label>
+                      <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"Mês ini"}</label>
                       <select value={intervalo.mesIni} onChange={function(e){setIntervalo(Object.assign({},intervalo,{mesIni:Number(e.target.value)}));}} style={inpStyle}>
                         {MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>;})}
                       </select>
@@ -1833,7 +1863,7 @@ function AppInterno(props) {
                       <input type="number" value={intervalo.anoIni} onChange={function(e){setIntervalo(Object.assign({},intervalo,{anoIni:Number(e.target.value)}));}} style={inpStyle} />
                     </div>
                     <div>
-                      <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"M\u00eas fim"}</label>
+                      <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"Mês fim"}</label>
                       <select value={intervalo.mesFim} onChange={function(e){setIntervalo(Object.assign({},intervalo,{mesFim:Number(e.target.value)}));}} style={inpStyle}>
                         {MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>;})}
                       </select>
@@ -1858,9 +1888,9 @@ function AppInterno(props) {
                 return (
                   <div key={p.id} style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr auto", gap:10, alignItems:"end", marginBottom:10, padding:12, background:p.is13?"#fff8e1":C.cinzaClaro, borderRadius:8, border:p.is13?"1px solid #f0c040":"none" }}>
                     <div>
-                      <label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{p.is13?"13\u00ba Sal\u00e1rio":"M\u00eas"}</label>
+                      <label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{p.is13?"13º Salário":"Mês"}</label>
                       {p.is13
-                        ?<div style={{ padding:8, fontSize:13, color:C.azul, fontWeight:700 }}>{"13\u00ba/"+p.ano}</div>
+                        ?<div style={{ padding:8, fontSize:13, color:C.azul, fontWeight:700 }}>{"13º/"+p.ano}</div>
                         :<select value={p.mes} onChange={function(e){editParcela(p.id,"mes",Number(e.target.value));}} style={inpStyle}>{MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>;})}</select>
                       }
                     </div>
@@ -1876,13 +1906,13 @@ function AppInterno(props) {
                       <label style={{ fontSize:12, fontWeight:600, color:C.cinza, display:"block", marginBottom:3 }}>{"Pago (R$)"}</label>
                       <input type="text" inputMode="decimal" value={p.pago} onChange={function(e){editParcela(p.id,"pago",e.target.value);}} placeholder={"0,00"} style={inpStyle} />
                     </div>
-                    <button onClick={function(){removeParcela(p.id);}} style={{ background:"transparent", border:"none", cursor:"pointer", color:C.vermelho, fontSize:18, paddingBottom:4 }}>{"\u2715"}</button>
+                    <button onClick={function(){removeParcela(p.id);}} style={{ background:"transparent", border:"none", cursor:"pointer", color:C.vermelho, fontSize:18, paddingBottom:4 }}>{"✕"}</button>
                   </div>
                 );
               })}
               <div style={{ marginTop:16 }}>
                 <Btn onClick={calcular} disabled={loading||parcelas.every(function(p){return !p.valor;})}>
-                  {loading?"Calculando...":"Calcular D\u00e9bito"}
+                  {loading?"Calculando...":"Calcular Débito"}
                 </Btn>
               </div>
             </Card>
@@ -1900,21 +1930,21 @@ function AppInterno(props) {
                 {resultado.alimentado && <p style={{ margin:"0 0 16px", fontSize:13, color:"#666" }}>{"Alimentado(a): "}<strong>{resultado.alimentado}</strong></p>}
                 {resultado.obsImputacao && (
                   <div style={{ background:"#fff8e1", border:"1px solid #f0c040", borderRadius:8, padding:"12px 16px", marginBottom:16, fontSize:12, color:"#555", lineHeight:1.6 }}>
-                    <div style={{ fontWeight:700, color:"#b8860b", marginBottom:4, fontSize:13 }}>{"Imputa\u00e7\u00e3o de Pagamentos (art. 354 CC)"}</div>
+                    <div style={{ fontWeight:700, color:"#b8860b", marginBottom:4, fontSize:13 }}>{"Imputação de Pagamentos (art. 354 CC)"}</div>
                     {resultado.obsImputacao}
-                    {resultado.creditoRemanescente>0 && <div style={{ marginTop:8, fontWeight:700, color:C.verde }}>{"Cr\u00e9dito remanescente: "+fmt(resultado.creditoRemanescente)}</div>}
+                    {resultado.creditoRemanescente>0 && <div style={{ marginTop:8, fontWeight:700, color:C.verde }}>{"Crédito remanescente: "+fmt(resultado.creditoRemanescente)}</div>}
                   </div>
                 )}
                 {resultado.prisao.length>0 && (
                   <div style={{ background:C.verdePale, border:"1px solid "+C.verde, borderRadius:8, padding:16, marginBottom:12 }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                      <div style={{ fontWeight:700, color:C.verde }}>{"BLOCO 1 \u2014 Pris\u00e3o Civil"}</div>
+                      <div style={{ fontWeight:700, color:C.verde }}>{"BLOCO 1 — Prisão Civil"}</div>
                       <span style={{ background:C.verde, color:"#fff", borderRadius:20, padding:"3px 12px", fontSize:12, fontWeight:700 }}>{fmt(resultado.totalPrisao)}</span>
                     </div>
                     {resultado.prisao.map(function(p,i){
                       return (
                         <div key={i} style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginTop:4 }}>
-                          <span>{p.label}{p.is13?" [13\u00ba]":""}{p.pagoOriginal>0?" (pago: "+fmt(p.pagoOriginal)+")":""}{p.creditoAplicado>0?" (cr\u00e9d.: "+fmt(p.creditoAplicado)+")":""}{p.quitado?" QUITADO":""}</span>
+                          <span>{p.label}{p.is13?" [13º]":""}{p.pagoOriginal>0?" (pago: "+fmt(p.pagoOriginal)+")":""}{p.creditoAplicado>0?" (créd.: "+fmt(p.creditoAplicado)+")":""}{p.quitado?" QUITADO":""}</span>
                           <span style={{ fontWeight:600, color:p.quitado?C.verde:"inherit" }}>{p.quitado?"-":fmt(p.total)}</span>
                         </div>
                       );
@@ -1924,13 +1954,13 @@ function AppInterno(props) {
                 {resultado.penhora.length>0 && (
                   <div style={{ background:"#e8f0f8", border:"1px solid "+C.azul, borderRadius:8, padding:16, marginBottom:12 }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                      <div style={{ fontWeight:700, color:C.azul }}>{"BLOCO 2 \u2014 Penhora"}</div>
+                      <div style={{ fontWeight:700, color:C.azul }}>{"BLOCO 2 — Penhora"}</div>
                       <span style={{ background:C.azul, color:"#fff", borderRadius:20, padding:"3px 12px", fontSize:12, fontWeight:700 }}>{fmt(resultado.totalPenhora)}</span>
                     </div>
                     {resultado.penhora.map(function(p,i){
                       return (
                         <div key={i} style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginTop:4 }}>
-                          <span>{p.label}{p.is13?" [13\u00ba]":""}{p.pagoOriginal>0?" (pago: "+fmt(p.pagoOriginal)+")":""}{p.creditoAplicado>0?" (cr\u00e9d.: "+fmt(p.creditoAplicado)+")":""}{p.quitado?" QUITADO":""}</span>
+                          <span>{p.label}{p.is13?" [13º]":""}{p.pagoOriginal>0?" (pago: "+fmt(p.pagoOriginal)+")":""}{p.creditoAplicado>0?" (créd.: "+fmt(p.creditoAplicado)+")":""}{p.quitado?" QUITADO":""}</span>
                           <span style={{ fontWeight:600, color:p.quitado?C.verde:"inherit" }}>{p.quitado?"-":fmt(p.total)}</span>
                         </div>
                       );
@@ -1939,11 +1969,11 @@ function AppInterno(props) {
                 )}
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:8 }}>
                   <div style={{ background:C.verde, borderRadius:8, padding:"12px 16px", textAlign:"center" }}>
-                    <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"BLOCO 1 \u2014 Pris\u00e3o Civil"}</div>
+                    <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"BLOCO 1 — Prisão Civil"}</div>
                     <div style={{ color:"#fff", fontWeight:800, fontSize:18 }}>{fmt(resultado.totalPrisao)}</div>
                   </div>
                   <div style={{ background:C.azul, borderRadius:8, padding:"12px 16px", textAlign:"center" }}>
-                    <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"BLOCO 2 \u2014 Penhora"}</div>
+                    <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"BLOCO 2 — Penhora"}</div>
                     <div style={{ color:"#fff", fontWeight:800, fontSize:18 }}>{fmt(resultado.totalPenhora)}</div>
                   </div>
                 </div>
@@ -1952,7 +1982,7 @@ function AppInterno(props) {
           </div>
         )}
 
-        {/* ========= ABA: ATUALIZA\u00c7\u00c3O ========= */}
+        {/* ========= ABA: ATUALIZAÇÃO ========= */}
         {tab==="atualizar" && (
           <TabAtualizacao
             perfil={perfil}
@@ -1961,20 +1991,20 @@ function AppInterno(props) {
           />
         )}
 
-        {/* ========= ABA: HIST\u00d3RICO ========= */}
+        {/* ========= ABA: HISTÓRICO ========= */}
         {tab==="historico" && (
           <Card>
-            <h3 style={{ margin:"0 0 16px", color:C.verde }}>{"Hist\u00f3rico"}</h3>
+            <h3 style={{ margin:"0 0 16px", color:C.verde }}>{"Histórico"}</h3>
             {historico.length===0
-              ?<p style={{ color:"#888", textAlign:"center", padding:32 }}>{"Nenhum c\u00e1lculo ainda."}</p>
+              ?<p style={{ color:"#888", textAlign:"center", padding:32 }}>{"Nenhum cálculo ainda."}</p>
               :historico.map(function(h){
-                var tipoLabel=h.tipo==="atu-penhora"?"Atualiz. Penhora":h.tipo==="atu-prisao"?"Atualiz. Pris\u00e3o":"Novo C\u00e1lculo";
+                var tipoLabel=h.tipo==="atu-penhora"?"Atualiz. Penhora":h.tipo==="atu-prisao"?"Atualiz. Prisão":"Novo Cálculo";
                 var corTipo=h.tipo==="atu-penhora"?C.azul:C.verde;
                 return (
                   <div key={h.id} style={{ borderBottom:"1px solid "+C.borda, padding:"14px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                     <div>
                       <div style={{ fontWeight:600, fontSize:14 }}>{h.alimentado||"-"}</div>
-                      <div style={{ fontSize:12, color:"#888" }}>{(h.processo||"Sem n\u00ba")+" \u2014 "+h.data}</div>
+                      <div style={{ fontSize:12, color:"#888" }}>{(h.processo||"Sem nº")+" — "+h.data}</div>
                       <span style={{ fontSize:11, color:corTipo, fontWeight:600 }}>{tipoLabel}</span>
                     </div>
                     <div style={{ fontWeight:700, color:C.verde, fontSize:15 }}>{fmt(h.total||0)}</div>
@@ -1985,7 +2015,7 @@ function AppInterno(props) {
             {historico.length>0 && (
               <div style={{ marginTop:16 }}>
                 <Btn small outline cor={C.vermelho} onClick={function(){
-                  if(window.confirm("Limpar hist\u00f3rico?")){setHistorico([]);localStorage.removeItem("dpe_historico");}
+                  if(window.confirm("Limpar histórico?")){setHistorico([]);localStorage.removeItem("dpe_historico");}
                 }}>{"Limpar"}</Btn>
               </div>
             )}
@@ -1995,4 +2025,3 @@ function AppInterno(props) {
     </div>
   );
 }
-
