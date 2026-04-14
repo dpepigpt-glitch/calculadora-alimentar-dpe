@@ -187,17 +187,17 @@ var MESES = [
 ];
 
 var DEFENSORES = {
-  "Dr. Robert Rios Júnior": { lotacao: "2ª Defensoria Itinerante", senha: "Robert2027" },
+  "Dr. Robert Rios Júnior": { lotacao: "2ª Defensoria Itinerante", senha: "RR2027" },
   "Dra. Andrea Melo de Carvalho": { lotacao: "1ª Defensoria de Família", senha: "Andrea2027" },
   "Dra. Dayana Sampaio Mendes Magalhães": { lotacao: "2ª Defensoria Pública Regional de Altos", senha: "Dayana2027" },
   "Dr. Eric Leonardo Pires de Melo": { lotacao: "7ª Defensoria de Família", senha: "Eric2027" },
-  "Dr. Jeiko Leal Melo Hohmann Brito": { lotacao: "13ª Defensoria de Família", senha: "Eric2027" },
+  "Dr. Jeiko Leal Melo Hohmann Brito": { lotacao: "13ª Defensoria de Família", senha: "JK2027" },
   "Dr. João Batista Viana do Lago Neto": { lotacao: "10ª Defensoria de Família", senha: "JB2027" },
-  "Dr. João Castelo Branco de Vasconcelos Neto": { lotacao: "3ª Defensoria de Família", senha: "Eric2027" },
+  "Dr. João Castelo Branco de Vasconcelos Neto": { lotacao: "3ª Defensoria de Família", senha: "JN2027" },
   "Dra. Lívia de Oliveira Revorêado": { lotacao: "3ª Defensoria Pública Regional de São Raimundo Nonato", senha: "Livia2027" },
   "Dr. Marcos Martins de Oliveira": { lotacao: "2ª Defensoria de Floriano", senha: "Marcos2027" },
   "Dra. Priscila Gimenes do Nascimento Godoi": { lotacao: "2ª Defensoria Pública Regional de União", senha: "Priscila2027" },
-  "Dr. Silvio César Queiroz Costa": { lotacao: "4ª Defensoria de Família", senha: "Silvio2027" },
+  "Dr. Silvio César Queiroz Costa": { lotacao: "4ª Defensoria de Família", senha: "SC2027" },
   "Dra. Wênia Silva Moura": { lotacao: "3ª Defensoria Pública Regional de Campo Maior", senha: "Wenia2027" },
   "Dra. Julyanne Cristine Douglas Leone": { lotacao: "Assessora — 2ª Defensoria Itinerante", senha: "Julyanne2027" },
   "Dra. Giulia Mazza": { lotacao: "Assessora — 2ª Defensoria Regional de Piripiri", senha: "Giulia2027" }
