@@ -272,7 +272,7 @@ function ModalAcesso(props) {
             fontSize: 15, fontWeight: 700, cursor: "pointer",
             width: "100%"
           }}>
-          {"CAÍ FORA}
+          {"CAÍ FORA"}
         </button>
       </div>
     </div>
