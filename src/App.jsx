@@ -1640,7 +1640,7 @@ function AppInterno(props) {
     reader.readAsDataURL(file);
   };
 
-  var calcular=function(){
+var calcular=function(){
   if(!usuario.autenticado&&!perfil.nome){
     mostrarAlerta();
     return;
@@ -1665,17 +1665,12 @@ function AppInterno(props) {
         };
       });
 
-    // continua seu código normal aqui...
-
-  }); // fecha setTimeout
-}; // fecha calcular
-
-
+   
 function mostrarAlerta() {
   const div = document.createElement("div");
 
   div.innerHTML = `
-    <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:15px;text-align:center;">
+    <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:25px;border-radius:20px;text-align:center;z-index:9999;">
       <p>Essa calculadora é somente para defensores legais ⚖️</p>
       <img src="/figurinha.png" style="width:150px;">
     </div>
@@ -1683,22 +1678,6 @@ function mostrarAlerta() {
 
   document.body.appendChild(div);
 }
-      if(incluir13){
-        var anosSet={};
-        raw.filter(function(p){return !p.is13;}).forEach(function(p){anosSet[p.ano]=true;});
-        var anos=Object.keys(anosSet).map(Number);
-        var parc13=[];
-        anos.forEach(function(ano){
-          var doAno=raw.filter(function(p){return p.ano===ano&&!p.is13;});
-          if(doAno.length>0){
-            var ja=raw.filter(function(p){return p.ano===ano&&p.is13;}).length>0;
-            if(!ja){
-              var hoje2=new Date();
-              var dez=(ano<hoje2.getFullYear())||(ano===hoje2.getFullYear()&&hoje2.getMonth()>=11);
-              if(dez){var soma=0;doAno.forEach(function(p){soma+=p.nominal;});var media=r2(soma/doAno.length);parc13.push({mes:13,ano,label:"13º/"+ano,smVig:getSM(12,ano),nominal:media,pago:0,is13:true});}
-            }
-          }
-        });
        
       if(incluir13){
         var anosSet={};
