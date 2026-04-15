@@ -1641,7 +1641,7 @@ function AppInterno(props) {
   };
 
   var calcular=function(){
-    if(!usuario.autenticado&&!perfil.nome){alert("Essa calculadora é somente para defensores legais.");return;}
+    if(!usuario.autenticado&&!perfil.nome){Mostraralert();return;}
     setLoading(true);setResultado(null);
     setTimeout(function(){
       var raw=parcelas
@@ -2083,4 +2083,45 @@ function AppInterno(props) {
       </div>
     </div>
   );
+}
+function mostrarAlerta() {
+  const div = document.createElement("div");
+
+  div.innerHTML = `
+    <div style="
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 25px;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      text-align: center;
+      z-index: 9999;
+      max-width: 320px;
+    ">
+      <p style="font-weight:700; color:#b91c1c;">
+        Essa calculadora é somente para defensores legais ⚖️
+      </p>
+
+      <img src="/figurinha.png"
+           style="width:160px; display:block; margin:10px auto;">
+
+      <button onclick="this.closest('div').parentElement.remove()"
+        style="
+          margin-top:15px;
+          padding:10px 20px;
+          border:none;
+          border-radius:10px;
+          background:#065f46;
+          color:white;
+          cursor:pointer;
+        ">
+        Fechar
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(div);
 }
