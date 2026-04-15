@@ -262,7 +262,8 @@ function ModalAcesso(props) {
           {"Acesso Restrito"}
         </div>
         <div style={{ fontSize: 14, color: C.cinza, lineHeight: 1.7, marginBottom: 28 }}>
-          {"Essa calculadora é somente para defensores legais."}
+          {"               VOCÊ NÃO TEM PIX !!!   
+          Essa calculadora é somente para defensores legais."}
         </div>
         <button
           onClick={props.onClose}
