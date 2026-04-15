@@ -1641,28 +1641,41 @@ function AppInterno(props) {
   };
 
   var calcular=function(){
-    if(!usuario.autenticado&&!perfil.nome){mostrarAlerta();return;}
-    setLoading(true);setResultado(null);
-    setTimeout(function(){
-      var raw=parcelas
-        .filter(function(p){return p.valor&&Number(p.valor)>0;})
-        .sort(function(a,b){return a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes;})
-        .map(function(p){return {mes:p.mes,ano:p.ano,label:fmtMes(p.mes,p.ano),smVig:getSM(p.mes===13?12:p.mes,p.ano),nominal:r2(Number(p.valor)),pago:r2(Number(p.pago||0)),is13:!!p.is13};});
- function mostrarAlerta() {
+  if(!usuario.autenticado&&!perfil.nome){
+    mostrarAlerta();
+    return;
+  }
+
+  setLoading(true);
+  setResultado(null);
+
+  setTimeout(function(){
+    var raw=parcelas
+      .filter(function(p){return p.valor&&Number(p.valor)>0;})
+      .sort(function(a,b){return a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes;})
+      .map(function(p){
+        return {
+          mes:p.mes,
+          ano:p.ano,
+          label:fmtMes(p.mes,p.ano),
+          smVig:getSM(p.mes===13?12:p.mes,p.ano),
+          nominal:r2(Number(p.valor)),
+          pago:r2(Number(p.pago||0)),
+          is13:!!p.is13
+        };
+      });
+
+    // continua seu código normal aqui...
+
+  }); // fecha setTimeout
+}; // fecha calcular
+
+
+function mostrarAlerta() {
   const div = document.createElement("div");
 
   div.innerHTML = `
-    <div style="
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      padding: 25px;
-      border-radius: 20px;
-      text-align: center;
-      z-index: 9999;
-    ">
+    <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:15px;text-align:center;">
       <p>Essa calculadora é somente para defensores legais ⚖️</p>
       <img src="/figurinha.png" style="width:150px;">
     </div>
