@@ -1,4 +1,4 @@
-// v4.0 — SELIC + Atualização de Débito (penhora e prisão civil)
+// v4.0 última — SELIC + Atualização de Débito (penhora e prisão civil)
 import { useState, useRef } from "react";
 
 var C = {
@@ -202,33 +202,25 @@ var DEFENSORES = {
   "Dra. Julyanne Cristine Douglas Leone": { lotacao: "Assessora — 2ª Defensoria Itinerante", senha: "Julyanne2027" },
   "Dra. Giulia Mazza": { lotacao: "Assessora — 2ª Defensoria Regional de Piripiri", senha: "Giulia2027" }
 };
-
 var _logoB64 = null;
 var _logoRatio = 4.0; // logo DEFCALC horizontal ~4:1
 
-// Renderiza o PNG transparente sobre fundo colorido para o PDF.
-// Usa canvas com fundo na cor do cabeçalho — elimina xadrez no jsPDF.
+// Renderiza o PNG transparente sobre fundo colorido (cor do cabeçalho do PDF)
+// para evitar o xadrez/cinza que o jsPDF coloca atrás de PNGs transparentes.
 function renderizarLogoComFundo(b64, bgColor) {
   return new Promise(function(res) {
     var img = new Image();
     img.onload = function() {
       try {
-        var w = img.naturalWidth || 800;
-        var h = img.naturalHeight || 200;
         var cv = document.createElement("canvas");
-        cv.width = w; cv.height = h;
+        cv.width = img.naturalWidth; cv.height = img.naturalHeight;
         var ctx = cv.getContext("2d");
+        // Preencher com a cor do cabeçalho antes de desenhar o logo
         ctx.fillStyle = bgColor;
-        ctx.fillRect(0, 0, w, h);
-        ctx.drawImage(img, 0, 0, w, h);
-        _logoRatio = w / h;
-        var resultado = cv.toDataURL("image/png");
-        // Checar se o canvas retornou algo válido (não bloqueado)
-        if (!resultado || resultado === "data:," || resultado.length < 100) {
-          res(b64); // fallback: usar base64 original
-        } else {
-          res(resultado);
-        }
+        ctx.fillRect(0, 0, cv.width, cv.height);
+        ctx.drawImage(img, 0, 0);
+        _logoRatio = img.naturalWidth / img.naturalHeight;
+        res(cv.toDataURL("image/png"));
       } catch(e) { res(b64); }
     };
     img.onerror = function() { res(b64); };
@@ -274,55 +266,45 @@ function TelaLogin(props) {
     props.onLogin({ nome: nome, lotacao: def.lotacao, autenticado: true });
   };
   return (
-    <div style={{ minHeight:"100vh", background:"#e8ede8", display:"flex", alignItems:"center", justifyContent:"center", padding:"20px 16px" }}>
-      <div style={{ background:"#fff", borderRadius:16, width:"100%", maxWidth:460, boxShadow:"0 12px 40px rgba(0,0,0,0.18)", overflow:"hidden" }}>
-
-        {/* Banner branco com logo — transparência funciona perfeitamente sobre branco */}
-        <div style={{ background:"#ffffff", padding:"32px 40px 24px", textAlign:"center", borderBottom:"3px solid "+C.verde }}>
+    <div style={{ minHeight:"100vh", background:"#f0f2f0", display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ background:"#fff", borderRadius:12, padding:40, width:400, boxShadow:"0 8px 32px rgba(0,0,0,0.15)" }}>
+        <div style={{ textAlign:"center", marginBottom:28 }}>
           <img src="/logo-apidep.png" alt="DEFCALC"
-            style={{ height:90, objectFit:"contain", display:"block", margin:"0 auto" }}
+            style={{ height:60, objectFit:"contain", marginBottom:12 }}
             onError={function(e){e.target.style.display="none";}} />
+          <div style={{ fontWeight:800, fontSize:16, color:C.verde }}>{"Calculadora de Débitos Alimentares"}</div>
+          <div style={{ fontSize:12, color:"#888", marginTop:4 }}>{"Fase teste — Apenas Defensores Legais"}</div>
         </div>
-
-        {/* Subtítulo fora do banner */}
-        <div style={{ textAlign:"center", padding:"18px 40px 4px" }}>
-          <div style={{ fontWeight:800, fontSize:18, color:C.verde }}>{"Calculadora de Débitos Alimentares"}</div>
-          <div style={{ fontSize:13, color:"#888", marginTop:5 }}>{"Acesso restrito — Defensores cadastrados"}</div>
-        </div>
-
-        {/* Formulário */}
-        <div style={{ padding:"20px 40px 36px" }}>
-          <div style={{ marginBottom:16 }}>
-            <label style={{ display:"block", fontWeight:700, marginBottom:7, fontSize:14, color:C.cinza }}>{"Nome do Defensor"}</label>
-            <select value={nome} onChange={function(e){setNome(e.target.value);}}
-              style={{ width:"100%", padding:"11px 14px", borderRadius:8, border:"1px solid #d0d0d0", fontSize:15, boxSizing:"border-box", background:"#fafafa" }}>
-              <option value="">{"-- Selecione --"}</option>
-              {Object.keys(DEFENSORES).map(function(d,i){ return <option key={i} value={d}>{d}</option>; })}
-            </select>
-            {nome && DEFENSORES[nome] && (
-              <div style={{ fontSize:13, color:C.verde, marginTop:5, paddingLeft:4, fontWeight:600 }}>{"» "}{DEFENSORES[nome].lotacao}</div>
-            )}
-          </div>
-          <div style={{ marginBottom:22 }}>
-            <label style={{ display:"block", fontWeight:700, marginBottom:7, fontSize:14, color:C.cinza }}>{"Senha de Acesso"}</label>
-            <input type="password" value={senha}
-              onChange={function(e){setSenha(e.target.value);}}
-              onKeyDown={function(e){if(e.key==="Enter")tentar();}}
-              placeholder={"Digite a senha"}
-              style={{ width:"100%", padding:"11px 14px", borderRadius:8, border:"1px solid #d0d0d0", fontSize:15, boxSizing:"border-box", background:"#fafafa" }} />
-          </div>
-          {erro && (
-            <div style={{ background:"#fdecea", border:"1px solid #e57373", borderRadius:8, padding:"11px 14px", fontSize:13, color:C.vermelho, marginBottom:18 }}>{erro}</div>
+        <div style={{ marginBottom:14 }}>
+          <label style={{ display:"block", fontWeight:600, marginBottom:6, fontSize:13, color:C.cinza }}>{"Nome do Defensor"}</label>
+          <select value={nome} onChange={function(e){setNome(e.target.value);}}
+            style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid #d0d0d0", fontSize:14, boxSizing:"border-box" }}>
+            <option value="">{"-- Selecione --"}</option>
+            {Object.keys(DEFENSORES).map(function(d,i){ return <option key={i} value={d}>{d}</option>; })}
+          </select>
+          {nome && DEFENSORES[nome] && (
+            <div style={{ fontSize:12, color:C.verde, marginTop:4, paddingLeft:4 }}>{"» "}{DEFENSORES[nome].lotacao}</div>
           )}
-          <button onClick={tentar}
-            style={{ width:"100%", background:C.verde, color:"#fff", border:"none", borderRadius:8, padding:"13px 0", fontSize:16, fontWeight:700, cursor:"pointer", marginBottom:12, letterSpacing:"0.3px" }}>
-            {"Entrar"}
-          </button>
-          <button onClick={props.onVisitante}
-            style={{ width:"100%", background:"transparent", color:"#777", border:"1px solid #ccc", borderRadius:8, padding:"11px 0", fontSize:14, cursor:"pointer" }}>
-            {"Entrar sem login (visitante)"}
-          </button>
         </div>
+        <div style={{ marginBottom:20 }}>
+          <label style={{ display:"block", fontWeight:600, marginBottom:6, fontSize:13, color:C.cinza }}>{"Senha de Acesso"}</label>
+          <input type="password" value={senha}
+            onChange={function(e){setSenha(e.target.value);}}
+            onKeyDown={function(e){if(e.key==="Enter")tentar();}}
+            placeholder={"Digite a senha"}
+            style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid #d0d0d0", fontSize:14, boxSizing:"border-box" }} />
+        </div>
+        {erro && (
+          <div style={{ background:"#fdecea", border:"1px solid #e57373", borderRadius:6, padding:"10px 12px", fontSize:12, color:C.vermelho, marginBottom:16 }}>{erro}</div>
+        )}
+        <button onClick={tentar}
+          style={{ width:"100%", background:C.verde, color:"#fff", border:"none", borderRadius:6, padding:12, fontSize:15, fontWeight:700, cursor:"pointer", marginBottom:10 }}>
+          {"Entrar"}
+        </button>
+        <button onClick={props.onVisitante}
+          style={{ width:"100%", background:"transparent", color:C.cinza, border:"1px solid "+C.borda, borderRadius:6, padding:10, fontSize:13, cursor:"pointer" }}>
+          {"Entrar sem login (visitante)"}
+        </button>
       </div>
     </div>
   );
@@ -473,11 +455,9 @@ function Header(props) {
   return (
     <div style={{ background:C.verde, color:"#fff", padding:"12px 28px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
       <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-        <div style={{ background:"#fff", borderRadius:8, padding:"4px 10px", display:"flex", alignItems:"center" }}>
-          <img src="/logo-apidep.png" alt="DEFCALC"
-            style={{ height:48, objectFit:"contain" }}
-            onError={function(e){e.target.parentNode.style.display="none";}} />
-        </div>
+        <img src="/logo-apidep.png" alt="DEFCALC"
+          style={{ height:56, objectFit:"contain" }}
+          onError={function(e){e.target.style.display="none";}} />
         <div>
           <div style={{ fontWeight:800, fontSize:16 }}>{"Calculadora de Débitos Alimentares"}</div>
           <div style={{ fontSize:12, opacity:.8 }}>{"DEFCALC — AMIGOS DA DEFENSORIA"}</div>
@@ -1640,45 +1620,15 @@ function AppInterno(props) {
     reader.readAsDataURL(file);
   };
 
-var calcular=function(){
-  if(!usuario.autenticado&&!perfil.nome){
-    mostrarAlerta();
-    return;
-  }
+  var calcular=function(){
+    if(!usuario.autenticado&&!perfil.nome){alert("Essa calculadora é somente para defensores legais.");return;}
+    setLoading(true);setResultado(null);
+    setTimeout(function(){
+      var raw=parcelas
+        .filter(function(p){return p.valor&&Number(p.valor)>0;})
+        .sort(function(a,b){return a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes;})
+        .map(function(p){return {mes:p.mes,ano:p.ano,label:fmtMes(p.mes,p.ano),smVig:getSM(p.mes===13?12:p.mes,p.ano),nominal:r2(Number(p.valor)),pago:r2(Number(p.pago||0)),is13:!!p.is13};});
 
-  setLoading(true);
-  setResultado(null);
-
-  setTimeout(function(){
-    var raw=parcelas
-      .filter(function(p){return p.valor&&Number(p.valor)>0;})
-      .sort(function(a,b){return a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes;})
-      .map(function(p){
-        return {
-          mes:p.mes,
-          ano:p.ano,
-          label:fmtMes(p.mes,p.ano),
-          smVig:getSM(p.mes===13?12:p.mes,p.ano),
-          nominal:r2(Number(p.valor)),
-          pago:r2(Number(p.pago||0)),
-          is13:!!p.is13
-        };
-      });
-
-   
-function mostrarAlerta() {
-  const div = document.createElement("div");
-
-  div.innerHTML = `
-    <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:25px;border-radius:20px;text-align:center;z-index:9999;">
-      <p>Essa calculadora é somente para defensores legais ⚖️</p>
-      <img src="/figurinha.png" style="width:150px;">
-    </div>
-  `;
-
-  document.body.appendChild(div);
-}
-       
       if(incluir13){
         var anosSet={};
         raw.filter(function(p){return !p.is13;}).forEach(function(p){anosSet[p.ano]=true;});
@@ -2114,4 +2064,3 @@ function mostrarAlerta() {
     </div>
   );
 }
-
