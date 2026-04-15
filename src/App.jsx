@@ -254,7 +254,7 @@ function ModalAcesso(props) {
       }}>
         <img
           src="/figurinha.png"
-          alt="Acesso restrito"
+          alt="VOCÊ NÃO TEM PIX !!!"
           style={{ width: 120, height: 120, objectFit: "contain", marginBottom: 22 }}
           onError={function(e){ e.target.style.display = "none"; }}
         />
@@ -262,8 +262,7 @@ function ModalAcesso(props) {
           {"Acesso Restrito"}
         </div>
         <div style={{ fontSize: 14, color: C.cinza, lineHeight: 1.7, marginBottom: 28 }}>
-          {"               VOCÊ NÃO TEM PIX !!!   
-          Essa calculadora é somente para defensores legais."}
+          {"Essa calculadora é somente para defensores legais."}
         </div>
         <button
           onClick={props.onClose}
@@ -273,7 +272,7 @@ function ModalAcesso(props) {
             fontSize: 15, fontWeight: 700, cursor: "pointer",
             width: "100%"
           }}>
-          {"Entendido"}
+          {"CAÍ FORA}
         </button>
       </div>
     </div>
