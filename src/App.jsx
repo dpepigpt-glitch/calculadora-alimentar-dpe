@@ -1641,6 +1641,14 @@ function AppInterno(props) {
   };
 
   var calcular=function(){
+    if(!usuario.autenticado&&!perfil.nome){mostrarAlert();return;}
+    setLoading(true);setResultado(null);
+    setTimeout(function(){
+      var raw=parcelas
+        .filter(function(p){return p.valor&&Number(p.valor)>0;})
+        .sort(function(a,b){return a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes;})
+        .map(function(p){return {mes:p.mes,ano:p.ano,label:fmtMes(p.mes,p.ano),smVig:getSM(p.mes===13?12:p.mes,p.ano),nominal:r2(Number(p.valor)),pago:r2(Number(p.pago||0)),is13:!!p.is13};});
+  var calcular=function(){
     if(!usuario.autenticado&&!perfil.nome){Mostraralert();return;}
     setLoading(true);setResultado(null);
     setTimeout(function(){
@@ -1649,6 +1657,22 @@ function AppInterno(props) {
         .sort(function(a,b){return a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes;})
         .map(function(p){return {mes:p.mes,ano:p.ano,label:fmtMes(p.mes,p.ano),smVig:getSM(p.mes===13?12:p.mes,p.ano),nominal:r2(Number(p.valor)),pago:r2(Number(p.pago||0)),is13:!!p.is13};});
 
+      if(incluir13){
+        var anosSet={};
+        raw.filter(function(p){return !p.is13;}).forEach(function(p){anosSet[p.ano]=true;});
+        var anos=Object.keys(anosSet).map(Number);
+        var parc13=[];
+        anos.forEach(function(ano){
+          var doAno=raw.filter(function(p){return p.ano===ano&&!p.is13;});
+          if(doAno.length>0){
+            var ja=raw.filter(function(p){return p.ano===ano&&p.is13;}).length>0;
+            if(!ja){
+              var hoje2=new Date();
+              var dez=(ano<hoje2.getFullYear())||(ano===hoje2.getFullYear()&&hoje2.getMonth()>=11);
+              if(dez){var soma=0;doAno.forEach(function(p){soma+=p.nominal;});var media=r2(soma/doAno.length);parc13.push({mes:13,ano,label:"13º/"+ano,smVig:getSM(12,ano),nominal:media,pago:0,is13:true});}
+            }
+          }
+        });
       if(incluir13){
         var anosSet={};
         raw.filter(function(p){return !p.is13;}).forEach(function(p){anosSet[p.ano]=true;});
@@ -2084,44 +2108,4 @@ function AppInterno(props) {
     </div>
   );
 }
-function mostrarAlerta() {
-  const div = document.createElement("div");
 
-  div.innerHTML = `
-    <div style="
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      padding: 25px;
-      border-radius: 20px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-      text-align: center;
-      z-index: 9999;
-      max-width: 320px;
-    ">
-      <p style="font-weight:700; color:#b91c1c;">
-        Essa calculadora é somente para defensores legais ⚖️
-      </p>
-
-      <img src="/figurinha.png"
-           style="width:160px; display:block; margin:10px auto;">
-
-      <button onclick="this.closest('div').parentElement.remove()"
-        style="
-          margin-top:15px;
-          padding:10px 20px;
-          border:none;
-          border-radius:10px;
-          background:#065f46;
-          color:white;
-          cursor:pointer;
-        ">
-        Fechar
-      </button>
-    </div>
-  `;
-
-  document.body.appendChild(div);
-}
