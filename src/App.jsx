@@ -1,4 +1,4 @@
-// v4.0 última — SELIC + Atualização de Débito (penhora e prisão civil)
+// v4.0 última MODAL — SELIC + Atualização de Débito (penhora e prisão civil)
 import { useState, useRef } from "react";
 
 var C = {
@@ -11,7 +11,6 @@ var C = {
 var r2 = function(v) { return Math.round((Number(v)||0) * 100) / 100; };
 var fmt = function(v) { return "R$ " + r2(v).toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, "."); };
 
-// Parse monetary input: handles "1.234,56" or "1234.56" or "1234,56"
 var parseMoney = function(s) {
   if (!s && s !== 0) return 0;
   var str = String(s).trim().replace(/R\$\s*/g, "");
@@ -24,7 +23,6 @@ var parseMoney = function(s) {
   return isNaN(n) ? 0 : n;
 };
 
-// Format monetary input as user types
 var fmtInput = function(raw) {
   var digits = raw.replace(/[^0-9]/g, "");
   if (!digits) return "";
@@ -40,7 +38,6 @@ var fmtMes = function(mes, ano) {
   return mes === 13 ? "13º/" + ano : n[mes-1] + "/" + ano;
 };
 
-// Capitaliza iniciais de cada palavra do nome
 var capitalizarNome = function(str) {
   if (!str) return str;
   return str.replace(/\b\w/g, function(c) { return c.toUpperCase(); });
@@ -93,7 +90,6 @@ var getSM = function(m, a) {
   return SALARIO_MINIMO[a + "-" + String(m).padStart(2,"0")] || 1621;
 };
 
-// IPCA-E mensal (%)
 var IPCA_E = {
   "2022-01":0.54,"2022-02":0.58,"2022-03":1.05,"2022-04":1.06,"2022-05":0.81,"2022-06":0.68,
   "2022-07":-0.07,"2022-08":-0.04,"2022-09":0.24,"2022-10":0.40,"2022-11":0.54,"2022-12":0.54,
@@ -107,7 +103,6 @@ var IPCA_E = {
   "2026-07":0.31,"2026-08":0.31,"2026-09":0.31,"2026-10":0.31,"2026-11":0.31,"2026-12":0.31
 };
 
-// SELIC mensal efetiva (%) — taxa acumulada no mês
 var SELIC = {
   "2022-01":0.73,"2022-02":0.76,"2022-03":0.93,"2022-04":0.83,"2022-05":1.03,"2022-06":1.03,
   "2022-07":1.03,"2022-08":1.07,"2022-09":1.07,"2022-10":1.07,"2022-11":1.07,"2022-12":1.07,
@@ -121,7 +116,6 @@ var SELIC = {
   "2026-07":1.07,"2026-08":1.07,"2026-09":1.07,"2026-10":1.07,"2026-11":1.07,"2026-12":1.07
 };
 
-// Corrigir usando IPCA-E + juros 1% a.m.
 function corrigirAteIPCA(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo) {
   var fator = 1;
   var m = mesVenc; var a = anoVenc;
@@ -130,9 +124,7 @@ function corrigirAteIPCA(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo) {
     if (IPCA_E[k] !== undefined) fator *= (1 + IPCA_E[k] / 100);
     m++; if (m > 12) { m = 1; a++; }
   }
-  var meses = Math.max(0,
-    (anoAlvo - anoVenc) * 12 + (mesAlvo - mesVenc)
-  );
+  var meses = Math.max(0, (anoAlvo - anoVenc) * 12 + (mesAlvo - mesVenc));
   var corrigido = r2(saldo * fator);
   var juros = r2(corrigido * meses * 0.01);
   return {
@@ -145,7 +137,6 @@ function corrigirAteIPCA(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo) {
   };
 }
 
-// Corrigir usando SELIC acumulada (subst. correção e juros)
 function corrigirAteSELIC(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo) {
   var fator = 1;
   var m = mesVenc; var a = anoVenc;
@@ -155,9 +146,7 @@ function corrigirAteSELIC(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo) {
     fator *= (1 + tx / 100);
     m++; if (m > 12) { m = 1; a++; }
   }
-  var meses = Math.max(0,
-    (anoAlvo - anoVenc) * 12 + (mesAlvo - mesVenc)
-  );
+  var meses = Math.max(0, (anoAlvo - anoVenc) * 12 + (mesAlvo - mesVenc));
   var total = r2(saldo * fator);
   return {
     fator: r2(fator * 1000000) / 1000000,
@@ -169,7 +158,6 @@ function corrigirAteSELIC(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo) {
   };
 }
 
-// Dispatcher — usa o indice escolhido
 function corrigirAte(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo, indice) {
   if (indice === "selic") return corrigirAteSELIC(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo);
   return corrigirAteIPCA(saldo, mesVenc, anoVenc, mesAlvo, anoAlvo);
@@ -202,11 +190,10 @@ var DEFENSORES = {
   "Dra. Julyanne Cristine Douglas Leone": { lotacao: "Assessora — 2ª Defensoria Itinerante", senha: "Julyanne2027" },
   "Dra. Giulia Mazza": { lotacao: "Assessora — 2ª Defensoria Regional de Piripiri", senha: "Giulia2027" }
 };
-var _logoB64 = null;
-var _logoRatio = 4.0; // logo DEFCALC horizontal ~4:1
 
-// Renderiza o PNG transparente sobre fundo colorido (cor do cabeçalho do PDF)
-// para evitar o xadrez/cinza que o jsPDF coloca atrás de PNGs transparentes.
+var _logoB64 = null;
+var _logoRatio = 4.0;
+
 function renderizarLogoComFundo(b64, bgColor) {
   return new Promise(function(res) {
     var img = new Image();
@@ -215,7 +202,6 @@ function renderizarLogoComFundo(b64, bgColor) {
         var cv = document.createElement("canvas");
         cv.width = img.naturalWidth; cv.height = img.naturalHeight;
         var ctx = cv.getContext("2d");
-        // Preencher com a cor do cabeçalho antes de desenhar o logo
         ctx.fillStyle = bgColor;
         ctx.fillRect(0, 0, cv.width, cv.height);
         ctx.drawImage(img, 0, 0);
@@ -228,7 +214,6 @@ function renderizarLogoComFundo(b64, bgColor) {
   });
 }
 
-// Cache separado por cor de fundo
 var _logoCache = {};
 
 function carregarLogo(bgColor) {
@@ -251,6 +236,47 @@ function carregarLogo(bgColor) {
       });
     })
     .catch(function() { return null; });
+}
+
+// ===================== MODAL DE ACESSO RESTRITO =====================
+
+function ModalAcesso(props) {
+  if (!props.visivel) return null;
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.60)",
+      zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center"
+    }}>
+      <div style={{
+        background: "#fff", borderRadius: 18, padding: "40px 44px 36px",
+        width: 400, maxWidth: "90vw", textAlign: "center",
+        boxShadow: "0 16px 56px rgba(0,0,0,0.30)"
+      }}>
+        <img
+          src="/figurinha.png"
+          alt="Acesso restrito"
+          style={{ width: 120, height: 120, objectFit: "contain", marginBottom: 22 }}
+          onError={function(e){ e.target.style.display = "none"; }}
+        />
+        <div style={{ fontWeight: 800, fontSize: 18, color: C.verde, marginBottom: 10 }}>
+          {"Acesso Restrito"}
+        </div>
+        <div style={{ fontSize: 14, color: C.cinza, lineHeight: 1.7, marginBottom: 28 }}>
+          {"Essa calculadora é somente para defensores legais."}
+        </div>
+        <button
+          onClick={props.onClose}
+          style={{
+            background: C.verde, color: "#fff", border: "none",
+            borderRadius: 8, padding: "11px 36px",
+            fontSize: 15, fontWeight: 700, cursor: "pointer",
+            width: "100%"
+          }}>
+          {"Entendido"}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // ===================== COMPONENTES BASE =====================
@@ -346,7 +372,6 @@ function Card(props) {
   );
 }
 
-// Seletor de índice de correção — reutilizável
 function SeletorIndice(props) {
   var indice = props.indice;
   var setIndice = props.setIndice;
@@ -482,7 +507,7 @@ function novaParcela() {
   return { id: Date.now(), mes: h.getMonth()+1, ano: h.getFullYear(), valor: "", pago: "", is13: false };
 }
 
-// ===================== GERADOR PDF COMPLETO (Novo Cálculo) =====================
+// ===================== GERADOR PDF COMPLETO =====================
 
 function gerarPDFCompleto(resultado, logoData) {
   var jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
@@ -490,7 +515,6 @@ function gerarPDFCompleto(resultado, logoData) {
   var doc = new jsPDFLib({ orientation:"landscape", unit:"mm", format:"a4" });
   var W=297, mg=12, y=0;
 
-  // Cabeçalho
   doc.setFillColor(26,107,58); doc.rect(0,0,W,28,"F");
   if (logoData) {
     try { var lh=18, lw=Math.min(Math.max(lh*_logoRatio,30),65); doc.addImage(logoData,"PNG",6,5,lw,lh); doc.addImage(logoData,"PNG",W-6-lw,5,lw,lh); } catch(e){}
@@ -504,7 +528,6 @@ function gerarPDFCompleto(resultado, logoData) {
   doc.text("DEFCALC — AMIGOS DA DEFENSORIA", W/2, 22, {align:"center"});
   y = 36;
 
-  // Dados
   doc.setFillColor(232,245,238); doc.rect(mg,y,W-mg*2,40,"F");
   doc.setDrawColor(26,107,58); doc.setLineWidth(0.3); doc.rect(mg,y,W-mg*2,40);
   doc.setFillColor(26,107,58); doc.rect(mg,y,W-mg*2,7,"F");
@@ -538,7 +561,6 @@ function gerarPDFCompleto(resultado, logoData) {
   }
   y += 10;
 
-  // Justificativa
   if (resultado.justificativa) {
     doc.setTextColor(26,107,58); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
     doc.text("JUSTIFICATIVA / OBSERVAÇÕES", mg, y);
@@ -604,7 +626,6 @@ function gerarPDFCompleto(resultado, logoData) {
   if (resultado.prisao.length > 0)
     desenharTabela("BLOCO 1 — ÚLTIMAS 3 PARCELAS (art. 528, §3º, CPC)", [26,107,58], resultado.prisao, resultado.totalPrisao, resultado.penhora.length+1);
 
-  // Resumo blocos
   if(y>165){doc.addPage();y=15;}
   var bW=(W-mg*2-4)/2;
   doc.setFillColor(26,107,58); doc.rect(mg,y,bW,22,"F");
@@ -624,7 +645,6 @@ function gerarPDFCompleto(resultado, logoData) {
   doc.text(fmt(resultado.totalPenhora), x2+bW/2, y+19, {align:"center"});
   y += 30;
 
-  // Obs
   if(y>170){doc.addPage();y=15;}
   doc.setTextColor(40,40,40); doc.setFont("helvetica","bold"); doc.setFontSize(8);
   doc.text("Observações:", mg, y); y += 5;
@@ -645,7 +665,6 @@ function gerarPDFCompleto(resultado, logoData) {
   obsLines.forEach(function(o){ if(y>190){doc.addPage();y=15;} doc.text(o,mg,y); y+=4.5; });
   y += 8;
 
-  // Assinatura
   if(y>185){doc.addPage();y=15;}
   doc.setFont("helvetica","normal"); doc.setFontSize(9);
   doc.text(resultado.data, W/2, y, {align:"center"}); y+=16;
@@ -688,7 +707,6 @@ function gerarPDFAtuPenhora(dados, logoData) {
   doc.text("DEFCALC — AMIGOS DA DEFENSORIA", W/2, 22, {align:"center"});
   y = 36;
 
-  // Dados do processo
   doc.setFillColor(232,240,250); doc.rect(mg,y,W-mg*2,32,"F");
   doc.setDrawColor(26,82,118); doc.setLineWidth(0.3); doc.rect(mg,y,W-mg*2,32);
   doc.setFillColor(26,82,118); doc.rect(mg,y,W-mg*2,7,"F");
@@ -711,7 +729,6 @@ function gerarPDFAtuPenhora(dados, logoData) {
   lb("Índice:", dados.indiceLabel, c1, y);
   y += 12;
 
-  // Tabela de atualização
   doc.setFillColor(26,82,118); doc.rect(mg,y,W-mg*2,7,"F");
   doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
   doc.text("ATUALIZAÇÃO DO SALDO DEVEDOR", mg+3, y+5);
@@ -812,7 +829,6 @@ function gerarPDFAtuPrisao(resultado, logoData) {
   doc.text("DEFCALC — AMIGOS DA DEFENSORIA", W/2, 22, {align:"center"});
   y = 36;
 
-  // Dados
   doc.setFillColor(232,245,238); doc.rect(mg,y,W-mg*2,32,"F");
   doc.setDrawColor(26,107,58); doc.setLineWidth(0.3); doc.rect(mg,y,W-mg*2,32);
   doc.setFillColor(26,107,58); doc.rect(mg,y,W-mg*2,7,"F");
@@ -833,7 +849,6 @@ function gerarPDFAtuPrisao(resultado, logoData) {
   lb("Vencimento:", "Dia "+resultado.diaVencimento, c2, y);
   y += 12;
 
-  // Justificativa
   if (resultado.justificativa) {
     doc.setTextColor(26,107,58); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
     doc.text("JUSTIFICATIVA / OBSERVAÇÕES", mg, y);
@@ -948,10 +963,10 @@ function TabAtualizacao(props) {
   var perfil = props.perfil;
   var usuario = props.usuario;
   var onSalvarHistorico = props.onSalvarHistorico;
+  var onAcessoNegado = props.onAcessoNegado || function(){};
 
   var _sm = useState("penhora"); var subModo = _sm[0]; var setSubModo = _sm[1];
 
-  // Campos comuns
   var _proc = useState(""); var processo = _proc[0]; var setProcesso = _proc[1];
   var _ali = useState(""); var alimentado = _ali[0]; var setAlimentado = _ali[1];
   var _ali2 = useState(""); var alimentante = _ali2[0]; var setAlimentante = _ali2[1];
@@ -959,13 +974,11 @@ function TabAtualizacao(props) {
   var _ind = useState("ipca"); var indice = _ind[0]; var setIndice = _ind[1];
   var _just = useState(""); var justificativa = _just[0]; var setJustificativa = _just[1];
 
-  // Penhora simples
   var _vref = useState(""); var valorRef = _vref[0]; var setValorRef = _vref[1];
   var _mref = useState(1); var mesRef = _mref[0]; var setMesRef = _mref[1];
   var _aref = useState(2024); var anoRef = _aref[0]; var setAnoRef = _aref[1];
   var _resPen = useState(null); var resPenhora = _resPen[0]; var setResPenhora = _resPen[1];
 
-  // Prisão civil (parcelas)
   var _dia = useState("5"); var diaVencimento = _dia[0]; var setDiaVencimento = _dia[1];
   var _tipo = useState("sm"); var tipoAlimento = _tipo[0]; var setTipoAlimento = _tipo[1];
   var _pct = useState(""); var percentualSM = _pct[0]; var setPercentualSM = _pct[1];
@@ -1013,7 +1026,6 @@ function TabAtualizacao(props) {
     setIntervalo(function(i){return Object.assign({},i,{pago:""});});
   };
 
-  // Cálculo penhora simples
   var calcularPenhora = function(){
     var valorRefNum = parseMoney(valorRef);
     if (!valorRef || valorRefNum <= 0) { alert("Informe o valor de referência."); return; }
@@ -1046,9 +1058,8 @@ function TabAtualizacao(props) {
     onSalvarHistorico({ id:Date.now(), tipo:"atu-penhora", alimentado: capitalizarNome(alimentado), processo:maskProcesso(processo), data:dataBase, total:calc.total });
   };
 
-  // Cálculo prisão (idêntico ao original, mas tudo vai para um único bloco prisão)
   var calcularPrisao = function(){
-    if (!usuario.autenticado && !perfil.nome) { alert("Essa calculadora é somente para defensores legais."); return; }
+    if (!usuario.autenticado && !perfil.nome) { onAcessoNegado(); return; }
     setLoading(true); setResPrisao(null);
     setTimeout(function(){
       var raw = parcelas
@@ -1172,7 +1183,6 @@ function TabAtualizacao(props) {
 
   return (
     <div>
-      {/* Sub-abas */}
       <div style={{ display:"flex", gap:0, marginBottom:20, borderRadius:8, overflow:"hidden", border:"1px solid "+C.borda }}>
         {[
           ["penhora", "💰 Atualizar — Rito da Penhora", "Valor de referência + correção"],
@@ -1195,7 +1205,6 @@ function TabAtualizacao(props) {
         })}
       </div>
 
-      {/* Campos comuns */}
       <Card>
         <h3 style={{ margin:"0 0 16px", color:C.cinza, fontSize:15 }}>{"Dados do Processo"}</h3>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 16px" }}>
@@ -1232,7 +1241,6 @@ function TabAtualizacao(props) {
         <SeletorIndice indice={indice} setIndice={setIndice} />
       </Card>
 
-      {/* ---- PENHORA SIMPLES ---- */}
       {subModo === "penhora" && (
         <div>
           <Card>
@@ -1318,7 +1326,6 @@ function TabAtualizacao(props) {
         </div>
       )}
 
-      {/* ---- PRISÃO CIVIL ---- */}
       {subModo === "prisao" && (
         <div>
           <Card>
@@ -1518,6 +1525,9 @@ function AppInterno(props) {
   var _sp = useState(false); var showPerfil = _sp[0]; var setShowPerfil = _sp[1];
   var _st = useState("calc"); var tab = _st[0]; var setTab = _st[1];
 
+  // ← NOVO: estado do modal de acesso restrito
+  var _ma = useState(false); var showModalAcesso = _ma[0]; var setShowModalAcesso = _ma[1];
+
   var _sh = useState(function(){
     try{return JSON.parse(localStorage.getItem("dpe_historico")||"[]");} catch(e){return [];}
   }); var historico = _sh[0]; var setHistorico = _sh[1];
@@ -1532,7 +1542,6 @@ function AppInterno(props) {
     });
   };
 
-  // ---- ESTADO ABA CÁLCULO INICIAL ----
   var _ind = useState("ipca"); var indice = _ind[0]; var setIndice = _ind[1];
   var _proc = useState(""); var processo = _proc[0]; var setProcesso = _proc[1];
   var _alim = useState(""); var alimentado = _alim[0]; var setAlimentado = _alim[1];
@@ -1621,7 +1630,8 @@ function AppInterno(props) {
   };
 
   var calcular=function(){
-    if(!usuario.autenticado&&!perfil.nome){alert("Essa calculadora é somente para defensores legais.");return;}
+    // ← ALTERADO: substitui alert por modal customizado
+    if(!usuario.autenticado&&!perfil.nome){setShowModalAcesso(true);return;}
     setLoading(true);setResultado(null);
     setTimeout(function(){
       var raw=parcelas
@@ -1723,9 +1733,12 @@ function AppInterno(props) {
   return (
     <div style={{ fontFamily:"Segoe UI, Arial, sans-serif", minHeight:"100vh", background:"#f0f2f0" }}>
       <Header perfil={perfil} onPerfil={function(){setShowPerfil(true);}} onLogout={onLogout} />
+
       {showPerfil && <ModalPerfil perfil={perfil} onSave={salvarPerfil} onClose={function(){setShowPerfil(false);}} />}
 
-      {/* Tabs */}
+      {/* ← NOVO: Modal de acesso restrito com figurinha */}
+      <ModalAcesso visivel={showModalAcesso} onClose={function(){setShowModalAcesso(false);}} />
+
       <div style={{ background:C.branco, borderBottom:"1px solid "+C.borda, display:"flex", padding:"0 28px" }}>
         {[
           ["calc","Novo Cálculo"],
@@ -1747,7 +1760,6 @@ function AppInterno(props) {
 
       <div style={{ maxWidth:900, margin:"0 auto", padding:"24px 16px" }}>
 
-        {/* ========= ABA: NOVO CÁLCULO ========= */}
         {tab==="calc" && (
           <div>
             {!perfil.nome && (
@@ -2021,16 +2033,15 @@ function AppInterno(props) {
           </div>
         )}
 
-        {/* ========= ABA: ATUALIZAÇÃO ========= */}
         {tab==="atualizar" && (
           <TabAtualizacao
             perfil={perfil}
             usuario={usuario}
             onSalvarHistorico={salvarHistorico}
+            onAcessoNegado={function(){setShowModalAcesso(true);}}
           />
         )}
 
-        {/* ========= ABA: HISTÓRICO ========= */}
         {tab==="historico" && (
           <Card>
             <h3 style={{ margin:"0 0 16px", color:C.verde }}>{"Histórico"}</h3>
