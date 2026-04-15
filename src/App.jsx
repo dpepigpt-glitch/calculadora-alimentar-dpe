@@ -1641,7 +1641,7 @@ function AppInterno(props) {
   };
 
   var calcular=function(){
-    if(!usuario.autenticado&&!perfil.nome){MostrarAlerta();return;}
+    if(!usuario.autenticado&&!perfil.nome){mostrarAlerta();return;}
     setLoading(true);setResultado(null);
     setTimeout(function(){
       var raw=parcelas
