@@ -1648,24 +1648,7 @@ function AppInterno(props) {
         .filter(function(p){return p.valor&&Number(p.valor)>0;})
         .sort(function(a,b){return a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes;})
         .map(function(p){return {mes:p.mes,ano:p.ano,label:fmtMes(p.mes,p.ano),smVig:getSM(p.mes===13?12:p.mes,p.ano),nominal:r2(Number(p.valor)),pago:r2(Number(p.pago||0)),is13:!!p.is13};});
-
-      if(incluir13){
-        var anosSet={};
-        raw.filter(function(p){return !p.is13;}).forEach(function(p){anosSet[p.ano]=true;});
-        var anos=Object.keys(anosSet).map(Number);
-        var parc13=[];
-        anos.forEach(function(ano){
-          var doAno=raw.filter(function(p){return p.ano===ano&&!p.is13;});
-          if(doAno.length>0){
-            var ja=raw.filter(function(p){return p.ano===ano&&p.is13;}).length>0;
-            if(!ja){
-              var hoje2=new Date();
-              var dez=(ano<hoje2.getFullYear())||(ano===hoje2.getFullYear()&&hoje2.getMonth()>=11);
-              if(dez){var soma=0;doAno.forEach(function(p){soma+=p.nominal;});var media=r2(soma/doAno.length);parc13.push({mes:13,ano,label:"13º/"+ano,smVig:getSM(12,ano),nominal:media,pago:0,is13:true});}
-            }
-          }
-        });
-        function mostrarAlerta() {
+ function mostrarAlerta() {
   const div = document.createElement("div");
 
   div.innerHTML = `
@@ -1687,6 +1670,23 @@ function AppInterno(props) {
 
   document.body.appendChild(div);
 }
+      if(incluir13){
+        var anosSet={};
+        raw.filter(function(p){return !p.is13;}).forEach(function(p){anosSet[p.ano]=true;});
+        var anos=Object.keys(anosSet).map(Number);
+        var parc13=[];
+        anos.forEach(function(ano){
+          var doAno=raw.filter(function(p){return p.ano===ano&&!p.is13;});
+          if(doAno.length>0){
+            var ja=raw.filter(function(p){return p.ano===ano&&p.is13;}).length>0;
+            if(!ja){
+              var hoje2=new Date();
+              var dez=(ano<hoje2.getFullYear())||(ano===hoje2.getFullYear()&&hoje2.getMonth()>=11);
+              if(dez){var soma=0;doAno.forEach(function(p){soma+=p.nominal;});var media=r2(soma/doAno.length);parc13.push({mes:13,ano,label:"13º/"+ano,smVig:getSM(12,ano),nominal:media,pago:0,is13:true});}
+            }
+          }
+        });
+       
       if(incluir13){
         var anosSet={};
         raw.filter(function(p){return !p.is13;}).forEach(function(p){anosSet[p.ano]=true;});
