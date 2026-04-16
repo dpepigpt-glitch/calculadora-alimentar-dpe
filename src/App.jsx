@@ -175,21 +175,29 @@ var MESES = [
 ];
 
 var DEFENSORES = {
-  "Dr. Robert Rios Júnior": { lotacao: "2ª Defensoria Itinerante", senha: "RR2027" },
-  "Dra. Andrea Melo de Carvalho": { lotacao: "1ª Defensoria de Família", senha: "Andrea2027" },
-  "Dra. Dayana Sampaio Mendes Magalhães": { lotacao: "2ª Defensoria Pública Regional de Altos", senha: "Dayana2027" },
-  "Dr. Eric Leonardo Pires de Melo": { lotacao: "7ª Defensoria de Família", senha: "Eric2027" },
-  "Dr. Jeiko Leal Melo Hohmann Brito": { lotacao: "13ª Defensoria de Família", senha: "JK2027" },
-  "Dr. João Batista Viana do Lago Neto": { lotacao: "10ª Defensoria de Família", senha: "JB2027" },
-  "Dr. João Castelo Branco de Vasconcelos Neto": { lotacao: "3ª Defensoria de Família", senha: "JN2027" },
-  "Dra. Lívia de Oliveira Revorêado": { lotacao: "3ª Defensoria Pública Regional de São Raimundo Nonato", senha: "Livia2027" },
-  "Dr. Marcos Martins de Oliveira": { lotacao: "2ª Defensoria de Floriano", senha: "Marcos2027" },
-  "Dra. Priscila Gimenes do Nascimento Godoi": { lotacao: "2ª Defensoria Pública Regional de União", senha: "Priscila2027" },
-  "Dr. Silvio César Queiroz Costa": { lotacao: "4ª Defensoria de Família", senha: "SC2027" },
-  "Dra. Wênia Silva Moura": { lotacao: "3ª Defensoria Pública Regional de Campo Maior", senha: "Wenia2027" },
-  "Dra. Julyanne Cristine Douglas Leone": { lotacao: "Assessora — 2ª Defensoria Itinerante", senha: "Julyanne2027" },
-  "Dra. Giulia Mazza": { lotacao: "Assessora — 2ª Defensoria Regional de Piripiri", senha: "Giulia2027" }
+  "Dr. Robert Rios Júnior": { lotacao: "2ª Defensoria Itinerante", hash: "3fa35bccfbc58344dddb6d59f553dd7c254b65b87251b1f8e6ec5065c527a87d" },
+  "Dra. Andrea Melo de Carvalho": { lotacao: "1ª Defensoria de Família", hash: "5387713e646d25eca17afc7bb26429771b8fa2fdd1b5c6fc3d21150b0ec22493" },
+  "Dra. Dayana Sampaio Mendes Magalhães": { lotacao: "2ª Defensoria Pública Regional de Altos", hash: "7e489d2787d44656c30a567d303bf3f055a8cf497383a911af56f168126447ef" },
+  "Dr. Eric Leonardo Pires de Melo": { lotacao: "7ª Defensoria de Família", hash: "740eadb0eb631fb01817fdbbbf4d9f7b7cfadfef9db7720e537dcd0f96fc42ff" },
+  "Dr. Jeiko Leal Melo Hohmann Brito": { lotacao: "13ª Defensoria de Família", hash: "26afa774489b030488664f59c97af7f5f732145c1189b234d51c3f2f61c0799f" },
+  "Dr. João Batista Viana do Lago Neto": { lotacao: "10ª Defensoria de Família", hash: "4f8f481494b5a6ceb4c9a454717bfcc9cb73f41a925119f6d6e094af9364d53d" },
+  "Dr. João Castelo Branco de Vasconcelos Neto": { lotacao: "3ª Defensoria de Família", hash: "98bf0079bd5ca0a5baf15c1079eb400e1f9d83832ea71431a0fef76cc9392b34" },
+  "Dra. Lívia de Oliveira Revorêado": { lotacao: "3ª Defensoria Pública Regional de São Raimundo Nonato", hash: "7d41146c1f00c24f9e5972f980efd992849ddd68577322ecf086c4f8a9f0e6dc" },
+  "Dr. Marcos Martins de Oliveira": { lotacao: "2ª Defensoria de Floriano", hash: "4689bb984c63121ccc62831c6abafdf32dac67ba97aea823839759ff5fb416df" },
+  "Dra. Priscila Gimenes do Nascimento Godoi": { lotacao: "2ª Defensoria Pública Regional de União", hash: "489c2601215c9d3eb1652cf08da35e517e940c3c208910b1bbddb734ee6dd76a" },
+  "Dr. Silvio César Queiroz Costa": { lotacao: "4ª Defensoria de Família", hash: "26ada1abeaf141b7edb9b5cbde7efe4cb32ae24440de245a8c1dc63587c0642a" },
+  "Dra. Wênia Silva Moura": { lotacao: "3ª Defensoria Pública Regional de Campo Maior", hash: "d3a196f20908ee276fa7eaf7073d656f67c3f6ac7fe82d599be4f3dd3d9225aa" },
+  "Dra. Julyanne Cristine Douglas Leone": { lotacao: "Assessora — 2ª Defensoria Itinerante", hash: "4744005732899980b34661d76f23cb876c7674ae333d445cdebee647c519bb50" },
+  "Dra. Giulia Mazza": { lotacao: "Assessora — 2ª Defensoria Regional de Piripiri", hash: "6d193da885645c2dc4b84f90b2c877f0893b9c9606fd067971f7ac94bcfd196b" }
 };
+
+async function hashSenha(senha) {
+  var encoder = new TextEncoder();
+  var data = encoder.encode(senha);
+  var hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  var hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(function(b){ return b.toString(16).padStart(2, '0'); }).join('');
+}
 
 var _logoB64 = null;
 var _logoRatio = 4.0;
@@ -285,10 +293,11 @@ function TelaLogin(props) {
   var _s1 = useState(""); var nome = _s1[0]; var setNome = _s1[1];
   var _s2 = useState(""); var senha = _s2[0]; var setSenha = _s2[1];
   var _s3 = useState(""); var erro = _s3[0]; var setErro = _s3[1];
-  var tentar = function() {
+  var tentar = async function() {
     var def = DEFENSORES[nome];
     if (!nome || !def) { setErro("Selecione um defensor."); return; }
-    if (senha !== def.senha) { setErro("Senha incorreta."); return; }
+    var h = await hashSenha(senha);
+    if (h !== def.hash) { setErro("Senha incorreta."); return; }
     props.onLogin({ nome: nome, lotacao: def.lotacao, autenticado: true });
   };
   return (
@@ -419,8 +428,11 @@ function ModalPerfil(props) {
   var _s4 = useState(""); var senhaModal = _s4[0]; var setSenhaModal = _s4[1];
   var _s5 = useState(""); var erroModal = _s5[0]; var setErroModal = _s5[1];
   var def = DEFENSORES[nome];
-  var salvar = function() {
-    if (nome && def && senhaModal !== def.senha) { setErroModal("Senha incorreta."); return; }
+  var salvar = async function() {
+    if (nome && def) {
+      var h = await hashSenha(senhaModal);
+      if (h !== def.hash) { setErroModal("Senha incorreta."); return; }
+    }
     props.onSave({ nome: nome, lotacao: def ? def.lotacao : "", apiKey: apiKey });
     props.onClose();
   };
