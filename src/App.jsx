@@ -199,10 +199,7 @@ async function hashSenha(senha) {
   return hashArray.map(function(b){ return b.toString(16).padStart(2, '0'); }).join('');
 }
 
-function getSenhaHash(nome) {
-  var custom = localStorage.getItem('senha_hash_' + nome);
-  return custom || (DEFENSORES[nome] && DEFENSORES[nome].hash);
-}
+
 
 var _logoB64 = null;
 var _logoRatio = 4.0;
@@ -302,7 +299,7 @@ function TelaLogin(props) {
     var def = DEFENSORES[nome];
     if (!nome || !def) { setErro("Selecione um defensor."); return; }
     var h = await hashSenha(senha);
-    if (h !== getSenhaHash(nome)) { setErro("Senha incorreta."); return; }
+    if (h !== def.hash) { setErro("Senha incorreta."); return; }
     props.onLogin({ nome: nome, lotacao: def.lotacao, autenticado: true });
   };
   return (
@@ -430,44 +427,24 @@ function ModalPerfil(props) {
   var _s1 = useState(perfil.nome || ""); var nome = _s1[0]; var setNome = _s1[1];
   var _s2 = useState(perfil.apiKey || ""); var apiKey = _s2[0]; var setApiKey = _s2[1];
   var _s3 = useState(false); var showKey = _s3[0]; var setShowKey = _s3[1];
-  var _s4 = useState(""); var senhaAtual = _s4[0]; var setSenhaAtual = _s4[1];
+  var _s4 = useState(""); var senhaModal = _s4[0]; var setSenhaModal = _s4[1];
   var _s5 = useState(""); var erroModal = _s5[0]; var setErroModal = _s5[1];
-  var _s6 = useState(false); var alterando = _s6[0]; var setAlterando = _s6[1];
-  var _s7 = useState(""); var novaSenha = _s7[0]; var setNovaSenha = _s7[1];
-  var _s8 = useState(""); var confirmarSenha = _s8[0]; var setConfirmarSenha = _s8[1];
-  var _s9 = useState(""); var erroAlterarSenha = _s9[0]; var setErroAlterarSenha = _s9[1];
-  var _s10 = useState(""); var sucessoSenha = _s10[0]; var setSucessoSenha = _s10[1];
   var def = DEFENSORES[nome];
-
   var salvar = async function() {
     if (nome && def) {
-      var h = await hashSenha(senhaAtual);
-      if (h !== getSenhaHash(nome)) { setErroModal("Senha incorreta."); return; }
+      var h = await hashSenha(senhaModal);
+      if (h !== def.hash) { setErroModal("Senha incorreta."); return; }
     }
     props.onSave({ nome: nome, lotacao: def ? def.lotacao : "", apiKey: apiKey });
     props.onClose();
   };
-
-  var alterarSenha = async function() {
-    setErroAlterarSenha(""); setSucessoSenha("");
-    if (!novaSenha) { setErroAlterarSenha("Digite a nova senha."); return; }
-    if (novaSenha.length < 6) { setErroAlterarSenha("A senha deve ter pelo menos 6 caracteres."); return; }
-    if (novaSenha !== confirmarSenha) { setErroAlterarSenha("As senhas não coincidem."); return; }
-    var hAtual = await hashSenha(senhaAtual);
-    if (hAtual !== getSenhaHash(nome)) { setErroAlterarSenha("Senha atual incorreta."); return; }
-    var hNova = await hashSenha(novaSenha);
-    localStorage.setItem('senha_hash_' + nome, hNova);
-    setNovaSenha(""); setConfirmarSenha(""); setAlterando(false);
-    setSucessoSenha("Senha alterada com sucesso!");
-  };
-
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ background:C.branco, borderRadius:12, padding:32, width:460, maxWidth:"90vw", boxShadow:"0 8px 32px rgba(0,0,0,0.2)", maxHeight:"90vh", overflowY:"auto" }}>
+      <div style={{ background:C.branco, borderRadius:12, padding:32, width:460, maxWidth:"90vw", boxShadow:"0 8px 32px rgba(0,0,0,0.2)" }}>
         <h2 style={{ margin:"0 0 20px", color:C.verde }}>{"Configurar Perfil"}</h2>
         <div style={{ marginBottom:14 }}>
           <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Nome do Defensor"}</label>
-          <select value={nome} onChange={function(e){setNome(e.target.value);setErroModal("");setSenhaAtual("");setAlterando(false);setSucessoSenha("");}}
+          <select value={nome} onChange={function(e){setNome(e.target.value);setErroModal("");setSenhaModal("");}}
             style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }}>
             <option value="">{"-- Nenhum (visitante) --"}</option>
             {Object.keys(DEFENSORES).map(function(d,i){ return <option key={i} value={d}>{d}</option>; })}
@@ -480,43 +457,14 @@ function ModalPerfil(props) {
               <input value={def.lotacao} disabled style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box", background:C.cinzaClaro }} />
             </div>
             <div style={{ marginBottom:14 }}>
-              <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Senha Atual"}</label>
-              <input type="password" value={senhaAtual}
-                onChange={function(e){setSenhaAtual(e.target.value);setErroModal("");setSucessoSenha("");}}
-                placeholder={"Digite sua senha"}
+              <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Senha"}</label>
+              <input type="password" value={senhaModal}
+                onChange={function(e){setSenhaModal(e.target.value);setErroModal("");}}
+                onKeyDown={function(e){if(e.key==="Enter")salvar();}}
+                placeholder={"Senha"}
                 style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+(erroModal?C.vermelho:C.borda), fontSize:14, boxSizing:"border-box" }} />
               {erroModal && <div style={{ fontSize:12, color:C.vermelho, marginTop:4 }}>{erroModal}</div>}
             </div>
-            {sucessoSenha && (
-              <div style={{ background:"#e8f5e9", border:"1px solid #a5d6a7", borderRadius:6, padding:"8px 12px", fontSize:12, color:"#2e7d32", marginBottom:14 }}>{sucessoSenha}</div>
-            )}
-            <div style={{ marginBottom:14 }}>
-              <button onClick={function(){setAlterando(!alterando);setErroAlterarSenha("");setNovaSenha("");setConfirmarSenha("");}}
-                style={{ background:"none", border:"none", color:C.verde, fontSize:13, fontWeight:600, cursor:"pointer", padding:0, textDecoration:"underline" }}>
-                {alterando ? "▲ Cancelar alteração de senha" : "▼ Alterar minha senha"}
-              </button>
-            </div>
-            {alterando && (
-              <div style={{ background:"#f5f5f5", border:"1px solid "+C.borda, borderRadius:8, padding:16, marginBottom:14 }}>
-                <div style={{ marginBottom:10 }}>
-                  <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Nova Senha"}</label>
-                  <input type="password" value={novaSenha}
-                    onChange={function(e){setNovaSenha(e.target.value);setErroAlterarSenha("");}}
-                    placeholder={"Mínimo 6 caracteres"}
-                    style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+(erroAlterarSenha?C.vermelho:C.borda), fontSize:14, boxSizing:"border-box" }} />
-                </div>
-                <div style={{ marginBottom:10 }}>
-                  <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Confirmar Nova Senha"}</label>
-                  <input type="password" value={confirmarSenha}
-                    onChange={function(e){setConfirmarSenha(e.target.value);setErroAlterarSenha("");}}
-                    onKeyDown={function(e){if(e.key==="Enter")alterarSenha();}}
-                    placeholder={"Repita a nova senha"}
-                    style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+(erroAlterarSenha?C.vermelho:C.borda), fontSize:14, boxSizing:"border-box" }} />
-                </div>
-                {erroAlterarSenha && <div style={{ fontSize:12, color:C.vermelho, marginBottom:8 }}>{erroAlterarSenha}</div>}
-                <Btn onClick={alterarSenha}>{"Confirmar nova senha"}</Btn>
-              </div>
-            )}
           </div>
         )}
         <div style={{ marginBottom:14 }}>
