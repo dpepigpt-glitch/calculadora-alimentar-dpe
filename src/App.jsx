@@ -1556,6 +1556,27 @@ function AppInterno(props) {
     });
   };
 
+  var carregarCalculo = function(entrada) {
+    if (!entrada._form) return;
+    var f = entrada._form;
+    setIndice(f.indice);
+    setProcesso(f.processo);
+    setAlimentado(f.alimentado);
+    setAlimentante(f.alimentante);
+    setComarca(f.comarca);
+    setDiaVencimento(f.diaVencimento);
+    setTipoAlimento(f.tipoAlimento);
+    setPercentualSM(f.percentualSM);
+    setValorFixoAlimento(f.valorFixoAlimento);
+    setParcelas(f.parcelas);
+    setIntervalo(f.intervalo);
+    setIncluir13(f.incluir13);
+    setJustificativa(f.justificativa);
+    setResultado(null);
+    setTab("calc");
+    window.scrollTo(0, 0);
+  };
+
   var _ind = useState("ipca"); var indice = _ind[0]; var setIndice = _ind[1];
   var _proc = useState(""); var processo = _proc[0]; var setProcesso = _proc[1];
   var _alim = useState(""); var alimentado = _alim[0]; var setAlimentado = _alim[1];
@@ -1739,7 +1760,7 @@ function AppInterno(props) {
         obsImputacao:obsImp,creditoRemanescente:creditoExcedente
       };
       setResultado(res);
-      salvarHistorico({id:Date.now(),tipo:"novo",alimentado:capitalizarNome(alimentado),processo:maskProcesso(processo),data:res.data,total:r2(somaArr(prisaoItems)+somaArr(penhoraItems))});
+      salvarHistorico({id:Date.now(),tipo:"novo",alimentado:capitalizarNome(alimentado),processo:maskProcesso(processo),data:res.data,total:r2(somaArr(prisaoItems)+somaArr(penhoraItems)),_form:{indice:indice,processo:processo,alimentado:alimentado,alimentante:alimentante,comarca:comarca,diaVencimento:diaVencimento,tipoAlimento:tipoAlimento,percentualSM:percentualSM,valorFixoAlimento:valorFixoAlimento,parcelas:parcelas,intervalo:intervalo,incluir13:incluir13,justificativa:justificativa}});
       setLoading(false);
     },400);
   };
@@ -2071,7 +2092,12 @@ function AppInterno(props) {
                       <div style={{ fontSize:12, color:"#888" }}>{(h.processo||"Sem nº")+" — "+h.data}</div>
                       <span style={{ fontSize:11, color:corTipo, fontWeight:600 }}>{tipoLabel}</span>
                     </div>
-                    <div style={{ fontWeight:700, color:C.verde, fontSize:15 }}>{fmt(h.total||0)}</div>
+                    <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                      <div style={{ fontWeight:700, color:C.verde, fontSize:15 }}>{fmt(h.total||0)}</div>
+                      {h._form && (
+                        <Btn small outline onClick={function(){carregarCalculo(h);}}>{"Editar"}</Btn>
+                      )}
+                    </div>
                   </div>
                 );
               })
