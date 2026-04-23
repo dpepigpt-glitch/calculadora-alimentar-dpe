@@ -40,7 +40,7 @@ var fmtMes = function(mes, ano) {
 
 var capitalizarNome = function(str) {
   if (!str) return str;
-  return str.replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+  return str.replace(/(^|[ \-])(\S)/g, function(_, sep, c) { return sep + c.toUpperCase(); });
 };
 
 function maskProcesso(digits) {
@@ -769,12 +769,36 @@ function gerarPDFAtuPenhora(dados, logoData) {
   doc.text(fmt(dados.total), cxP[6], y+3);
   y += 12;
 
-  doc.setFillColor(26,82,118); doc.rect(mg,y,W-mg*2,14,"F");
-  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(9);
-  doc.text("TOTAL ATUALIZADO (PENHORA) — art. 528, §8º, CPC", mg+4, y+6);
-  doc.setFontSize(14);
-  doc.text(fmt(dados.total), W-mg-4, y+10, {align:"right"});
-  y += 22;
+  if (dados.multaVal > 0 || dados.honorariosVal > 0) {
+    doc.setFillColor(240,244,250); doc.rect(mg,y,W-mg*2,36,"F");
+    doc.setDrawColor(26,82,118); doc.setLineWidth(0.3); doc.rect(mg,y,W-mg*2,36);
+    doc.setFillColor(26,82,118); doc.rect(mg,y,W-mg*2,7,"F");
+    doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
+    doc.text("COMPOSIÇÃO DO VALOR DA EXECUÇÃO", mg+3, y+5);
+    y += 10;
+    var lbVal = function(label, val, bold) {
+      doc.setTextColor(40,40,40);
+      doc.setFont("helvetica", bold?"bold":"normal"); doc.setFontSize(9);
+      doc.text(label, mg+4, y);
+      doc.setFont("helvetica","bold");
+      doc.text(fmt(val), W-mg-4, y, {align:"right"});
+      y += 6;
+    };
+    lbVal("Valor atualizado:", dados.total, false);
+    if (dados.multaVal > 0) lbVal("Multa por atraso ("+dados.multaPct+"%):", dados.multaVal, false);
+    if (dados.honorariosVal > 0) lbVal("Honorários advocatícios ("+dados.honorariosPct+"%):", dados.honorariosVal, false);
+    doc.setDrawColor(180,180,180); doc.setLineWidth(0.2); doc.line(mg+4, y, W-mg-4, y); y += 3;
+    lbVal("Valor devido à parte (atualiz. + multa):", r2(dados.total + (dados.multaVal||0)), true);
+    lbVal("TOTAL FINAL (atualiz. + multa + honorários):", dados.totalGeral, true);
+    y += 4;
+  } else {
+    doc.setFillColor(26,82,118); doc.rect(mg,y,W-mg*2,14,"F");
+    doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(9);
+    doc.text("TOTAL ATUALIZADO (PENHORA) — art. 528, §8º, CPC", mg+4, y+6);
+    doc.setFontSize(14);
+    doc.text(fmt(dados.totalGeral), W-mg-4, y+10, {align:"right"});
+    y += 22;
+  }
 
   doc.setTextColor(40,40,40); doc.setFont("helvetica","bold"); doc.setFontSize(8);
   doc.text("Observações:", mg, y); y += 5;
@@ -925,12 +949,36 @@ function gerarPDFAtuPrisao(resultado, logoData) {
 
   if(y>175){doc.addPage();y=15;}
   var bW=W-mg*2;
-  doc.setFillColor(26,107,58); doc.rect(mg,y,bW,18,"F");
-  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(9);
-  doc.text("TOTAL — PRISÃO CIVIL — art. 528, §3º, CPC", mg+4, y+7);
-  doc.setFontSize(14);
-  doc.text(fmt(resultado.total), W-mg-4, y+13, {align:"right"});
-  y+=26;
+  if (resultado.multaVal > 0 || resultado.honorariosVal > 0) {
+    doc.setFillColor(232,245,238); doc.rect(mg,y,bW,42,"F");
+    doc.setDrawColor(26,107,58); doc.setLineWidth(0.3); doc.rect(mg,y,bW,42);
+    doc.setFillColor(26,107,58); doc.rect(mg,y,bW,7,"F");
+    doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
+    doc.text("COMPOSIÇÃO DO VALOR DA EXECUÇÃO", mg+3, y+5);
+    y += 10;
+    var lbP = function(label, val, bold) {
+      doc.setTextColor(40,40,40);
+      doc.setFont("helvetica", bold?"bold":"normal"); doc.setFontSize(9);
+      doc.text(label, mg+4, y);
+      doc.setFont("helvetica","bold");
+      doc.text(fmt(val), W-mg-4, y, {align:"right"});
+      y += 6;
+    };
+    lbP("Valor atualizado:", resultado.total, false);
+    if (resultado.multaVal > 0) lbP("Multa por atraso ("+resultado.multaPct+"%):", resultado.multaVal, false);
+    if (resultado.honorariosVal > 0) lbP("Honorários advocatícios ("+resultado.honorariosPct+"%):", resultado.honorariosVal, false);
+    doc.setDrawColor(180,180,180); doc.setLineWidth(0.2); doc.line(mg+4,y,W-mg-4,y); y+=3;
+    lbP("Valor devido à parte (atualiz. + multa):", r2(resultado.total + (resultado.multaVal||0)), true);
+    lbP("TOTAL FINAL (atualiz. + multa + honorários):", resultado.totalGeral, true);
+    y += 8;
+  } else {
+    doc.setFillColor(26,107,58); doc.rect(mg,y,bW,18,"F");
+    doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(9);
+    doc.text("TOTAL — PRISÃO CIVIL — art. 528, §3º, CPC", mg+4, y+7);
+    doc.setFontSize(14);
+    doc.text(fmt(resultado.totalGeral), W-mg-4, y+13, {align:"right"});
+    y+=26;
+  }
 
   if(y>170){doc.addPage();y=15;}
   doc.setTextColor(40,40,40); doc.setFont("helvetica","bold"); doc.setFontSize(8);
