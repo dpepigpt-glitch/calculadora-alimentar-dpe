@@ -1716,9 +1716,13 @@ function AppInterno(props) {
   };
 
   var carregarCalculo = function(entrada) {
+    if (entrada.tipo === "atu-penhora" || entrada.tipo === "atu-prisao") {
+      alert("Edição disponível apenas para cálculos de 'Novo Cálculo'. Para atualização de débito refaça o cálculo na aba correspondente.");
+      return;
+    }
     var formStr = localStorage.getItem("dpe_form_"+entrada.id);
     var f = formStr ? JSON.parse(formStr) : (entrada._form || null);
-    if (!f) { alert("Cálculo antigo sem dados para editar. Faça um novo cálculo para habilitar essa função."); return; }
+    if (!f) { alert("Este cálculo foi salvo antes da funcionalidade de edição ser adicionada. Faça um novo cálculo para habilitar essa função."); return; }
     setIndice(f.indice);
     setProcesso(f.processo);
     setAlimentado(f.alimentado);
@@ -2256,9 +2260,7 @@ function AppInterno(props) {
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                       <div style={{ fontWeight:700, color:C.verde, fontSize:15 }}>{fmt(h.total||0)}</div>
-                      {h.tipo === "novo" && (
-                        <Btn small outline onClick={function(){carregarCalculo(h);}}>{"Editar"}</Btn>
-                      )}
+                      <Btn small outline onClick={function(){carregarCalculo(h);}}>{"Editar"}</Btn>
                     </div>
                   </div>
                 );
