@@ -1002,6 +1002,8 @@ function TabAtualizacao(props) {
   var _i13 = useState(false); var incluir13 = _i13[0]; var setIncluir13 = _i13[1];
   var _resPri = useState(null); var resPrisao = _resPri[0]; var setResPrisao = _resPri[1];
   var _ld = useState(false); var loading = _ld[0]; var setLoading = _ld[1];
+  var _multa = useState(""); var multaPct = _multa[0]; var setMultaPct = _multa[1];
+  var _hon = useState(""); var honorariosPct = _hon[0]; var setHonorariosPct = _hon[1];
 
   var calcMesFimPadrao = function() {
     var hoje = new Date(); var dv=Number(diaVencimento)||5;
@@ -1049,6 +1051,9 @@ function TabAtualizacao(props) {
     var labelIndice = indice==="selic" ? "SELIC (acumulada)" : "IPCA-E + Juros 1% a.m.";
     var dataBase = hoje.toLocaleDateString("pt-BR");
     var dataRef = MESES[mesRef-1]+"/"+anoRef;
+    var multaVal = r2(calc.total * (parseFloat(multaPct)||0) / 100);
+    var honorariosVal = r2(calc.total * (parseFloat(honorariosPct)||0) / 100);
+    var totalGeral = r2(calc.total + multaVal + honorariosVal);
     var res = {
       processo: maskProcesso(processo),
       alimentado: capitalizarNome(alimentado),
@@ -1064,12 +1069,17 @@ function TabAtualizacao(props) {
       juros: calc.juros,
       total: calc.total,
       mesesAtraso: calc.mesesAtraso,
+      multaPct: parseFloat(multaPct)||0,
+      multaVal,
+      honorariosPct: parseFloat(honorariosPct)||0,
+      honorariosVal,
+      totalGeral,
       justificativa: justificativa.trim(),
       defensor: perfil.nome||"",
       lotacao: perfil.lotacao||""
     };
     setResPenhora(res);
-    onSalvarHistorico({ id:Date.now(), tipo:"atu-penhora", alimentado: capitalizarNome(alimentado), processo:maskProcesso(processo), data:dataBase, total:calc.total });
+    onSalvarHistorico({ id:Date.now(), tipo:"atu-penhora", alimentado: capitalizarNome(alimentado), processo:maskProcesso(processo), data:dataBase, total:totalGeral });
   };
 
   var calcularPrisao = function(){
@@ -1173,6 +1183,9 @@ function TabAtualizacao(props) {
       if(obsImp){if(justFinal)justFinal+="\n\n";justFinal+=obsImp;}
 
       var labelIndice=indice==="selic"?"SELIC (acumulada)":"IPCA-E + Juros 1% a.m.";
+      var multaValP = r2(total * (parseFloat(multaPct)||0) / 100);
+      var honorariosValP = r2(total * (parseFloat(honorariosPct)||0) / 100);
+      var totalGeralP = r2(total + multaValP + honorariosValP);
       var res={
         processo:maskProcesso(processo),
         alimentado:capitalizarNome(alimentado),
@@ -1183,6 +1196,11 @@ function TabAtualizacao(props) {
         justificativa:justFinal,
         parcelas:parcelasCorrigidas,
         total,
+        multaPct:parseFloat(multaPct)||0,
+        multaVal:multaValP,
+        honorariosPct:parseFloat(honorariosPct)||0,
+        honorariosVal:honorariosValP,
+        totalGeral:totalGeralP,
         data:new Date().toLocaleDateString("pt-BR"),
         defensor:perfil.nome||"",
         lotacao:perfil.lotacao||"",
@@ -1190,7 +1208,7 @@ function TabAtualizacao(props) {
         creditoRemanescente:creditoExcedente
       };
       setResPrisao(res);
-      onSalvarHistorico({id:Date.now(),tipo:"atu-prisao",alimentado:capitalizarNome(alimentado),processo:maskProcesso(processo),data:new Date().toLocaleDateString("pt-BR"),total});
+      onSalvarHistorico({id:Date.now(),tipo:"atu-prisao",alimentado:capitalizarNome(alimentado),processo:maskProcesso(processo),data:new Date().toLocaleDateString("pt-BR"),total:totalGeralP});
       setLoading(false);
     }, 400);
   };
@@ -1293,6 +1311,26 @@ function TabAtualizacao(props) {
                 placeholder={"Ex.: Atualização requerida nos autos conforme intimação de ..."}
                 style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:13, boxSizing:"border-box", resize:"vertical", fontFamily:"inherit" }} />
             </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginTop:14 }}>
+              <div>
+                <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Multa por Atraso (%)"}</label>
+                <div style={{ position:"relative" }}>
+                  <input type="number" min="0" step="0.01" value={multaPct} onChange={function(e){setMultaPct(e.target.value);}}
+                    placeholder={"0"}
+                    style={{ width:"100%", padding:"9px 32px 9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
+                  <span style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", color:"#888", fontSize:13 }}>%</span>
+                </div>
+              </div>
+              <div>
+                <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Honorários Advocatícios (%)"}</label>
+                <div style={{ position:"relative" }}>
+                  <input type="number" min="0" step="0.01" value={honorariosPct} onChange={function(e){setHonorariosPct(e.target.value);}}
+                    placeholder={"0"}
+                    style={{ width:"100%", padding:"9px 32px 9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
+                  <span style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", color:"#888", fontSize:13 }}>%</span>
+                </div>
+              </div>
+            </div>
             <div style={{ marginTop:16 }}>
               <Btn onClick={calcularPenhora} cor={C.azul}>{"Calcular Atualização (Penhora)"}</Btn>
             </div>
@@ -1330,9 +1368,31 @@ function TabAtualizacao(props) {
                   </div>
                 </div>
               )}
+              {(resPenhora.multaVal > 0 || resPenhora.honorariosVal > 0) && (
+                <div style={{ background:"#f5f5f5", border:"1px solid "+C.borda, borderRadius:8, padding:"12px 16px", marginBottom:8 }}>
+                  <div style={{ fontWeight:700, color:C.cinza, marginBottom:8, fontSize:13 }}>{"Acréscimos sobre o valor atualizado"}</div>
+                  {resPenhora.multaVal > 0 && (
+                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:4 }}>
+                      <span>{"Multa por atraso ("+resPenhora.multaPct+"%)"}</span>
+                      <span style={{ fontWeight:600 }}>{fmt(resPenhora.multaVal)}</span>
+                    </div>
+                  )}
+                  {resPenhora.honorariosVal > 0 && (
+                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:13 }}>
+                      <span>{"Honorários advocatícios ("+resPenhora.honorariosPct+"%)"}</span>
+                      <span style={{ fontWeight:600 }}>{fmt(resPenhora.honorariosVal)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
               <div style={{ background:C.azul, borderRadius:8, padding:"14px 20px", textAlign:"center" }}>
-                <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"TOTAL ATUALIZADO — PENHORA"}</div>
-                <div style={{ color:"#fff", fontWeight:800, fontSize:22 }}>{fmt(resPenhora.total)}</div>
+                {(resPenhora.multaVal > 0 || resPenhora.honorariosVal > 0) && (
+                  <div style={{ color:"rgba(255,255,255,0.75)", fontSize:13, marginBottom:6 }}>
+                    {"Subtotal atualizado: "+fmt(resPenhora.total)}
+                  </div>
+                )}
+                <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"TOTAL DA EXECUÇÃO — PENHORA"}</div>
+                <div style={{ color:"#fff", fontWeight:800, fontSize:22 }}>{fmt(resPenhora.totalGeral)}</div>
                 <div style={{ color:"rgba(255,255,255,0.7)", fontSize:11, marginTop:4 }}>{"Índice: "+resPenhora.indiceLabel}</div>
               </div>
             </Card>
@@ -1456,6 +1516,26 @@ function TabAtualizacao(props) {
                 placeholder={"Ex.: Atualização requerida nos autos conforme intimação de ..."}
                 style={{ width:"100%", padding:"10px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:13, boxSizing:"border-box", resize:"vertical", fontFamily:"inherit" }} />
             </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:14 }}>
+              <div>
+                <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Multa por Atraso (%)"}</label>
+                <div style={{ position:"relative" }}>
+                  <input type="number" min="0" step="0.01" value={multaPct} onChange={function(e){setMultaPct(e.target.value);}}
+                    placeholder={"0"}
+                    style={{ width:"100%", padding:"9px 32px 9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
+                  <span style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", color:"#888", fontSize:13 }}>%</span>
+                </div>
+              </div>
+              <div>
+                <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Honorários Advocatícios (%)"}</label>
+                <div style={{ position:"relative" }}>
+                  <input type="number" min="0" step="0.01" value={honorariosPct} onChange={function(e){setHonorariosPct(e.target.value);}}
+                    placeholder={"0"}
+                    style={{ width:"100%", padding:"9px 32px 9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
+                  <span style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", color:"#888", fontSize:13 }}>%</span>
+                </div>
+              </div>
+            </div>
 
             <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", background:incluir13?"#fff8e1":"#f9f9f9", border:"1px solid "+(incluir13?"#f0c040":C.borda), borderRadius:8, marginBottom:16 }}>
               <input type="checkbox" checked={incluir13} onChange={function(e){setIncluir13(e.target.checked);}} style={{ width:20, height:20, cursor:"pointer" }} />
@@ -1498,9 +1578,31 @@ function TabAtualizacao(props) {
                   );
                 })}
               </div>
+              {(resPrisao.multaVal > 0 || resPrisao.honorariosVal > 0) && (
+                <div style={{ background:"#f5f5f5", border:"1px solid "+C.borda, borderRadius:8, padding:"12px 16px", marginBottom:8 }}>
+                  <div style={{ fontWeight:700, color:C.cinza, marginBottom:8, fontSize:13 }}>{"Acréscimos sobre o valor atualizado"}</div>
+                  {resPrisao.multaVal > 0 && (
+                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:4 }}>
+                      <span>{"Multa por atraso ("+resPrisao.multaPct+"%)"}</span>
+                      <span style={{ fontWeight:600 }}>{fmt(resPrisao.multaVal)}</span>
+                    </div>
+                  )}
+                  {resPrisao.honorariosVal > 0 && (
+                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:13 }}>
+                      <span>{"Honorários advocatícios ("+resPrisao.honorariosPct+"%)"}</span>
+                      <span style={{ fontWeight:600 }}>{fmt(resPrisao.honorariosVal)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
               <div style={{ background:C.verde, borderRadius:8, padding:"14px 20px", textAlign:"center" }}>
-                <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"TOTAL ATUALIZADO — PRISÃO CIVIL"}</div>
-                <div style={{ color:"#fff", fontWeight:800, fontSize:22 }}>{fmt(resPrisao.total)}</div>
+                {(resPrisao.multaVal > 0 || resPrisao.honorariosVal > 0) && (
+                  <div style={{ color:"rgba(255,255,255,0.75)", fontSize:13, marginBottom:6 }}>
+                    {"Subtotal atualizado: "+fmt(resPrisao.total)}
+                  </div>
+                )}
+                <div style={{ color:"#fff", fontSize:11, opacity:.8 }}>{"TOTAL DA EXECUÇÃO — PRISÃO CIVIL"}</div>
+                <div style={{ color:"#fff", fontWeight:800, fontSize:22 }}>{fmt(resPrisao.totalGeral)}</div>
                 <div style={{ color:"rgba(255,255,255,0.7)", fontSize:11, marginTop:4 }}>{"Índice: "+resPrisao.indiceLabel}</div>
               </div>
             </Card>
