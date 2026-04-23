@@ -748,13 +748,14 @@ function gerarPDFAtuPenhora(dados, logoData) {
   doc.text("ATUALIZAÇÃO DO SALDO DEVEDOR", mg+3, y+5);
   y += 10;
 
-  var colsP=[55,40,40,40,40,40];
+  var colsP=[44,32,38,28,38,36];
   var cxP=[mg];
   colsP.forEach(function(w,i){cxP.push(cxP[i]+w+2);});
   var hdP=["Descrição","Data de Ref.","Valor de Ref. (R$)","Fator","Atualizado (R$)","Juros (R$)","Total Atualizado (R$)"];
   doc.setFillColor(230,230,230); doc.rect(mg,y-2,W-mg*2,7,"F");
   doc.setTextColor(40,40,40); doc.setFont("helvetica","bold"); doc.setFontSize(8);
-  hdP.forEach(function(h,i){ if(cxP[i]<W-mg) doc.text(h,cxP[i],y+3); });
+  hdP.slice(0,6).forEach(function(h,i){ doc.text(h,cxP[i],y+3); });
+  doc.text(hdP[6], W-mg-2, y+3, {align:"right"});
   y += 8;
 
   doc.setFillColor(248,250,248); doc.rect(mg,y-2,W-mg*2,7,"F");
@@ -766,12 +767,14 @@ function gerarPDFAtuPenhora(dados, logoData) {
   doc.text(fmt(dados.corrigido), cxP[4], y+3);
   doc.text(dados.indice==="selic" ? "-" : fmt(dados.juros), cxP[5], y+3);
   doc.setFont("helvetica","bold");
-  doc.text(fmt(dados.total), cxP[6], y+3);
+  doc.text(fmt(dados.total), W-mg-2, y+3, {align:"right"});
   y += 12;
 
   if (dados.multaVal > 0 || dados.honorariosVal > 0) {
-    doc.setFillColor(240,244,250); doc.rect(mg,y,W-mg*2,36,"F");
-    doc.setDrawColor(26,82,118); doc.setLineWidth(0.3); doc.rect(mg,y,W-mg*2,36);
+    var nExtraP = (dados.multaVal > 0 ? 6 : 0) + (dados.honorariosVal > 0 ? 6 : 0);
+    var boxHP = 39 + nExtraP;
+    doc.setFillColor(240,244,250); doc.rect(mg,y,W-mg*2,boxHP,"F");
+    doc.setDrawColor(26,82,118); doc.setLineWidth(0.3); doc.rect(mg,y,W-mg*2,boxHP);
     doc.setFillColor(26,82,118); doc.rect(mg,y,W-mg*2,7,"F");
     doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
     doc.text("COMPOSIÇÃO DO VALOR DA EXECUÇÃO", mg+3, y+5);
@@ -790,7 +793,7 @@ function gerarPDFAtuPenhora(dados, logoData) {
     doc.setDrawColor(180,180,180); doc.setLineWidth(0.2); doc.line(mg+4, y, W-mg-4, y); y += 3;
     lbVal("Valor devido à parte (atualiz. + multa):", r2(dados.total + (dados.multaVal||0)), true);
     lbVal("TOTAL FINAL (atualiz. + multa + honorários):", dados.totalGeral, true);
-    y += 4;
+    y += 6;
   } else {
     doc.setFillColor(26,82,118); doc.rect(mg,y,W-mg*2,14,"F");
     doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(9);
@@ -950,8 +953,10 @@ function gerarPDFAtuPrisao(resultado, logoData) {
   if(y>175){doc.addPage();y=15;}
   var bW=W-mg*2;
   if (resultado.multaVal > 0 || resultado.honorariosVal > 0) {
-    doc.setFillColor(232,245,238); doc.rect(mg,y,bW,42,"F");
-    doc.setDrawColor(26,107,58); doc.setLineWidth(0.3); doc.rect(mg,y,bW,42);
+    var nExtraR = (resultado.multaVal > 0 ? 6 : 0) + (resultado.honorariosVal > 0 ? 6 : 0);
+    var boxHR = 39 + nExtraR;
+    doc.setFillColor(232,245,238); doc.rect(mg,y,bW,boxHR,"F");
+    doc.setDrawColor(26,107,58); doc.setLineWidth(0.3); doc.rect(mg,y,bW,boxHR);
     doc.setFillColor(26,107,58); doc.rect(mg,y,bW,7,"F");
     doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8.5);
     doc.text("COMPOSIÇÃO DO VALOR DA EXECUÇÃO", mg+3, y+5);
@@ -970,7 +975,7 @@ function gerarPDFAtuPrisao(resultado, logoData) {
     doc.setDrawColor(180,180,180); doc.setLineWidth(0.2); doc.line(mg+4,y,W-mg-4,y); y+=3;
     lbP("Valor devido à parte (atualiz. + multa):", r2(resultado.total + (resultado.multaVal||0)), true);
     lbP("TOTAL FINAL (atualiz. + multa + honorários):", resultado.totalGeral, true);
-    y += 8;
+    y += 6;
   } else {
     doc.setFillColor(26,107,58); doc.rect(mg,y,bW,18,"F");
     doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(9);
