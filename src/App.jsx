@@ -1653,14 +1653,19 @@ function AppInterno(props) {
   var salvarHistorico = function(item) {
     setHistorico(function(h){
       var novo=[item].concat(h).slice(0,50);
-      localStorage.setItem("dpe_historico",JSON.stringify(novo));
+      try { localStorage.setItem("dpe_historico",JSON.stringify(novo)); } catch(e){}
       return novo;
     });
   };
 
+  var salvarFormHistorico = function(id, form) {
+    try { localStorage.setItem("dpe_form_"+id, JSON.stringify(form)); } catch(e){}
+  };
+
   var carregarCalculo = function(entrada) {
-    if (!entrada._form) return;
-    var f = entrada._form;
+    var formStr = localStorage.getItem("dpe_form_"+entrada.id);
+    var f = formStr ? JSON.parse(formStr) : (entrada._form || null);
+    if (!f) { alert("Cálculo antigo sem dados para editar. Faça um novo cálculo para habilitar essa função."); return; }
     setIndice(f.indice);
     setProcesso(f.processo);
     setAlimentado(f.alimentado);
@@ -1862,7 +1867,9 @@ function AppInterno(props) {
         obsImputacao:obsImp,creditoRemanescente:creditoExcedente
       };
       setResultado(res);
-      salvarHistorico({id:Date.now(),tipo:"novo",alimentado:capitalizarNome(alimentado),processo:maskProcesso(processo),data:res.data,total:r2(somaArr(prisaoItems)+somaArr(penhoraItems)),_form:{indice:indice,processo:processo,alimentado:alimentado,alimentante:alimentante,comarca:comarca,diaVencimento:diaVencimento,tipoAlimento:tipoAlimento,percentualSM:percentualSM,valorFixoAlimento:valorFixoAlimento,parcelas:parcelas,intervalo:intervalo,incluir13:incluir13,justificativa:justificativa}});
+      var hId=Date.now();
+      salvarFormHistorico(hId,{indice:indice,processo:processo,alimentado:alimentado,alimentante:alimentante,comarca:comarca,diaVencimento:diaVencimento,tipoAlimento:tipoAlimento,percentualSM:percentualSM,valorFixoAlimento:valorFixoAlimento,parcelas:parcelas,intervalo:intervalo,incluir13:incluir13,justificativa:justificativa});
+      salvarHistorico({id:hId,tipo:"novo",alimentado:capitalizarNome(alimentado),processo:maskProcesso(processo),data:res.data,total:r2(somaArr(prisaoItems)+somaArr(penhoraItems))});
       setLoading(false);
     },400);
   };
@@ -2196,7 +2203,7 @@ function AppInterno(props) {
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                       <div style={{ fontWeight:700, color:C.verde, fontSize:15 }}>{fmt(h.total||0)}</div>
-                      {h._form && (
+                      {h.tipo === "novo" && (
                         <Btn small outline onClick={function(){carregarCalculo(h);}}>{"Editar"}</Btn>
                       )}
                     </div>
