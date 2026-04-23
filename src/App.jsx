@@ -1031,32 +1031,33 @@ function TabAtualizacao(props) {
   var usuario = props.usuario;
   var onSalvarHistorico = props.onSalvarHistorico;
   var onAcessoNegado = props.onAcessoNegado || function(){};
+  var ini = props.initialData || {};
 
-  var _sm = useState("penhora"); var subModo = _sm[0]; var setSubModo = _sm[1];
+  var _sm = useState(ini.subModo || "penhora"); var subModo = _sm[0]; var setSubModo = _sm[1];
 
-  var _proc = useState(""); var processo = _proc[0]; var setProcesso = _proc[1];
-  var _ali = useState(""); var alimentado = _ali[0]; var setAlimentado = _ali[1];
-  var _ali2 = useState(""); var alimentante = _ali2[0]; var setAlimentante = _ali2[1];
-  var _com = useState(""); var comarca = _com[0]; var setComarca = _com[1];
-  var _ind = useState("ipca"); var indice = _ind[0]; var setIndice = _ind[1];
-  var _just = useState(""); var justificativa = _just[0]; var setJustificativa = _just[1];
+  var _proc = useState(ini.processo || ""); var processo = _proc[0]; var setProcesso = _proc[1];
+  var _ali = useState(ini.alimentado || ""); var alimentado = _ali[0]; var setAlimentado = _ali[1];
+  var _ali2 = useState(ini.alimentante || ""); var alimentante = _ali2[0]; var setAlimentante = _ali2[1];
+  var _com = useState(ini.comarca || ""); var comarca = _com[0]; var setComarca = _com[1];
+  var _ind = useState(ini.indice || "ipca"); var indice = _ind[0]; var setIndice = _ind[1];
+  var _just = useState(ini.justificativa || ""); var justificativa = _just[0]; var setJustificativa = _just[1];
 
-  var _vref = useState(""); var valorRef = _vref[0]; var setValorRef = _vref[1];
-  var _mref = useState(1); var mesRef = _mref[0]; var setMesRef = _mref[1];
-  var _aref = useState(2024); var anoRef = _aref[0]; var setAnoRef = _aref[1];
+  var _vref = useState(ini.valorRef || ""); var valorRef = _vref[0]; var setValorRef = _vref[1];
+  var _mref = useState(ini.mesRef || 1); var mesRef = _mref[0]; var setMesRef = _mref[1];
+  var _aref = useState(ini.anoRef || 2024); var anoRef = _aref[0]; var setAnoRef = _aref[1];
   var _resPen = useState(null); var resPenhora = _resPen[0]; var setResPenhora = _resPen[1];
 
-  var _dia = useState("5"); var diaVencimento = _dia[0]; var setDiaVencimento = _dia[1];
-  var _tipo = useState("sm"); var tipoAlimento = _tipo[0]; var setTipoAlimento = _tipo[1];
-  var _pct = useState(""); var percentualSM = _pct[0]; var setPercentualSM = _pct[1];
-  var _vfix = useState(""); var valorFixoAlimento = _vfix[0]; var setValorFixoAlimento = _vfix[1];
-  var _parc = useState([novaParcela()]); var parcelas = _parc[0]; var setParcelas = _parc[1];
+  var _dia = useState(ini.diaVencimento || "5"); var diaVencimento = _dia[0]; var setDiaVencimento = _dia[1];
+  var _tipo = useState(ini.tipoAlimento || "sm"); var tipoAlimento = _tipo[0]; var setTipoAlimento = _tipo[1];
+  var _pct = useState(ini.percentualSM || ""); var percentualSM = _pct[0]; var setPercentualSM = _pct[1];
+  var _vfix = useState(ini.valorFixoAlimento || ""); var valorFixoAlimento = _vfix[0]; var setValorFixoAlimento = _vfix[1];
+  var _parc = useState(ini.parcelas || [novaParcela()]); var parcelas = _parc[0]; var setParcelas = _parc[1];
   var _si = useState(false); var showIntervalo = _si[0]; var setShowIntervalo = _si[1];
-  var _i13 = useState(false); var incluir13 = _i13[0]; var setIncluir13 = _i13[1];
+  var _i13 = useState(ini.incluir13 || false); var incluir13 = _i13[0]; var setIncluir13 = _i13[1];
   var _resPri = useState(null); var resPrisao = _resPri[0]; var setResPrisao = _resPri[1];
   var _ld = useState(false); var loading = _ld[0]; var setLoading = _ld[1];
-  var _multa = useState(""); var multaPct = _multa[0]; var setMultaPct = _multa[1];
-  var _hon = useState(""); var honorariosPct = _hon[0]; var setHonorariosPct = _hon[1];
+  var _multa = useState(ini.multaPct || ""); var multaPct = _multa[0]; var setMultaPct = _multa[1];
+  var _hon = useState(ini.honorariosPct || ""); var honorariosPct = _hon[0]; var setHonorariosPct = _hon[1];
 
   var calcMesFimPadrao = function() {
     var hoje = new Date(); var dv=Number(diaVencimento)||5;
@@ -1132,7 +1133,9 @@ function TabAtualizacao(props) {
       lotacao: perfil.lotacao||""
     };
     setResPenhora(res);
-    onSalvarHistorico({ id:Date.now(), tipo:"atu-penhora", alimentado: capitalizarNome(alimentado), processo:maskProcesso(processo), data:dataBase, total:totalGeral });
+    var hIdPen = Date.now();
+    try { localStorage.setItem("dpe_form_"+hIdPen, JSON.stringify({subModo:"penhora",processo:processo,alimentado:alimentado,alimentante:alimentante,comarca:comarca,indice:indice,justificativa:justificativa,valorRef:valorRef,mesRef:mesRef,anoRef:anoRef,multaPct:multaPct,honorariosPct:honorariosPct})); } catch(e){}
+    onSalvarHistorico({ id:hIdPen, tipo:"atu-penhora", alimentado: capitalizarNome(alimentado), processo:maskProcesso(processo), data:dataBase, total:totalGeral });
   };
 
   var calcularPrisao = function(){
@@ -1261,7 +1264,9 @@ function TabAtualizacao(props) {
         creditoRemanescente:creditoExcedente
       };
       setResPrisao(res);
-      onSalvarHistorico({id:Date.now(),tipo:"atu-prisao",alimentado:capitalizarNome(alimentado),processo:maskProcesso(processo),data:new Date().toLocaleDateString("pt-BR"),total:totalGeralP});
+      var hIdPri = Date.now();
+      try { localStorage.setItem("dpe_form_"+hIdPri, JSON.stringify({subModo:"prisao",processo:processo,alimentado:alimentado,alimentante:alimentante,comarca:comarca,indice:indice,justificativa:justificativa,diaVencimento:diaVencimento,tipoAlimento:tipoAlimento,percentualSM:percentualSM,valorFixoAlimento:valorFixoAlimento,parcelas:parcelas,incluir13:incluir13,multaPct:multaPct,honorariosPct:honorariosPct})); } catch(e){}
+      onSalvarHistorico({id:hIdPri,tipo:"atu-prisao",alimentado:capitalizarNome(alimentado),processo:maskProcesso(processo),data:new Date().toLocaleDateString("pt-BR"),total:totalGeralP});
       setLoading(false);
     }, 400);
   };
@@ -1701,6 +1706,9 @@ function AppInterno(props) {
     try{return JSON.parse(localStorage.getItem("dpe_historico")||"[]");} catch(e){return [];}
   }); var historico = _sh[0]; var setHistorico = _sh[1];
 
+  var _atuInit = useState(null); var atuInitial = _atuInit[0]; var setAtuInitial = _atuInit[1];
+  var _atuKey = useState(0); var atuKey = _atuKey[0]; var setAtuKey = _atuKey[1];
+
   var salvarPerfil = function(p) { setPerfil(p); localStorage.setItem("dpe_perfil",JSON.stringify(p)); };
 
   var salvarHistorico = function(item) {
@@ -1716,29 +1724,32 @@ function AppInterno(props) {
   };
 
   var carregarCalculo = function(entrada) {
-    if (entrada.tipo === "atu-penhora" || entrada.tipo === "atu-prisao") {
-      alert("Edição disponível apenas para cálculos de 'Novo Cálculo'. Para atualização de débito refaça o cálculo na aba correspondente.");
-      return;
-    }
     var formStr = localStorage.getItem("dpe_form_"+entrada.id);
     var f = formStr ? JSON.parse(formStr) : (entrada._form || null);
     if (!f) { alert("Este cálculo foi salvo antes da funcionalidade de edição ser adicionada. Faça um novo cálculo para habilitar essa função."); return; }
-    setIndice(f.indice);
-    setProcesso(f.processo);
-    setAlimentado(f.alimentado);
-    setAlimentante(f.alimentante);
-    setComarca(f.comarca);
-    setDiaVencimento(f.diaVencimento);
-    setTipoAlimento(f.tipoAlimento);
-    setPercentualSM(f.percentualSM);
-    setValorFixoAlimento(f.valorFixoAlimento);
-    setParcelas(f.parcelas);
-    setIntervalo(f.intervalo);
-    setIncluir13(f.incluir13);
-    setJustificativa(f.justificativa);
-    setResultado(null);
-    setTab("calc");
-    window.scrollTo(0, 0);
+    if (f.subModo === "penhora" || f.subModo === "prisao") {
+      setAtuInitial(f);
+      setAtuKey(function(k){ return k+1; });
+      setTab("atualizar");
+      window.scrollTo(0, 0);
+    } else {
+      setIndice(f.indice);
+      setProcesso(f.processo);
+      setAlimentado(f.alimentado);
+      setAlimentante(f.alimentante);
+      setComarca(f.comarca);
+      setDiaVencimento(f.diaVencimento);
+      setTipoAlimento(f.tipoAlimento);
+      setPercentualSM(f.percentualSM);
+      setValorFixoAlimento(f.valorFixoAlimento);
+      setParcelas(f.parcelas);
+      setIntervalo(f.intervalo);
+      setIncluir13(f.incluir13);
+      setJustificativa(f.justificativa);
+      setResultado(null);
+      setTab("calc");
+      window.scrollTo(0, 0);
+    }
   };
 
   var _ind = useState("ipca"); var indice = _ind[0]; var setIndice = _ind[1];
@@ -2236,6 +2247,8 @@ function AppInterno(props) {
 
         {tab==="atualizar" && (
           <TabAtualizacao
+            key={atuKey}
+            initialData={atuInitial}
             perfil={perfil}
             usuario={usuario}
             onSalvarHistorico={salvarHistorico}
