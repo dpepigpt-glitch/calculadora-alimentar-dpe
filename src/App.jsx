@@ -1,5 +1,6 @@
 // v4.0 última MODAL — SELIC + Atualização de Débito (penhora e prisão civil)
 import { useState, useRef } from "react";
+import { jsPDF } from "jspdf";
 
 var C = {
   verde: "#1a6b3a", verdeClaro: "#2d8a50", verdePale: "#e8f5ee",
@@ -524,9 +525,7 @@ function novaParcela() {
 // ===================== GERADOR PDF COMPLETO =====================
 
 function gerarPDFCompleto(resultado, logoData) {
-  var jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
-  if (!jsPDFLib) { alert("PDF não carregou. Recarregue a página."); return; }
-  var doc = new jsPDFLib({ orientation:"landscape", unit:"mm", format:"a4" });
+  var doc = new jsPDF({ orientation:"landscape", unit:"mm", format:"a4" });
   var W=297, mg=12, y=0;
 
   doc.setFillColor(26,107,58); doc.rect(0,0,W,28,"F");
@@ -703,9 +702,7 @@ function gerarPDFCompleto(resultado, logoData) {
 // ===================== GERADOR PDF ATUALIZAÇÃO PENHORA =====================
 
 function gerarPDFAtuPenhora(dados, logoData) {
-  var jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
-  if (!jsPDFLib) { alert("PDF não carregou."); return; }
-  var doc = new jsPDFLib({ orientation:"landscape", unit:"mm", format:"a4" });
+  var doc = new jsPDF({ orientation:"landscape", unit:"mm", format:"a4" });
   var W=297, mg=12, y=0;
 
   doc.setFillColor(26,82,118); doc.rect(0,0,W,28,"F");
@@ -852,9 +849,7 @@ function gerarPDFAtuPenhora(dados, logoData) {
 // ===================== GERADOR PDF ATUALIZAÇÃO PRISÃO =====================
 
 function gerarPDFAtuPrisao(resultado, logoData) {
-  var jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
-  if (!jsPDFLib) { alert("PDF não carregou."); return; }
-  var doc = new jsPDFLib({ orientation:"landscape", unit:"mm", format:"a4" });
+  var doc = new jsPDF({ orientation:"landscape", unit:"mm", format:"a4" });
   var W=297, mg=12, y=0;
 
   doc.setFillColor(26,107,58); doc.rect(0,0,W,28,"F");
