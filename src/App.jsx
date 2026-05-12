@@ -1,5 +1,6 @@
 // v4.0 última MODAL — SELIC + Atualização de Débito (penhora e prisão civil)
 import { useState, useRef } from "react";
+import { jsPDF } from "jspdf";
 
 var C = {
   verde: "#1a6b3a", verdeClaro: "#2d8a50", verdePale: "#e8f5ee",
@@ -10,6 +11,8 @@ var C = {
 
 var r2 = function(v) { return Math.round((Number(v)||0) * 100) / 100; };
 var fmt = function(v) { return "R$ " + r2(v).toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, "."); };
+var fmtNum = function(v) { return r2(v).toFixed(2).replace(".", ","); };
+var fmtPct = function(v) { var n = Number(v)||0; return (n % 1 === 0 ? String(n) : String(n).replace(".", ",")); };
 
 var parseMoney = function(s) {
   if (!s && s !== 0) return 0;
@@ -70,6 +73,26 @@ function digitsFromDisplay(display) {
 }
 
 var SALARIO_MINIMO = {
+  "2010-01":510,"2010-02":510,"2010-03":510,"2010-04":510,"2010-05":510,"2010-06":510,
+  "2010-07":510,"2010-08":510,"2010-09":510,"2010-10":510,"2010-11":510,"2010-12":510,
+  "2011-01":545,"2011-02":545,"2011-03":545,"2011-04":545,"2011-05":545,"2011-06":545,
+  "2011-07":545,"2011-08":545,"2011-09":545,"2011-10":545,"2011-11":545,"2011-12":545,
+  "2012-01":622,"2012-02":622,"2012-03":622,"2012-04":622,"2012-05":622,"2012-06":622,
+  "2012-07":622,"2012-08":622,"2012-09":622,"2012-10":622,"2012-11":622,"2012-12":622,
+  "2013-01":678,"2013-02":678,"2013-03":678,"2013-04":678,"2013-05":678,"2013-06":678,
+  "2013-07":678,"2013-08":678,"2013-09":678,"2013-10":678,"2013-11":678,"2013-12":678,
+  "2014-01":724,"2014-02":724,"2014-03":724,"2014-04":724,"2014-05":724,"2014-06":724,
+  "2014-07":724,"2014-08":724,"2014-09":724,"2014-10":724,"2014-11":724,"2014-12":724,
+  "2015-01":788,"2015-02":788,"2015-03":788,"2015-04":788,"2015-05":788,"2015-06":788,
+  "2015-07":788,"2015-08":788,"2015-09":788,"2015-10":788,"2015-11":788,"2015-12":788,
+  "2016-01":880,"2016-02":880,"2016-03":880,"2016-04":880,"2016-05":880,"2016-06":880,
+  "2016-07":880,"2016-08":880,"2016-09":880,"2016-10":880,"2016-11":880,"2016-12":880,
+  "2017-01":937,"2017-02":937,"2017-03":937,"2017-04":937,"2017-05":937,"2017-06":937,
+  "2017-07":937,"2017-08":937,"2017-09":937,"2017-10":937,"2017-11":937,"2017-12":937,
+  "2018-01":954,"2018-02":954,"2018-03":954,"2018-04":954,"2018-05":954,"2018-06":954,
+  "2018-07":954,"2018-08":954,"2018-09":954,"2018-10":954,"2018-11":954,"2018-12":954,
+  "2019-01":998,"2019-02":998,"2019-03":998,"2019-04":998,"2019-05":998,"2019-06":998,
+  "2019-07":998,"2019-08":998,"2019-09":998,"2019-10":998,"2019-11":998,"2019-12":998,
   "2020-01":1045,"2020-02":1045,"2020-03":1045,"2020-04":1045,"2020-05":1045,"2020-06":1045,
   "2020-07":1045,"2020-08":1045,"2020-09":1045,"2020-10":1045,"2020-11":1045,"2020-12":1045,
   "2021-01":1100,"2021-02":1100,"2021-03":1100,"2021-04":1100,"2021-05":1100,"2021-06":1100,
@@ -112,7 +135,7 @@ var SELIC = {
   "2024-07":0.83,"2024-08":0.83,"2024-09":0.83,"2024-10":0.96,"2024-11":1.00,"2024-12":1.07,
   "2025-01":1.07,"2025-02":1.07,"2025-03":1.16,"2025-04":1.07,"2025-05":1.07,"2025-06":1.07,
   "2025-07":1.07,"2025-08":1.07,"2025-09":1.07,"2025-10":1.07,"2025-11":1.07,"2025-12":1.07,
-  "2026-01":1.07,"2026-02":1.07,"2026-03":1.21,"2026-04":1.07,"2026-05":1.07,"2026-06":1.07,
+  "2026-01":1.07,"2026-02":1.07,"2026-03":1.21,"2026-04":1.09,"2026-05":1.07,"2026-06":1.07,
   "2026-07":1.07,"2026-08":1.07,"2026-09":1.07,"2026-10":1.07,"2026-11":1.07,"2026-12":1.07
 };
 
@@ -524,9 +547,7 @@ function novaParcela() {
 // ===================== GERADOR PDF COMPLETO =====================
 
 function gerarPDFCompleto(resultado, logoData) {
-  var jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
-  if (!jsPDFLib) { alert("PDF não carregou. Recarregue a página."); return; }
-  var doc = new jsPDFLib({ orientation:"landscape", unit:"mm", format:"a4" });
+  var doc = new jsPDF({ orientation:"landscape", unit:"mm", format:"a4" });
   var W=297, mg=12, y=0;
 
   doc.setFillColor(26,107,58); doc.rect(0,0,W,28,"F");
@@ -703,9 +724,7 @@ function gerarPDFCompleto(resultado, logoData) {
 // ===================== GERADOR PDF ATUALIZAÇÃO PENHORA =====================
 
 function gerarPDFAtuPenhora(dados, logoData) {
-  var jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
-  if (!jsPDFLib) { alert("PDF não carregou."); return; }
-  var doc = new jsPDFLib({ orientation:"landscape", unit:"mm", format:"a4" });
+  var doc = new jsPDF({ orientation:"landscape", unit:"mm", format:"a4" });
   var W=297, mg=12, y=0;
 
   doc.setFillColor(26,82,118); doc.rect(0,0,W,28,"F");
@@ -770,6 +789,37 @@ function gerarPDFAtuPenhora(dados, logoData) {
   doc.text(fmt(dados.total), W-mg-2, y+3, {align:"right"});
   y += 12;
 
+  if (dados.logPagamentos && dados.logPagamentos.length > 0) {
+    doc.setFillColor(230,240,250); doc.rect(mg,y,W-mg*2,7,"F");
+    doc.setDrawColor(26,82,118); doc.setLineWidth(0.3); doc.rect(mg,y,W-mg*2,7);
+    doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8);
+    doc.setFillColor(26,82,118); doc.rect(mg,y,W-mg*2,7,"F");
+    doc.text("PAGAMENTOS IMPUTADOS NO PERÍODO", mg+3, y+5);
+    y += 9;
+    doc.setFillColor(220,220,220); doc.rect(mg,y-2,W-mg*2,6,"F");
+    doc.setTextColor(40,40,40); doc.setFont("helvetica","bold"); doc.setFontSize(7.5);
+    var pgHds=["Data Pgto.","Saldo Corrigido até Pgto.","Valor Pago","Saldo Restante"];
+    var pgCols=[mg+2,mg+50,mg+130,mg+195];
+    pgHds.forEach(function(h,i){doc.text(h,pgCols[i],y+2);});
+    y += 7;
+    dados.logPagamentos.forEach(function(pg,idx){
+      if(idx%2===0){doc.setFillColor(245,248,252);doc.rect(mg,y-2,W-mg*2,6,"F");}
+      doc.setFont("helvetica","normal"); doc.setFontSize(8);
+      doc.setTextColor(40,40,40);
+      doc.text(pg.label,pgCols[0],y+2);
+      doc.text(fmt(pg.saldoCorrigido),pgCols[1],y+2);
+      doc.setTextColor(26,107,58); doc.setFont("helvetica","bold");
+      doc.text("- "+fmt(pg.pagamento),pgCols[2],y+2);
+      doc.setTextColor(40,40,40); doc.setFont("helvetica","normal");
+      doc.text(fmt(pg.saldoRestante),pgCols[3],y+2);
+      y += 6;
+    });
+    doc.setFillColor(26,82,118); doc.rect(mg,y,W-mg*2,6,"F");
+    doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(8);
+    doc.text("Saldo após pagamentos: "+fmt(dados.saldoEntrada)+"   →   Correção final até "+dados.dataBase+": "+fmt(dados.total), mg+3, y+4);
+    y += 12;
+  }
+
   if (dados.multaVal > 0 || dados.honorariosVal > 0) {
     var nExtraP = (dados.multaVal > 0 ? 6 : 0) + (dados.honorariosVal > 0 ? 6 : 0);
     var boxHP = 39 + nExtraP;
@@ -788,8 +838,8 @@ function gerarPDFAtuPenhora(dados, logoData) {
       y += 6;
     };
     lbVal("Valor atualizado:", dados.total, false);
-    if (dados.multaVal > 0) lbVal("Multa por atraso ("+dados.multaPct+"%):", dados.multaVal, false);
-    if (dados.honorariosVal > 0) lbVal("Honorários advocatícios ("+dados.honorariosPct+"%):", dados.honorariosVal, false);
+    if (dados.multaVal > 0) lbVal("Multa por atraso ("+fmtPct(dados.multaPct)+"%):", dados.multaVal, false);
+    if (dados.honorariosVal > 0) lbVal("Honorários advocatícios ("+fmtPct(dados.honorariosPct)+"%):", dados.honorariosVal, false);
     doc.setDrawColor(180,180,180); doc.setLineWidth(0.2); doc.line(mg+4, y, W-mg-4, y); y += 3;
     lbVal("Valor devido à parte (atualiz. + multa):", r2(dados.total + (dados.multaVal||0)), true);
     lbVal("TOTAL FINAL (atualiz. + multa + honorários):", dados.totalGeral, true);
@@ -852,9 +902,7 @@ function gerarPDFAtuPenhora(dados, logoData) {
 // ===================== GERADOR PDF ATUALIZAÇÃO PRISÃO =====================
 
 function gerarPDFAtuPrisao(resultado, logoData) {
-  var jsPDFLib = window.jspdf && window.jspdf.jsPDF || window.jsPDF;
-  if (!jsPDFLib) { alert("PDF não carregou."); return; }
-  var doc = new jsPDFLib({ orientation:"landscape", unit:"mm", format:"a4" });
+  var doc = new jsPDF({ orientation:"landscape", unit:"mm", format:"a4" });
   var W=297, mg=12, y=0;
 
   doc.setFillColor(26,107,58); doc.rect(0,0,W,28,"F");
@@ -970,8 +1018,8 @@ function gerarPDFAtuPrisao(resultado, logoData) {
       y += 6;
     };
     lbP("Valor atualizado:", resultado.total, false);
-    if (resultado.multaVal > 0) lbP("Multa por atraso ("+resultado.multaPct+"%):", resultado.multaVal, false);
-    if (resultado.honorariosVal > 0) lbP("Honorários advocatícios ("+resultado.honorariosPct+"%):", resultado.honorariosVal, false);
+    if (resultado.multaVal > 0) lbP("Multa por atraso ("+fmtPct(resultado.multaPct)+"%):", resultado.multaVal, false);
+    if (resultado.honorariosVal > 0) lbP("Honorários advocatícios ("+fmtPct(resultado.honorariosPct)+"%):", resultado.honorariosVal, false);
     doc.setDrawColor(180,180,180); doc.setLineWidth(0.2); doc.line(mg+4,y,W-mg-4,y); y+=3;
     lbP("Valor devido à parte (atualiz. + multa):", r2(resultado.total + (resultado.multaVal||0)), true);
     lbP("TOTAL FINAL (atualiz. + multa + honorários):", resultado.totalGeral, true);
@@ -1058,6 +1106,10 @@ function TabAtualizacao(props) {
   var _ld = useState(false); var loading = _ld[0]; var setLoading = _ld[1];
   var _multa = useState(ini.multaPct || ""); var multaPct = _multa[0]; var setMultaPct = _multa[1];
   var _hon = useState(ini.honorariosPct || ""); var honorariosPct = _hon[0]; var setHonorariosPct = _hon[1];
+  var _pgts = useState(ini.pagamentosRef || []); var pagamentosRef = _pgts[0]; var setPagamentosRef = _pgts[1];
+  var addPgtoRef = function(){ setPagamentosRef(function(p){ var hoje=new Date(); return p.concat([{id:Date.now(),mes:hoje.getMonth()+1,ano:hoje.getFullYear(),valor:""}]); }); };
+  var removePgtoRef = function(id){ setPagamentosRef(function(p){ return p.filter(function(x){return x.id!==id;}); }); };
+  var editPgtoRef = function(id,campo,val){ setPagamentosRef(function(p){ return p.map(function(x){ if(x.id===id){var n=Object.assign({},x);n[campo]=val;return n;} return x; }); }); };
 
   var calcMesFimPadrao = function() {
     var hoje = new Date(); var dv=Number(diaVencimento)||5;
@@ -1084,8 +1136,8 @@ function TabAtualizacao(props) {
   var addIntervalo = function(){
     var novas=[]; var m=intervalo.mesIni,a=intervalo.anoIni;
     while(a<intervalo.anoFim||(a===intervalo.anoFim&&m<=intervalo.mesFim)){
-      var valor; if(tipoAlimento==="sm") valor=r2(getSM(m,a)*Number(percentualSM)/100).toFixed(2); else valor=r2(parseMoney(valorFixoAlimento)).toFixed(2);
-      novas.push({id:Date.now()+novas.length,mes:m,ano:a,valor:valor,pago:intervalo.pago?Number(intervalo.pago).toFixed(2):"",is13:false});
+      var valor; if(tipoAlimento==="sm") valor=fmtNum(getSM(m,a)*parseMoney(percentualSM)/100); else valor=fmtNum(parseMoney(valorFixoAlimento));
+      novas.push({id:Date.now()+novas.length,mes:m,ano:a,valor:valor,pago:intervalo.pago?fmtNum(parseMoney(intervalo.pago)):"",is13:false});
       m++;if(m>12){m=1;a++;}
     }
     setParcelas(function(prev){
@@ -1101,12 +1153,37 @@ function TabAtualizacao(props) {
     if (!valorRef || valorRefNum <= 0) { alert("Informe o valor de referência."); return; }
     var hoje = new Date();
     var mHoje = hoje.getMonth()+1, aHoje = hoje.getFullYear();
-    var calc = corrigirAte(valorRefNum, mesRef, anoRef, mHoje, aHoje, indice);
     var labelIndice = indice==="selic" ? "SELIC (acumulada)" : "IPCA-E + Juros 1% a.m.";
     var dataBase = hoje.toLocaleDateString("pt-BR");
     var dataRef = MESES[mesRef-1]+"/"+anoRef;
-    var multaVal = r2(calc.total * (parseFloat(multaPct)||0) / 100);
-    var honorariosVal = r2(calc.total * (parseFloat(honorariosPct)||0) / 100);
+
+    var pgtsOrdenados = pagamentosRef
+      .filter(function(pg){ return parseMoney(pg.valor) > 0; })
+      .sort(function(a,b){ return a.ano!==b.ano ? a.ano-b.ano : a.mes-b.mes; });
+
+    var saldoAtual = valorRefNum;
+    var mAtual = mesRef, aAtual = anoRef;
+    var logPagamentos = [];
+
+    pgtsOrdenados.forEach(function(pg){
+      var mPg = pg.mes, aPg = pg.ano;
+      if (aPg < aAtual || (aPg === aAtual && mPg <= mAtual)) return;
+      var calcAtePgto = corrigirAte(saldoAtual, mAtual, aAtual, mPg, aPg, indice);
+      var saldoCorrigido = calcAtePgto.total;
+      var pagVal = r2(parseMoney(pg.valor));
+      logPagamentos.push({
+        mes: mPg, ano: aPg, label: fmtMes(mPg, aPg),
+        saldoCorrigido: saldoCorrigido,
+        pagamento: pagVal,
+        saldoRestante: r2(Math.max(0, saldoCorrigido - pagVal))
+      });
+      saldoAtual = r2(Math.max(0, saldoCorrigido - pagVal));
+      mAtual = mPg; aAtual = aPg;
+    });
+
+    var calc = corrigirAte(saldoAtual, mAtual, aAtual, mHoje, aHoje, indice);
+    var multaVal = r2(calc.total * parseMoney(multaPct) / 100);
+    var honorariosVal = r2(calc.total * parseMoney(honorariosPct) / 100);
     var totalGeral = r2(calc.total + multaVal + honorariosVal);
     var res = {
       processo: maskProcesso(processo),
@@ -1123,9 +1200,11 @@ function TabAtualizacao(props) {
       juros: calc.juros,
       total: calc.total,
       mesesAtraso: calc.mesesAtraso,
-      multaPct: parseFloat(multaPct)||0,
+      logPagamentos: logPagamentos,
+      saldoEntrada: saldoAtual,
+      multaPct: parseMoney(multaPct),
       multaVal,
-      honorariosPct: parseFloat(honorariosPct)||0,
+      honorariosPct: parseMoney(honorariosPct),
       honorariosVal,
       totalGeral,
       justificativa: justificativa.trim(),
@@ -1134,7 +1213,7 @@ function TabAtualizacao(props) {
     };
     setResPenhora(res);
     var hIdPen = Date.now();
-    try { localStorage.setItem("dpe_form_"+hIdPen, JSON.stringify({subModo:"penhora",processo:processo,alimentado:alimentado,alimentante:alimentante,comarca:comarca,indice:indice,justificativa:justificativa,valorRef:valorRef,mesRef:mesRef,anoRef:anoRef,multaPct:multaPct,honorariosPct:honorariosPct})); } catch(e){}
+    try { localStorage.setItem("dpe_form_"+hIdPen, JSON.stringify({subModo:"penhora",processo:processo,alimentado:alimentado,alimentante:alimentante,comarca:comarca,indice:indice,justificativa:justificativa,valorRef:valorRef,mesRef:mesRef,anoRef:anoRef,multaPct:multaPct,honorariosPct:honorariosPct,pagamentosRef:pagamentosRef})); } catch(e){}
     onSalvarHistorico({ id:hIdPen, tipo:"atu-penhora", alimentado: capitalizarNome(alimentado), processo:maskProcesso(processo), data:dataBase, total:totalGeral });
   };
 
@@ -1143,12 +1222,12 @@ function TabAtualizacao(props) {
     setLoading(true); setResPrisao(null);
     setTimeout(function(){
       var raw = parcelas
-        .filter(function(p){return p.valor&&Number(p.valor)>0;})
+        .filter(function(p){return p.valor&&parseMoney(p.valor)>0;})
         .sort(function(a,b){return a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes;})
         .map(function(p){return {
           mes:p.mes,ano:p.ano,label:fmtMes(p.mes,p.ano),
           smVig:getSM(p.mes===13?12:p.mes,p.ano),
-          nominal:r2(Number(p.valor)),pago:r2(Number(p.pago||0)),is13:!!p.is13
+          nominal:r2(parseMoney(p.valor)),pago:r2(parseMoney(p.pago||0)),is13:!!p.is13
         };});
 
       if (incluir13) {
@@ -1239,8 +1318,8 @@ function TabAtualizacao(props) {
       if(obsImp){if(justFinal)justFinal+="\n\n";justFinal+=obsImp;}
 
       var labelIndice=indice==="selic"?"SELIC (acumulada)":"IPCA-E + Juros 1% a.m.";
-      var multaValP = r2(total * (parseFloat(multaPct)||0) / 100);
-      var honorariosValP = r2(total * (parseFloat(honorariosPct)||0) / 100);
+      var multaValP = r2(total * parseMoney(multaPct) / 100);
+      var honorariosValP = r2(total * parseMoney(honorariosPct) / 100);
       var totalGeralP = r2(total + multaValP + honorariosValP);
       var res={
         processo:maskProcesso(processo),
@@ -1252,9 +1331,9 @@ function TabAtualizacao(props) {
         justificativa:justFinal,
         parcelas:parcelasCorrigidas,
         total,
-        multaPct:parseFloat(multaPct)||0,
+        multaPct:parseMoney(multaPct),
         multaVal:multaValP,
-        honorariosPct:parseFloat(honorariosPct)||0,
+        honorariosPct:parseMoney(honorariosPct),
         honorariosVal:honorariosValP,
         totalGeral:totalGeralP,
         data:new Date().toLocaleDateString("pt-BR"),
@@ -1363,6 +1442,44 @@ function TabAtualizacao(props) {
                   style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
               </div>
             </div>
+            <div style={{ marginTop:16, borderTop:"1px solid "+C.borda, paddingTop:14 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                <label style={{ fontWeight:700, fontSize:13, color:C.cinza }}>{"Pagamentos efetuados no período (opcional)"}</label>
+                <Btn small onClick={addPgtoRef} cor={C.azul}>{"+ Pagamento"}</Btn>
+              </div>
+              {pagamentosRef.length > 0 && (
+                <div style={{ fontSize:12, color:C.azul, background:"#e8f0f8", borderRadius:6, padding:"8px 12px", marginBottom:10 }}>
+                  {"Informe os pagamentos realizados entre a data de referência e hoje. Cada pagamento será descontado do saldo corrigido até a data em que foi efetuado."}
+                </div>
+              )}
+              {pagamentosRef.map(function(pg){
+                return (
+                  <div key={pg.id} style={{ display:"flex", gap:8, alignItems:"flex-end", marginBottom:8 }}>
+                    <div style={{ flex:"0 0 100px" }}>
+                      <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:2 }}>{"Mês"}</label>
+                      <select value={pg.mes} onChange={function(e){editPgtoRef(pg.id,"mes",Number(e.target.value));}}
+                        style={{ width:"100%", padding:"7px 8px", borderRadius:6, border:"1px solid "+C.borda, fontSize:13, boxSizing:"border-box" }}>
+                        {MESES.map(function(m,idx){return <option key={idx} value={idx+1}>{m}</option>;})}
+                      </select>
+                    </div>
+                    <div style={{ flex:"0 0 80px" }}>
+                      <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:2 }}>{"Ano"}</label>
+                      <input type="number" value={pg.ano} onChange={function(e){editPgtoRef(pg.id,"ano",Number(e.target.value));}}
+                        style={{ width:"100%", padding:"7px 8px", borderRadius:6, border:"1px solid "+C.borda, fontSize:13, boxSizing:"border-box" }} />
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:2 }}>{"Valor pago (R$)"}</label>
+                      <input type="text" inputMode="decimal" value={pg.valor}
+                        onChange={function(e){editPgtoRef(pg.id,"valor",e.target.value);}}
+                        placeholder={"0,00"}
+                        style={{ width:"100%", padding:"7px 8px", borderRadius:6, border:"1px solid "+C.borda, fontSize:13, boxSizing:"border-box" }} />
+                    </div>
+                    <button onClick={function(){removePgtoRef(pg.id);}}
+                      style={{ background:"transparent", border:"none", cursor:"pointer", color:C.vermelho, fontSize:18, paddingBottom:4 }}>{"✕"}</button>
+                  </div>
+                );
+              })}
+            </div>
             <div style={{ marginTop:14 }}>
               <label style={{ display:"block", fontWeight:600, marginBottom:4, color:C.cinza, fontSize:13 }}>{"Justificativa / Observações (opcional)"}</label>
               <textarea value={justificativa} onChange={function(e){setJustificativa(e.target.value);}} rows={3}
@@ -1414,6 +1531,26 @@ function TabAtualizacao(props) {
                   );
                 })}
               </div>
+              {resPenhora.logPagamentos && resPenhora.logPagamentos.length > 0 && (
+                <div style={{ marginBottom:12 }}>
+                  <div style={{ fontWeight:700, color:C.azul, fontSize:13, marginBottom:8 }}>{"Pagamentos imputados:"}</div>
+                  {resPenhora.logPagamentos.map(function(pg,i){
+                    return (
+                      <div key={i} style={{ background:"#e8f0f8", borderRadius:6, padding:"8px 12px", marginBottom:6, fontSize:12 }}>
+                        <div style={{ display:"flex", justifyContent:"space-between" }}>
+                          <span style={{ fontWeight:600 }}>{pg.label}</span>
+                          <span>{"Saldo corrigido até pgto: "}<b>{fmt(pg.saldoCorrigido)}</b></span>
+                        </div>
+                        <div style={{ display:"flex", justifyContent:"space-between", marginTop:4 }}>
+                          <span style={{ color:C.verde }}>{"Pago: "}<b>{fmt(pg.pagamento)}</b></span>
+                          <span>{"Saldo restante: "}<b>{fmt(pg.saldoRestante)}</b></span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div style={{ fontSize:12, color:"#888", marginTop:4 }}>{"Correção final: "}{fmt(resPenhora.saldoEntrada)}{" → "}{fmt(resPenhora.total)}</div>
+                </div>
+              )}
               {resPenhora.indice === "ipca" && (
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
                   <div style={{ background:"#e8f0f8", borderRadius:6, padding:"10px 14px" }}>
@@ -1431,13 +1568,13 @@ function TabAtualizacao(props) {
                   <div style={{ fontWeight:700, color:C.cinza, marginBottom:8, fontSize:13 }}>{"Acréscimos sobre o valor atualizado"}</div>
                   {resPenhora.multaVal > 0 && (
                     <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:4 }}>
-                      <span>{"Multa por atraso ("+resPenhora.multaPct+"%)"}</span>
+                      <span>{"Multa por atraso ("+fmtPct(resPenhora.multaPct)+"%)"}</span>
                       <span style={{ fontWeight:600 }}>{fmt(resPenhora.multaVal)}</span>
                     </div>
                   )}
                   {resPenhora.honorariosVal > 0 && (
                     <div style={{ display:"flex", justifyContent:"space-between", fontSize:13 }}>
-                      <span>{"Honorários advocatícios ("+resPenhora.honorariosPct+"%)"}</span>
+                      <span>{"Honorários advocatícios ("+fmtPct(resPenhora.honorariosPct)+"%)"}</span>
                       <span style={{ fontWeight:600 }}>{fmt(resPenhora.honorariosVal)}</span>
                     </div>
                   )}
@@ -1641,13 +1778,13 @@ function TabAtualizacao(props) {
                   <div style={{ fontWeight:700, color:C.cinza, marginBottom:8, fontSize:13 }}>{"Acréscimos sobre o valor atualizado"}</div>
                   {resPrisao.multaVal > 0 && (
                     <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:4 }}>
-                      <span>{"Multa por atraso ("+resPrisao.multaPct+"%)"}</span>
+                      <span>{"Multa por atraso ("+fmtPct(resPrisao.multaPct)+"%)"}</span>
                       <span style={{ fontWeight:600 }}>{fmt(resPrisao.multaVal)}</span>
                     </div>
                   )}
                   {resPrisao.honorariosVal > 0 && (
                     <div style={{ display:"flex", justifyContent:"space-between", fontSize:13 }}>
-                      <span>{"Honorários advocatícios ("+resPrisao.honorariosPct+"%)"}</span>
+                      <span>{"Honorários advocatícios ("+fmtPct(resPrisao.honorariosPct)+"%)"}</span>
                       <span style={{ fontWeight:600 }}>{fmt(resPrisao.honorariosVal)}</span>
                     </div>
                   )}
@@ -1797,8 +1934,8 @@ function AppInterno(props) {
   var addIntervalo=function(){
     var novas=[]; var m=intervalo.mesIni,a=intervalo.anoIni;
     while(a<intervalo.anoFim||(a===intervalo.anoFim&&m<=intervalo.mesFim)){
-      var valor; if(tipoAlimento==="sm") valor=r2(getSM(m,a)*Number(percentualSM)/100).toFixed(2); else valor=r2(parseMoney(valorFixoAlimento)).toFixed(2);
-      novas.push({id:Date.now()+novas.length,mes:m,ano:a,valor:valor,pago:intervalo.pago?Number(intervalo.pago).toFixed(2):"",is13:false});
+      var valor; if(tipoAlimento==="sm") valor=fmtNum(getSM(m,a)*parseMoney(percentualSM)/100); else valor=fmtNum(parseMoney(valorFixoAlimento));
+      novas.push({id:Date.now()+novas.length,mes:m,ano:a,valor:valor,pago:intervalo.pago?fmtNum(parseMoney(intervalo.pago)):"",is13:false});
       m++;if(m>12){m=1;a++;}
     }
     setParcelas(function(prev){
@@ -1830,7 +1967,7 @@ function AppInterno(props) {
         if(parsed.alimentado)setAlimentado(capitalizarNome(parsed.alimentado));
         if(parsed.alimentante)setAlimentante(capitalizarNome(parsed.alimentante));
         if(parsed.parcelas&&parsed.parcelas.length)
-          setParcelas(parsed.parcelas.map(function(p,i){return {id:Date.now()+i,mes:p.mes,ano:p.ano,valor:String(r2(p.valor)),pago:"",is13:false};}));
+          setParcelas(parsed.parcelas.map(function(p,i){return {id:Date.now()+i,mes:p.mes,ano:p.ano,valor:fmtNum(p.valor),pago:"",is13:false};}));
         setMsgIA("OK! "+(parsed.parcelas?parsed.parcelas.length:0)+" parcela(s) extraída(s). Revise antes de calcular.");
         setLoadingIA(false); if(fileRef.current)fileRef.current.value="";
       }).catch(function(){setMsgIA("Erro: Não foi possível ler o documento.");setLoadingIA(false);if(fileRef.current)fileRef.current.value="";});
@@ -1845,9 +1982,9 @@ function AppInterno(props) {
     setLoading(true);setResultado(null);
     setTimeout(function(){
       var raw=parcelas
-        .filter(function(p){return p.valor&&Number(p.valor)>0;})
+        .filter(function(p){return p.valor&&parseMoney(p.valor)>0;})
         .sort(function(a,b){return a.ano!==b.ano?a.ano-b.ano:a.mes-b.mes;})
-        .map(function(p){return {mes:p.mes,ano:p.ano,label:fmtMes(p.mes,p.ano),smVig:getSM(p.mes===13?12:p.mes,p.ano),nominal:r2(Number(p.valor)),pago:r2(Number(p.pago||0)),is13:!!p.is13};});
+        .map(function(p){return {mes:p.mes,ano:p.ano,label:fmtMes(p.mes,p.ano),smVig:getSM(p.mes===13?12:p.mes,p.ano),nominal:r2(parseMoney(p.valor)),pago:r2(parseMoney(p.pago||0)),is13:!!p.is13};});
 
       if(incluir13){
         var anosSet={};
