@@ -1442,19 +1442,17 @@ function TabAtualizacao(props) {
                   style={{ width:"100%", padding:"9px 12px", borderRadius:6, border:"1px solid "+C.borda, fontSize:14, boxSizing:"border-box" }} />
               </div>
             </div>
-            <div style={{ marginTop:16, borderTop:"1px solid "+C.borda, paddingTop:14 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-                <label style={{ fontWeight:700, fontSize:13, color:C.cinza }}>{"Pagamentos efetuados no período (opcional)"}</label>
-                <Btn small onClick={addPgtoRef} cor={C.azul}>{"+ Pagamento"}</Btn>
+            <div style={{ marginTop:18, background:"#fff8e7", border:"2px solid "+C.laranja, borderRadius:8, padding:"14px 16px" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                <label style={{ fontWeight:800, fontSize:14, color:C.laranja }}>{"💰 Informar valores pagos após a última atualização"}</label>
+                <Btn small onClick={addPgtoRef} cor={C.laranja}>{"+ Pagamento"}</Btn>
               </div>
-              {pagamentosRef.length > 0 && (
-                <div style={{ fontSize:12, color:C.azul, background:"#e8f0f8", borderRadius:6, padding:"8px 12px", marginBottom:10 }}>
-                  {"Informe os pagamentos realizados entre a data de referência e hoje. Cada pagamento será descontado do saldo corrigido até a data em que foi efetuado."}
-                </div>
-              )}
+              <div style={{ fontSize:12, color:C.cinza, marginBottom:pagamentosRef.length > 0 ? 12 : 0 }}>
+                {"Cadastre cada pagamento realizado pelo devedor entre a data de referência e hoje. Cada valor será descontado do saldo já atualizado até a data do pagamento, e o saldo restante continua sendo corrigido."}
+              </div>
               {pagamentosRef.map(function(pg){
                 return (
-                  <div key={pg.id} style={{ display:"flex", gap:8, alignItems:"flex-end", marginBottom:8 }}>
+                  <div key={pg.id} style={{ display:"flex", gap:8, alignItems:"flex-end", marginBottom:8, background:"#fff", padding:"8px", borderRadius:6, border:"1px solid "+C.borda }}>
                     <div style={{ flex:"0 0 100px" }}>
                       <label style={{ fontSize:11, fontWeight:600, color:C.cinza, display:"block", marginBottom:2 }}>{"Mês"}</label>
                       <select value={pg.mes} onChange={function(e){editPgtoRef(pg.id,"mes",Number(e.target.value));}}
