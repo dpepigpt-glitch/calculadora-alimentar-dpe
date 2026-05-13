@@ -1167,7 +1167,7 @@ function TabAtualizacao(props) {
 
     pgtsOrdenados.forEach(function(pg){
       var mPg = pg.mes, aPg = pg.ano;
-      if (aPg < aAtual || (aPg === aAtual && mPg <= mAtual)) return;
+      if (aPg < aAtual || (aPg === aAtual && mPg < mAtual)) return;
       var calcAtePgto = corrigirAte(saldoAtual, mAtual, aAtual, mPg, aPg, indice);
       var saldoCorrigido = calcAtePgto.total;
       var pagVal = r2(parseMoney(pg.valor));
@@ -2028,49 +2028,73 @@ function AppInterno(props) {
 
       if(!raw.length){setLoading(false);return;}
 
-      var pagamentos=[];
-      raw.forEach(function(p){if(p.pago>0)pagamentos.push({valor:p.pago,mesPgto:p.mes===13?12:p.mes,anoPgto:p.ano,labelOrigem:p.label});});
-      var saldosNominais=raw.map(function(p){return{saldoNominal:p.nominal};});
-      var logImp=[];
+      // Pagamentos registrados (para exibição no obs)
+      var pagamentos=raw.filter(function(p){return p.pago>0;}).map(function(p){return{valor:p.pago,labelOrigem:p.label};});
 
-      pagamentos.forEach(function(pg){
-        var saldoPgto=pg.valor;
-        for(var i=0;i<raw.length;i++){
-          if(saldoPgto<=0)break;
-          if(saldosNominais[i].saldoNominal<=0)continue;
-          var mesParc=raw[i].mes===13?12:raw[i].mes;
-          var calcAtePgto=corrigirAte(saldosNominais[i].saldoNominal,mesParc,raw[i].ano,pg.mesPgto,pg.anoPgto,indice);
-          var dev=calcAtePgto.total;
-          if(saldoPgto>=dev){saldoPgto=r2(saldoPgto-dev);logImp.push({parcelaDestino:raw[i].label,valorAbatido:dev,pgtoOrigem:pg.labelOrigem,quitada:true,saldoNominalAntes:saldosNominais[i].saldoNominal});saldosNominais[i].saldoNominal=0;}
-          else{var prop=saldoPgto/dev;var nomQ=r2(saldosNominais[i].saldoNominal*prop);logImp.push({parcelaDestino:raw[i].label,valorAbatido:saldoPgto,pgtoOrigem:pg.labelOrigem,quitada:false,saldoNominalAntes:saldosNominais[i].saldoNominal});saldosNominais[i].saldoNominal=r2(saldosNominais[i].saldoNominal-nomQ);saldoPgto=0;}
+      // Amortização FIFO cronológica com rebaseamento de saldo parcial
+      var hoje3=new Date();
+      var mHoje=hoje3.getMonth()+1;
+      var aHoje=hoje3.getFullYear();
+      var debtQueue=[];
+      var creditoCarry=0;
+      var saldoRebaseado=raw.map(function(){return null;});
+      var creditoAplicadoPorIdx=raw.map(function(){return 0;});
+
+      raw.forEach(function(inst,idx){
+        var mesInst=inst.mes===13?12:inst.mes;
+        var anoInst=inst.ano;
+        debtQueue.push({val:inst.nominal,rebaseMes:mesInst,rebaseAno:anoInst,label:inst.label,idx:idx});
+        saldoRebaseado[idx]={val:inst.nominal,mes:mesInst,ano:anoInst};
+        var available=r2(creditoCarry+inst.pago);
+        creditoCarry=0;
+        if(available>0.005){
+          var newQueue=[];
+          for(var j=0;j<debtQueue.length;j++){
+            var d=debtQueue[j];
+            if(available<=0.005){newQueue.push(d);continue;}
+            var corrVal=corrigirAte(d.val,d.rebaseMes,d.rebaseAno,mesInst,anoInst,indice).total;
+            if(available>=corrVal-0.005){
+              creditoAplicadoPorIdx[d.idx]=r2(creditoAplicadoPorIdx[d.idx]+corrVal);
+              available=r2(available-corrVal);
+              saldoRebaseado[d.idx]=null;
+            } else {
+              var remaining=r2(corrVal-available);
+              creditoAplicadoPorIdx[d.idx]=r2(creditoAplicadoPorIdx[d.idx]+available);
+              d.val=remaining;
+              d.rebaseMes=mesInst;
+              d.rebaseAno=anoInst;
+              saldoRebaseado[d.idx]={val:remaining,mes:mesInst,ano:anoInst};
+              available=0;
+              newQueue.push(d);
+            }
+          }
+          debtQueue=newQueue;
+          creditoCarry=available>0.005?available:0;
         }
-        if(saldoPgto>0)logImp.push({parcelaDestino:"(crédito excedente)",valorAbatido:saldoPgto,pgtoOrigem:pg.labelOrigem,quitada:false,creditoExcedente:true});
       });
 
+      var creditoExcedente=r2(creditoCarry);
+
       var parcelasCorrigidas=raw.map(function(p,idx){
-        var saldoNom=saldosNominais[idx].saldoNominal;
-        var quitado=saldoNom<=0;
-        var calc=quitado?{fator:1,corrigido:0,juros:0,total:0,mesesAtraso:0}:corrigir(saldoNom,p.mes,p.ano,indice);
+        var sb=saldoRebaseado[idx];
+        var quitado=sb===null;
+        var calc=quitado?{fator:1,corrigido:0,juros:0,total:0,mesesAtraso:0}:corrigirAte(sb.val,sb.mes,sb.ano,mHoje,aHoje,indice);
         var calcIntegral=corrigir(p.nominal,p.mes,p.ano,indice);
-        var creditoApl=0;
-        logImp.forEach(function(l){if(l.parcelaDestino===p.label&&!l.creditoExcedente)creditoApl=r2(creditoApl+l.valorAbatido);});
-        return Object.assign({},p,{fator:calcIntegral.fator,corrigido:quitado?0:calc.corrigido,juros:quitado?0:calc.juros,total:quitado?0:calc.total,mesesAtraso:calcIntegral.mesesAtraso,saldoBruto:saldoNom,saldoNominalOriginal:p.nominal,creditoAplicado:creditoApl,quitado,pagoOriginal:p.pago});
+        return Object.assign({},p,{fator:calcIntegral.fator,corrigido:quitado?0:calc.corrigido,juros:quitado?0:calc.juros,total:quitado?0:calc.total,mesesAtraso:calcIntegral.mesesAtraso,saldoBruto:quitado?0:sb.val,saldoNominalOriginal:p.nominal,creditoAplicado:creditoAplicadoPorIdx[idx],quitado,pagoOriginal:p.pago});
       });
 
       var prisaoItems=parcelasCorrigidas.slice(-3);
       var penhoraItems=parcelasCorrigidas.slice(0,-3);
       var somaArr=function(arr){var s=0;arr.forEach(function(x){s+=x.total;});return r2(s);};
-      var creditoExcedente=0;
-      logImp.forEach(function(l){if(l.creditoExcedente)creditoExcedente=r2(creditoExcedente+l.valorAbatido);});
 
       var obsImp="";
       if(pagamentos.length>0){
         var pgLabels=pagamentos.map(function(pg){return pg.labelOrigem+" ("+fmt(pg.valor)+")";});
-        var pQ=logImp.filter(function(l){return l.quitada;});
-        var pA=logImp.filter(function(l){return !l.quitada&&l.valorAbatido>0&&!l.creditoExcedente;});
+        var pQ=parcelasCorrigidas.filter(function(p){return p.quitado&&p.creditoAplicado>0;});
+        var pA=parcelasCorrigidas.filter(function(p){return !p.quitado&&p.creditoAplicado>0;});
         obsImp="IMPUTAÇÃO DE PAGAMENTOS (art. 354 CC): Pagamento(s) efetuado(s) em "+pgLabels.join(", ")+". Cada parcela devida foi corrigida até a data do respectivo pagamento, e o valor pago foi imputado nas parcelas mais antigas, conforme ordem cronológica. O saldo remanescente de cada parcela não integralmente quitada continua sendo corrigido até a data-base do cálculo. ";
-        if(pQ.length>0) obsImp+="Parcela(s) integralmente quitada(s): "+pQ.map(function(l){return l.parcelaDestino;}).join(", ")+". ";
-        if(pA.length>0) obsImp+="Parcela(s) parcialmente abatida(s): "+pA.map(function(l){return l.parcelaDestino+" (abatido "+fmt(l.valorAbatido)+")"}).join(", ")+". ";
+        if(pQ.length>0) obsImp+="Parcela(s) integralmente quitada(s): "+pQ.map(function(l){return l.label;}).join(", ")+". ";
+        if(pA.length>0) obsImp+="Parcela(s) parcialmente abatida(s): "+pA.map(function(l){return l.label+" (abatido "+fmt(l.creditoAplicado)+")"}).join(", ")+". ";
         if(creditoExcedente>0) obsImp+="Crédito excedente após quitação de todas as parcelas: "+fmt(creditoExcedente)+".";
       }
 
