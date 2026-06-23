@@ -122,7 +122,7 @@ var IPCA_E = {
   "2024-07":0.43,"2024-08":0.44,"2024-09":0.44,"2024-10":0.56,"2024-11":0.39,"2024-12":0.48,
   "2025-01":0.16,"2025-02":1.31,"2025-03":0.56,"2025-04":0.43,"2025-05":0.26,"2025-06":0.24,
   "2025-07":0.26,"2025-08":-0.11,"2025-09":0.48,"2025-10":0.09,"2025-11":-0.09,"2025-12":0.33,
-  "2026-01":0.33,"2026-02":0.70,"2026-03":0.88,"2026-04":0.31,"2026-05":0.31,"2026-06":0.31,
+  "2026-01":0.33,"2026-02":0.70,"2026-03":0.88,"2026-04":0.89,"2026-05":0.62,"2026-06":0.31,
   "2026-07":0.31,"2026-08":0.31,"2026-09":0.31,"2026-10":0.31,"2026-11":0.31,"2026-12":0.31
 };
 
@@ -438,7 +438,7 @@ function SeletorIndice(props) {
       </div>
       {indice === "selic" && (
         <div style={{ marginTop:8, background:"#fff8e1", border:"1px solid #f0c040", borderRadius:6, padding:"8px 12px", fontSize:11, color:"#7a6000" }}>
-          {"SELIC: índices oficiais até mar/2026. A partir de abr/2026: projeção de 1,07% a.m. Sujeito a revisão quando publicados os valores definitivos."}
+          {"SELIC: índices oficiais até mai/2026. A partir de jun/2026: projeção de 1,07% a.m. Sujeito a revisão quando publicados os valores definitivos."}
         </div>
       )}
     </div>
@@ -685,13 +685,13 @@ function gerarPDFCompleto(resultado, logoData) {
   doc.text("Observações:", mg, y); y += 5;
   doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
   var obsLines = resultado.indice === "selic" ? [
-    "1. Atualização pela taxa SELIC acumulada mensal (substitui correção monetária e juros de mora). Índices oficiais até mar/2026. A partir de abr/2026: projeção de 1,07% a.m. Sujeito a revisão.",
+    "1. Atualização pela taxa SELIC acumulada mensal (substitui correção monetária e juros de mora). Índices oficiais até mai/2026. A partir de jun/2026: projeção de 1,07% a.m. Sujeito a revisão.",
     "2. SELIC como fator único de atualização do débito alimentar (art. 406 CC c/c Lei 9.250/95).",
     "3. Bloco 1 (art. 528, §3º, CPC): últimas 3 parcelas — execução pelo rito da prisão civil.",
     "4. Bloco 2 (art. 528, §8º, CPC): parcelas anteriores — execução pelo rito da penhora.",
     "5. Imputação de pagamentos nos débitos mais antigos (art. 354 CC)."
   ] : [
-    "1. Correção monetária pelo IPCA (IBGE). Índices oficiais até mar/2026. A partir de abr/2026: projeção de 0,31% a.m. Sujeito a revisão quando publicados os índices definitivos.",
+    "1. Correção monetária pelo IPCA (IBGE). Índices oficiais até mai/2026. A partir de jun/2026: projeção de 0,31% a.m. Sujeito a revisão quando publicados os índices definitivos.",
     "2. Juros de mora: 1% ao mês, pro rata die, sobre o valor corrigido (art. 406 CC c/c art. 161, §1º, CTN).",
     "3. Bloco 1 (art. 528, §3º, CPC): últimas 3 parcelas — execução pelo rito da prisão civil.",
     "4. Bloco 2 (art. 528, §8º, CPC): parcelas anteriores — execução pelo rito da penhora.",
@@ -859,12 +859,12 @@ function gerarPDFAtuPenhora(dados, logoData) {
   var obs = dados.indice === "selic" ? [
     "1. Atualização pela taxa SELIC acumulada mensal, contada a partir da data de referência até a data-base do cálculo.",
     "2. A SELIC substitui a correção monetária e os juros de mora (art. 406 CC c/c Lei 9.250/95).",
-    "3. Índices SELIC oficiais até mar/2026. A partir de abr/2026: projeção de 1,07% a.m. Sujeito a revisão.",
+    "3. Índices SELIC oficiais até mai/2026. A partir de jun/2026: projeção de 1,07% a.m. Sujeito a revisão.",
     "4. Rito da penhora (expropriação) — art. 528, §8º, CPC."
   ] : [
     "1. Correção monetária pelo IPCA-E (IBGE), contada a partir da data de referência até a data-base do cálculo.",
     "2. Juros de mora: 1% ao mês sobre o valor corrigido (art. 406 CC c/c art. 161, §1º, CTN).",
-    "3. Índices oficiais até mar/2026. A partir de abr/2026: projeção de 0,31% a.m. Sujeito a revisão.",
+    "3. Índices oficiais até mai/2026. A partir de jun/2026: projeção de 0,31% a.m. Sujeito a revisão.",
     "4. Rito da penhora (expropriação) — art. 528, §8º, CPC."
   ];
   obs.forEach(function(o){ doc.text(o,mg,y); y+=4.5; });
@@ -1038,12 +1038,12 @@ function gerarPDFAtuPrisao(resultado, logoData) {
   doc.text("Observações:", mg, y); y+=5;
   doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
   var obsP = resultado.indice==="selic" ? [
-    "1. Atualização pela taxa SELIC acumulada mensal (índices oficiais até mar/2026; projeção 1,07% a.m. a partir de abr/2026).",
+    "1. Atualização pela taxa SELIC acumulada mensal (índices oficiais até mai/2026; projeção 1,07% a.m. a partir de jun/2026).",
     "2. A SELIC substitui a correção monetária e os juros de mora (art. 406 CC c/c Lei 9.250/95).",
     "3. Todas as parcelas estão no rito da prisão civil — art. 528, §3º, CPC.",
     "4. Imputação de pagamentos nos débitos mais antigos (art. 354 CC)."
   ] : [
-    "1. Correção monetária pelo IPCA-E (IBGE). Índices oficiais até mar/2026. A partir de abr/2026: projeção de 0,31% a.m.",
+    "1. Correção monetária pelo IPCA-E (IBGE). Índices oficiais até mai/2026. A partir de jun/2026: projeção de 0,31% a.m.",
     "2. Juros de mora: 1% ao mês, pro rata die, sobre o valor corrigido (art. 406 CC c/c art. 161, §1º, CTN).",
     "3. Todas as parcelas estão no rito da prisão civil — art. 528, §3º, CPC.",
     "4. Imputação de pagamentos nos débitos mais antigos (art. 354 CC)."
